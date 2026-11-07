@@ -1,0 +1,1602 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#062360">
+<meta name="description" content="Rotación de personal por grupo: máquinas, personal, desayuno y almuerzo, vacaciones, mes, reporte, evaluaciones y recordatorios.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Rotación PCI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Rotación de grupos PCI Miami</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: una sola columna de teléfono; pestañas arriba, bloques de 2 h como tarjetas. */
+:root{--bg:#EDF1F4;--card:#FFFFFF;--ink:#17232E;--muted:#586774;--line:#D1D9E0;--accent:#0B7A75;--onaccent:#FFFFFF;--bad:#B93A2B;--warnbg:#FFF4E5;--warnink:#7A4A00;--now:#E3F4F3}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F171E;--card:#18232D;--ink:#E8EFF4;--muted:#9AA9B7;--line:#2C3A47;--accent:#35C0B8;--onaccent:#05201E;--bad:#FF8070;--warnbg:#2E2410;--warnink:#F2C879;--now:#12302F;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0F171E;--card:#18232D;--ink:#E8EFF4;--muted:#9AA9B7;--line:#2C3A47;--accent:#35C0B8;--onaccent:#05201E;--bad:#FF8070;--warnbg:#2E2410;--warnink:#F2C879;--now:#12302F;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:'Barlow Semi Condensed',system-ui,sans-serif;font-size:18px;margin:0}
+#app{max-width:560px;margin:0 auto;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:30px;line-height:1.1;margin:4px 0 4px;font-weight:700;text-wrap:balance}
+h2{font-size:22px;margin:0 0 8px;font-weight:700}
+h2.lh{margin-top:22px}
+.sub{color:var(--muted);margin:0 0 12px;font-size:17px}
+.btn{display:block;width:100%;border:0;border-radius:14px;padding:14px;font:inherit;font-weight:700;font-size:19px;background:var(--accent);color:var(--onaccent);cursor:pointer;text-align:center;margin-top:12px}
+.btn.soft{background:var(--card);color:var(--ink);border:2px solid var(--line)}
+label{display:block;font-weight:600;margin:14px 0 6px}
+input,select,textarea{width:100%;padding:11px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:18px;min-width:0}
+textarea{min-height:90px;resize:vertical}
+.tabs{display:flex;gap:5px;margin:10px 0 14px}
+a.home{display:inline-block;color:var(--muted);font-weight:600;text-decoration:none;padding:6px 0}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.alert{background:var(--warnbg);color:var(--warnink);border:2px solid var(--warnink);border-radius:12px;padding:10px 12px;margin:10px 0;font-size:17px}
+.alert.soft{background:var(--card);color:var(--ink);border-color:var(--line)}
+.tab{flex:1;min-width:0;font-size:15px !important;padding:10px 1px;border-radius:14px;border:2px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-weight:700;cursor:pointer}
+.tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.warn{background:var(--warnbg);color:var(--warnink);border-radius:12px;padding:10px 12px;margin:10px 0;font-size:17px}
+.toast{background:var(--accent);color:var(--onaccent);padding:10px 12px;border-radius:12px;font-weight:700;margin:10px 0}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.row3 input{font-size:17px;padding:9px}
+.row3 label{margin-top:10px;font-size:16px}
+.stops{color:var(--muted);font-size:16px;margin:8px 0}
+.stops b{color:var(--ink)}
+.blk{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:12px;margin-top:12px}
+.blk.now{border-color:var(--accent);background:var(--now)}
+.blk.next{border-style:dashed}
+.blk h3{margin:0 0 6px;font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.blk h3 span{color:var(--muted);font-size:16px;font-weight:600;margin-left:6px}
+.mrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.mrow:last-of-type{border-bottom:0}
+.mrow span{font-weight:600;font-variant-numeric:tabular-nums}
+.mrow .who{font-weight:500}
+select.miss{border-color:var(--bad)}
+.free{color:var(--muted);font-size:16px;margin:8px 0 0}
+.prow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;background:var(--card);border:2px solid var(--line);border-radius:14px;padding:8px 10px}
+.prow .nm{flex:1 1 130px}
+.prow select{width:auto;flex:none}
+.prow .num{font-size:22px;min-width:34px;font-variant-numeric:tabular-nums}
+.pill{border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 14px;font:inherit;font-weight:700;cursor:pointer}
+.pill.on{background:var(--accent);color:var(--onaccent);border-color:var(--accent)}
+.pill.stop{border-color:var(--bad);color:var(--bad)}
+.tag{font-size:15px;color:var(--muted)}
+.x{background:none;border:0;color:var(--muted);font:inherit;font-weight:700;padding:8px;cursor:pointer}
+.x.del{color:var(--bad)}
+:root{--u1:#1F5FAE;--u1b:#E3EEFB;--u2:#A34A06;--u2b:#FDEFD9;--u0:#7A3FB0;--u0b:#F1E7FA}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--u1:#8CB8F0;--u1b:#17304D;--u2:#F2B36B;--u2b:#3A2810;--u0:#C9A2EE;--u0b:#2E1D40}}
+:root[data-theme="dark"]{--u1:#8CB8F0;--u1b:#17304D;--u2:#F2B36B;--u2b:#3A2810;--u0:#C9A2EE;--u0b:#2E1D40}
+.brk{margin-top:10px;border-top:2px dashed var(--line);padding-top:8px}
+.brk.on{border:2px solid var(--accent);border-radius:12px;padding:8px 10px;background:var(--now)}
+.bh{font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
+.bh span{color:var(--muted);font-weight:600}
+.tn{display:block;width:max-content;margin:0 0 6px;padding:6px 16px;border-radius:12px;font-size:24px;font-weight:700;letter-spacing:.03em;color:#fff}
+.tn1{background:#9A6A00}.tn2{background:#2F6B2B}.tn3{background:#1C3F8A}
+.brow{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.brow:last-child{border-bottom:0}
+.brow .op{flex:1 1 150px;min-width:0;font-weight:600}
+.brow .op small{display:block;color:var(--muted);font-size:15px;font-weight:500}
+.chip{display:inline-block;border-radius:999px;padding:4px 12px;font-weight:700;font-size:16px;border:2px solid currentColor}
+.c1{color:var(--u1);background:var(--u1b)}.c2{color:var(--u2);background:var(--u2b)}.c0{color:var(--u0);background:var(--u0b)}
+.cf{color:var(--accent);background:var(--now)}
+.cs{color:var(--ink);background:var(--card);border-style:double;border-width:3px}
+.ch{color:var(--warnink);background:var(--warnbg);border-style:dashed}
+.mrow.held{background:repeating-linear-gradient(135deg,var(--warnbg) 0 10px,var(--card) 10px 20px);border-radius:10px;padding:6px 8px;border-bottom:0;margin:2px 0}
+.mrow.held span small{display:block;color:var(--warnink);font-size:14px;font-weight:600}
+.pill.hold{border-color:var(--warnink);color:var(--warnink);background:var(--warnbg)}
+.pill.ghost{opacity:.55}
+.rt{display:inline-block;margin-top:4px;border:2px solid var(--warnink);color:var(--warnink);background:var(--card);border-radius:999px;padding:4px 10px;font:inherit;font-size:15px;font-weight:700;cursor:pointer}
+.rtbox{background:var(--card);border:2px solid var(--warnink);border-radius:16px;padding:12px;margin-top:14px}
+.rtbox h2{margin:0 0 4px;color:var(--warnink)}
+.rtbox .prow{margin-top:6px}
+.rt.on{background:var(--warnink);color:var(--warnbg)}
+.mrow.held .who b{display:block;color:var(--warnink);font-size:15px}
+.mrow.held .rtname{font-weight:700}
+.mrow.held .rtname small{display:block;color:var(--warnink);font-size:15px}
+.cx{color:var(--warnink);background:var(--warnbg)}.cn{color:var(--bad);background:var(--card)}.cm{color:var(--muted);background:var(--card);border-style:dashed}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.bnow{border:2px solid var(--accent);background:var(--card);border-radius:16px;padding:10px 12px;margin:10px 0}
+.bnow .brk{border:0;margin:0;padding:0}
+.grp{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:8px 10px;margin-top:8px}
+.grp b{display:block;margin-bottom:4px}
+.grp select{margin-top:6px}
+.pr h1{margin:0}.pr h2{margin:16px 0 6px;font-size:22px}
+.pr table{width:100%;border-collapse:collapse;font-size:16px;background:var(--card)}
+.pr th,.pr td{border:1px solid var(--ink);padding:5px 7px;text-align:left;vertical-align:top}
+.pr th{background:var(--line)}
+.pr td.hr{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pr small{display:block;color:var(--muted);font-size:13px}
+.pr td.cv{font-weight:700}.pr td.nc{color:var(--muted)}.pr td.bad{color:var(--bad);font-weight:700}
+.pr i,.lbl i{font-style:normal;color:var(--muted);font-size:.85em}
+.cp .phd{display:flex;justify-content:space-between;align-items:baseline;font-size:20px;border-bottom:2px solid var(--ink);padding-bottom:2px}
+.cp .phd span{font-size:15px;color:var(--muted)}
+.cp h2{margin:8px 0 3px;font-size:18px}
+.cp table{font-size:14px}.cp th,.cp td{padding:2px 6px;white-space:nowrap}
+.cp td.cv,.cp td.nc,.cp td.bad{white-space:normal}
+.cp tr.tb td{border-top:2px solid var(--ink)}
+.zb{display:flex;flex-wrap:wrap;gap:12px}
+.lbl{overflow:hidden;box-sizing:border-box;background:#fff;color:#000;border:1px dashed #888;padding:.09in .12in;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.15}
+.lbl .lh{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:1.25em;border-bottom:2px solid #000;padding-bottom:2px}
+.lbl .lh span{font-weight:700;font-size:.95em;white-space:nowrap}
+.lbl .ld{font-size:.65em;margin:1px 0 3px}
+.lbl table{width:100%;border-collapse:collapse;table-layout:fixed}
+.lbl th:nth-child(1){width:37%}.lbl th:nth-child(2){width:21%}
+.lbl td{overflow-wrap:anywhere}
+.lbl th{font-size:.65em;text-align:left;border-bottom:1px solid #000;padding:1px 2px}
+.lbl td{border-bottom:1px solid #999;padding:.25em 2px;vertical-align:top;font-weight:600}
+.lbl td.cv{font-weight:800}.lbl td.nc{font-weight:400}.lbl td.bad{font-weight:900;text-decoration:underline}
+.lbl i{color:#000;font-weight:400;font-size:.72em}
+.lbl.tight{font-size:12.5px}.lbl.tight td{padding:2px 2px}
+.pbar{display:flex;gap:8px}
+.lbl.note .nh,.ncard .nh{font-size:1.35em;border-bottom:2px solid #000;padding-bottom:2px;margin-bottom:3px}
+.lbl.note .no,.ncard .no{font-size:.9em;margin:2px 0 4px;font-weight:600}
+.lbl.note td i,.ncard td i{display:block;font-size:.7em}
+.lbl.note .ld,.ncard .ld{margin-top:4px}
+.ncards{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.ncard{border:1.5px dashed #555;padding:10px 12px;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:14px;break-inside:avoid;page-break-inside:avoid}
+.ncard table{width:100%;border-collapse:collapse}.ncard th{font-size:11px;text-align:left;border-bottom:1px solid #000}.ncard td{border-bottom:1px solid #aaa;padding:3px 2px;vertical-align:top}.ncard .ld{font-size:10px}
+@media (max-width:520px){.ncards{grid-template-columns:1fr}}
+@media print{.ncards{grid-template-columns:1fr 1fr}}
+select.mv{flex-basis:100%;font-size:15px;padding:6px 8px;border-radius:10px;color:var(--muted)}
+.op b.mvd{display:block;color:var(--accent);font-size:14px}
+.pill.zero{border-color:var(--u0);color:var(--u0);background:var(--u0b)}
+.mrow.zero{background:var(--u0b);border-radius:10px;padding:6px 8px;border-bottom:0;margin:2px 0}
+.mrow.zero span small{display:block;color:var(--u0);font-size:14px;font-weight:600}
+.zh{margin:10px 0 2px;font-weight:700;color:var(--u0);font-size:16px}
+.mrow .hctl{grid-column:1/-1}
+.mrow select.tk{border-color:var(--warnink);font-size:16px;padding:8px}
+.zcp{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.zcp .pill{padding:6px 12px}.zcp small{font-weight:500;font-size:13px}
+.rnow{border:2px solid var(--accent);background:var(--now);border-radius:16px;padding:10px 12px;margin:6px 0 10px}
+.rnow .rh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+.rnow .rh span{color:var(--muted);font-size:15px;font-weight:600;white-space:nowrap}
+.rnow .rr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:17px}
+.rnow .rr:last-of-type{border-bottom:0}
+.rnow .rr b{font-variant-numeric:tabular-nums}
+.rnow .rr.h{color:var(--warnink)}
+.rnow .rr small{display:block;color:var(--muted);font-size:14px}
+.rnow .go{background:none;border:0;color:var(--accent);font:inherit;font-weight:700;padding:6px 0 0;cursor:pointer}
+.ahora{background:var(--card);border:2px solid var(--ink);border-radius:16px;padding:10px 12px;margin:10px 0}
+.ahora h2{margin:0 0 2px;font-size:22px}
+.ahora .lnh{margin:8px 0 2px;font-weight:700;color:var(--muted);font-size:15px;text-transform:uppercase;letter-spacing:.04em}
+.arow{display:grid;grid-template-columns:minmax(64px,auto) 1fr;gap:4px 10px;padding:5px 0;border-bottom:1px solid var(--line);align-items:baseline}
+.arow:last-child{border-bottom:0}
+.arow .mq{font-weight:700;font-variant-numeric:tabular-nums}
+.arow .pp{font-weight:700}
+.arow .pp small{display:block;font-weight:500;color:var(--muted);font-size:15px}
+.arow.h .pp{color:var(--warnink)}.arow.z .mq{color:var(--u0)}.arow.x .pp{color:var(--bad)}.pbar .btn{margin:0 0 12px}
+@media print{
+:root{--card:#fff;--ink:#000;--muted:#333;--line:#ddd;--bad:#000}
+body{background:#fff!important;color:#000;padding:0!important;font-size:14px}
+#app{max-width:none;padding:0}.noprint,#homebtn{display:none!important}
+.pr table{font-size:13px;page-break-inside:auto}.pr tr{page-break-inside:avoid}
+.pr h2{margin:10px 0 4px;font-size:18px}
+.cp table{font-size:14px}.cp th,.cp td{padding:3px 6px}.cp h2{margin:10px 0 3px;font-size:18px}.cp .phd{font-size:20px}
+.zb{display:block}.lbl{border:0;margin:.125in auto 0;page-break-after:always;break-after:page}.lbl:last-child{page-break-after:auto;break-after:auto}}
+
+.cal{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:10px;margin-top:10px}
+.calh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.calh b{font-size:22px}.calh b::first-letter{text-transform:uppercase}
+.tabs.mt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+#app{padding-bottom:90px}
+.calh button{border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;font:inherit;font-weight:700;font-size:20px;padding:4px 14px;cursor:pointer}
+.cg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cg .dw{text-align:center;font-size:14px;font-weight:700;color:var(--muted);padding:2px 0}
+.cd{position:relative;aspect-ratio:1/1.05;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--muted);font:inherit;font-weight:700;font-size:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;cursor:pointer;font-variant-numeric:tabular-nums;min-width:0}
+.cd small{font-size:11px;font-weight:600;line-height:1}
+.cd.w{background:var(--accent);border-color:var(--accent);color:var(--onaccent)}
+.cd.v{background:var(--u0b);border-color:var(--u0);color:var(--u0)}
+.cd.t{outline:3px solid var(--ink);outline-offset:1px}
+.cd.ov::after{content:'';position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--warnink)}
+.cd.w.ov::after{background:var(--onaccent)}
+.cd.e{visibility:hidden}
+.csum{display:flex;gap:8px;margin:10px 0 2px}
+.csum div{flex:1;background:var(--bg);border-radius:12px;padding:6px 8px;text-align:center;font-size:15px;color:var(--muted)}
+.csum b{display:block;font-size:24px;color:var(--ink);font-variant-numeric:tabular-nums}
+.wdp{display:flex;gap:4px}.wdp .pill{flex:1;padding:8px 0;min-width:0}
+.ctoday{font-size:20px;font-weight:700;margin:4px 0 0}
+@media print{.cd.w{background:#000!important;color:#fff!important}}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+/* Grupos */
+.gtop{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.gtop h1{margin-bottom:2px}
+.shiftchip{display:inline-block;padding:3px 12px;border-radius:999px;font-weight:700;font-size:16px;background:var(--warnbg);color:var(--warnink);border:2px solid var(--warnink)}
+.shiftchip.n{background:var(--u1b);color:var(--u1);border-color:var(--u1)}
+.hbtns{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none}
+.pill.new{background:var(--accent);color:var(--onaccent);border-color:var(--accent);padding:7px 12px;font-size:16px}
+.link{background:none;border:0;color:var(--muted);font:inherit;font-weight:600;font-size:16px;padding:6px 0;cursor:pointer;text-decoration:underline}
+.ex{background:var(--u0b);color:var(--u0);border:2px dashed var(--u0);border-radius:12px;padding:8px 12px;margin:10px 0;font-weight:600;font-size:16px}
+.glist{display:grid;gap:8px;margin-top:8px}
+.gbtn{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;font:inherit;font-weight:700;font-size:20px;padding:12px 14px;border-radius:14px;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.gbtn small{font-weight:600;color:var(--muted);font-size:15px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{font:inherit;font-weight:700;font-size:18px;padding:12px 6px;border-radius:14px;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.seg button small{display:block;font-weight:600;font-size:15px;color:var(--muted)}
+.seg button.on{border-color:var(--accent);background:var(--now)}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;min-height:110px}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}
+.guide p{margin:6px 0}
+.guide ol{padding-left:24px;margin:6px 0}.guide li{margin:6px 0}
+.guide .step{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:12px 14px;margin-top:12px}
+.guide .step h3{margin:0 0 4px;display:flex;gap:10px;align-items:center;font-size:20px}
+.guide .step h3 b{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--onaccent);font-size:18px;flex:none}
+.guide dt{font-weight:700;margin-top:10px}.guide dd{margin:2px 0 0 0;color:var(--muted)}
+
+.legend .swl{padding:4px 12px;font-size:16px;border-style:dashed}
+.prow.rem .nm{display:block}.prow.rem .nm small{display:block;color:var(--muted);font-size:15px;font-weight:500}.prow.rem.off{opacity:.6}
+.remnext{display:block;width:100%;text-align:left;margin:8px 0;padding:10px 12px;border-radius:12px;border:2px solid var(--accent);background:var(--now);color:var(--ink);font:inherit;font-size:16px;cursor:pointer}
+#remov{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+#remov .rembox{width:100%;max-width:480px;max-height:90vh;overflow:auto;background:var(--card);color:var(--ink);border:4px solid var(--bad);border-radius:20px;padding:16px;font-family:'Barlow Semi Condensed',system-ui,sans-serif;animation:rempulse 1s ease-in-out infinite alternate}
+#remov .remh{font-size:26px;font-weight:700;color:var(--bad)}#remov .remi{border-top:2px solid var(--line);margin-top:10px;padding-top:10px}#remov .remi b{display:block;font-size:24px}#remov .remi small{color:var(--muted);font-size:16px}
+@keyframes rempulse{from{box-shadow:0 0 0 0 rgba(185,58,43,.6)}to{box-shadow:0 0 0 14px rgba(185,58,43,0)}}
+@media (prefers-reduced-motion:reduce){#remov .rembox{animation:none}}
+@media print{#remov,.remnext{display:none!important}}
+.evbar{background:var(--card);border:2px dashed var(--line);border-radius:14px;padding:10px 12px;margin:6px 0 10px;font-size:16px}.evbar.on{border-style:solid;border-color:var(--accent)}.evbar .pbar{margin-top:8px;flex-wrap:wrap;align-items:center}.evbar .pbar input{flex:1 1 140px;width:auto}
+.score{flex-basis:100%;display:grid;gap:8px;padding-top:8px;border-top:1px dashed var(--line);margin-top:4px}.score .srow{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.score .sbars{display:flex;align-items:flex-end;gap:4px;height:38px;flex:none}.score .sbars i{display:block;width:9px;border-radius:999px}.score .sl{flex:1 1 120px;font-weight:600;font-size:16px;line-height:1.15}.score .sl b{font-size:20px;font-variant-numeric:tabular-nums;margin-right:2px}.score .pill{padding:6px 12px;font-size:16px}.score .sinc{border-color:var(--bad);color:var(--bad)}.score .sgood{border-color:#2E8B3A;color:#2E8B3A}.score .sg{display:inline-flex;align-items:center;gap:6px}.score .dots{display:inline-flex;gap:3px;margin-right:6px}.score .dots i{width:11px;height:11px;border-radius:50%;border:2px solid}.score small{color:var(--muted);font-size:14px}
+</style>
+</head><body>
+<div id="app"></div>
+<button id="totop" hidden onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Volver arriba de la página">↑ Arriba</button>
+<style>#totop{position:fixed;left:max(14px,env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:15;background:var(--ink);color:var(--bg);border:0;font-family:'Barlow Semi Condensed',system-ui,sans-serif;font-weight:700;font-size:20px;line-height:1;padding:14px 20px;border-radius:999px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.28)}#totop[hidden]{display:none}#totop:focus-visible{outline:3px solid var(--accent);outline-offset:3px}body{padding-bottom:96px}@media print{#totop{display:none!important}}</style>
+<script>(function(){const b=document.getElementById('totop'),f=()=>{b.hidden=window.scrollY<400};window.addEventListener('scroll',f,{passive:true});f()})();</script>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const pad=n=>String(n).padStart(2,'0');
+/* Horario del grupo: el turno de noche (18:00 a 6:00) que empezó ayer sigue siendo "hoy" hasta las 6:00. */
+let SHIFT='dia';
+const todayStr=()=>{const t=new Date();if(SHIFT==='noche'&&t.getHours()<6)t.setDate(t.getDate()-1);return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())};
+const REASONS=['Logística','Ventas','RRHH','Mantenimiento correctivo','Mantenimiento preventivo','Cambio de molde','Operaciones'];
+const reasonOpts=cur=>(cur&&REASONS.indexOf(cur)<0?[cur]:[]).concat(REASONS).map(r=>`<option value="${esc(r)}" ${r===cur?'selected':''}>${esc(r)}</option>`).join('');
+
+const L1=[1,2,3,4,5,6,7,8,10,11],L2=[12,13,14,15,16,17,18,19,21,22];
+function newFull(g,shift,l1,l2){
+const machines=(l1||L1).map(n=>({n,line:1,on:true,reason:''})).concat((l2||L2).map(n=>({n,line:2,on:true,reason:''})));
+const noche=shift==='noche';
+return {g:String(g),shift:noche?'noche':'dia',machines,posts:machines.map(m=>({id:uid(),ms:[m.n]})),people:[],days:{},vac:[],informa:'',cal:{mode:'ciclo',on:1,off:0,start:todayStr(),wd:[1,2,3,4,5],ov:{},pid:''},
+brk:noche?{bS:'21:00',bM:15,lS:'01:00',lM:30,g:[[],[],[]]}:{bS:'07:00',bM:15,lS:'12:00',lM:30,g:[[],[],[]]},brkInit:1,brkOrd:2};
+}
+function defaults(){return newFull('','dia')}
+let S=defaults();
+let printing=false,db=null,tab='hoy',date=todayStr(),armed=null,notice=null,fromSel=null;
+
+/* Guardado: en la nube de Claude (se ve en todos tus dispositivos); si no está disponible, en este navegador. */
+let cdb=null,ready=false,lastW={},chains={},pend=0,flushT=null;
+const openDB=()=>new Promise(res=>{try{const r=indexedDB.open('rotacion',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>{db=r.result;res()};r.onerror=()=>res()}catch(e){res()}});
+const kvGet=k=>new Promise(res=>{if(!db)return res(null);try{const r=db.transaction('kv').objectStore('kv').get(k);r.onsuccess=()=>res(r.result==null?null:r.result);r.onerror=()=>res(null)}catch(e){res(null)}});
+const kvPut=(k,v)=>{if(!db)return;try{db.transaction('kv','readwrite').objectStore('kv').put(v,k)}catch(e){}};
+const clone=o=>JSON.parse(JSON.stringify(o));
+/* Guardado: solo en este dispositivo, separado por número de grupo. Un grupo nunca toca los datos de otro. */
+const GKEY='rotgrupos:';
+const lsGet=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
+const lsDel=k=>{try{localStorage.removeItem(k)}catch(e){}};
+let saveT=null,saveFail=false;
+function save(){if(!S||!S.g||S.example)return;clearTimeout(saveT);saveT=setTimeout(saveNow,250)}
+function saveNow(){clearTimeout(saveT);saveT=null;if(!S||!S.g||S.example)return;S.saved=Date.now();const ok=lsSet(GKEY+'g:'+S.g,S);lsSet(GKEY+'last',S.g);if(!ok&&!saveFail){saveFail=true;notice={t:'No se pudo guardar en este dispositivo. Revisa que el navegador permita guardar datos de sitios.',bad:true};rr()}}
+window.addEventListener('pagehide',()=>{if(saveT)saveNow()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&saveT)saveNow()});
+const mainOf=()=>{const o=Object.assign({},S);delete o.days;return clone(o)};
+function wr(path,data){
+const j=JSON.stringify(data);if(lastW[path]===j)return;lastW[path]=j;pend++;
+const run=()=>cdb.doc(path).set(data);
+const p=(chains[path]||Promise.resolve()).then(run,run);
+chains[path]=p.then(()=>{pend--},e=>{pend--;delete lastW[path];notice={t:e&&e.code==='quota_exceeded'?'Se llenó el espacio en la nube. No se guardó el último cambio.':'No se pudo guardar en la nube. Revisa tu conexión y vuelve a hacer el cambio.',bad:true};rr()});
+}
+function flush(){if(!cdb)return;clearTimeout(flushT);flushT=null;wr('state/main',mainOf());Object.keys(S.days).forEach(k=>wr('days/'+k,S.days[k]))}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&flushT)flush()});
+function applyRemote(){if(pend||flushT)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;rr()}
+function fixS(){if(!S.days)S.days={};if(!S.cal||typeof S.cal!=='object')S.cal={mode:'ciclo',on:5,off:2,start:todayStr(),wd:[1,2,3,4,5],ov:{},pid:''};if(!S.cal.ov)S.cal.ov={};if(!Array.isArray(S.vac))S.vac=[];if(!Array.isArray(S.people))S.people=[]}
+function mergeVac(local){
+let n=0;const nameOf=id=>{const p=(local.people||[]).find(x=>x.id===id);return p?norm(p.name):''};
+(local.vac||[]).forEach(v=>{if(S.vac.some(x=>x.id===v.id))return;const p=S.people.find(x=>norm(x.name)===nameOf(v.pid));if(!p||S.vac.some(x=>x.pid===p.id&&x.from===v.from&&x.to===v.to))return;S.vac.push(Object.assign({},v,{pid:p.id}));n++});
+return n;
+}
+async function initCloud(d,local,migrated){
+const [m,ds]=await Promise.all([d.doc('state/main').get(),d.collection('days').get()]);
+cdb=d;
+if(m.exists){
+S=Object.assign(clone(m.data()),{days:{}});ds.docs.forEach(x=>S.days[x.id]=clone(x.data()));fixS();
+lastW['state/main']=JSON.stringify(mainOf());Object.keys(S.days).forEach(k=>lastW['days/'+k]=JSON.stringify(S.days[k]));
+if(local&&!migrated){const n=mergeVac(local);if(n){notice={t:n+' vacaciones de este dispositivo se agregaron a la nube.'};save()}}
+}else{
+if(local)S=local;fixS();flush();
+}
+kvPut('migrated',true);
+cdb.doc('state/main').onSnapshot(s=>{
+if(!s.exists||s.metadata.hasPendingWrites||pend||flushT)return;
+const o=clone(s.data()),days=S.days;S=Object.assign(o,{days});fixS();lastW['state/main']=JSON.stringify(mainOf());applyRemote();
+},()=>{});
+cdb.collection('days').onSnapshot(s=>{
+if(s.metadata.hasPendingWrites||pend||flushT)return;
+let ch=false;s.docs.forEach(x=>{const o=clone(x.data()),j=JSON.stringify(o);if(lastW['days/'+x.id]!==j){lastW['days/'+x.id]=j;S.days[x.id]=o;ch=true}});
+if(ch)applyRemote();
+},()=>{});
+}
+
+/* Día de trabajo */
+function day(){if(!S.days[date])S.days[date]={start:S.shift==='noche'?'18:00':'06:00',hours:2,n:6,blocks:[],dirty:false,nextRing:null};return S.days[date]}
+const toMin=s=>{const p=String(s||'06:00').split(':').map(Number);return (p[0]||0)*60+(p[1]||0)};
+const hm=(start,add)=>{const t=(toMin(start)+Math.round(add))%1440;return pad(Math.floor(t/60))+':'+pad(t%60)};
+const blockLabel=(d,i)=>hm(d.start,i*d.hours*60)+' – '+hm(d.start,(i+1)*d.hours*60);
+function curBlock(d){
+if(date!==todayStr())return -1;
+const now=new Date(),mins=now.getHours()*60+now.getMinutes();
+const diff=(mins-toMin(d.start)+1440)%1440,i=Math.floor(diff/(d.hours*60));
+return i<d.n?i:-1;
+}
+const machOn=n=>{const m=S.machines.find(x=>x.n===n);return !!(m&&m.on&&!m.zero)};
+const postActive=p=>p.ms.some(machOn);
+/* Detenida por un motivo pero sigue en la rotación: el operario queda asignado y libre para cubrir descansos. */
+const held=n=>{const m=S.machines.find(x=>x.n===n);return !!(m&&m.on&&m.hold)};
+const postHeld=p=>{const a=p.ms.filter(machOn);return a.length>0&&a.every(held)};
+/* Retrabajo: quien pasa por esa máquina detenida va a retrabajo y no cubre descansos. */
+const postRT=p=>postHeld(p)&&p.ms.some(n=>{const m=S.machines.find(x=>x.n===n);return m&&m.on&&m.hold&&m.task==='rt'});
+function setRT(pid,on){const p=S.posts.find(x=>x.id===pid);if(!p)return;S.machines.forEach(m=>{if(p.ms.indexOf(m.n)>=0&&m.on&&m.hold)m.task=on?'rt':''});save();notice={t:on?'Máq. '+postLabel(p)+': quien pasa por ahí va a retrabajo.':'Máq. '+postLabel(p)+': el operario vuelve a cubrir descansos.'};rr()}
+const pname=id=>{const p=S.people.find(x=>x.id===id);return p?p.name:'?'};
+const mk=p=>p&&p.role==='util'?' (MH)':p&&p.role==='senior'?' (US)':p&&p.role==='sup'?' (Sup.)':'';
+const pmark=id=>mk(S.people.find(x=>x.id===id));
+const postLabel=p=>p.ms.join(', ')+(p.sfx||''); const mql=r=>(r.ms||[]).join(', ')+(r.sx||'');
+const addDays=(s,n)=>{const p=s.split('-').map(Number),t=new Date(p[0],p[1]-1,p[2]+n);return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())};
+const fmtD=s=>{const p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short'})};
+const onVac=(id,d)=>(S.vac||[]).some(v=>v.pid===id&&v.from<=d&&d<=v.to);
+const leftOn=(id,ds)=>{const d=S.days[ds];return d&&d.left&&d.left[id]||null};
+const here=p=>p.present&&!onVac(p.id,date)&&!leftOn(p.id,date);
+function alertsHTML(){
+const T=todayStr(),tm=addDays(T,1),nm=id=>esc(pname(id));
+const start=S.vac.filter(v=>v.from===tm),back=S.vac.filter(v=>addDays(v.to,1)===tm),now=S.vac.filter(v=>v.from<=T&&T<=v.to);
+let h='';
+if(start.length)h+=`<div class="alert"><b>Mañana empieza${start.length>1?'n':''} vacaciones:</b> ${start.map(v=>nm(v.pid)+' (hasta el '+fmtD(v.to)+')').join(', ')}</div>`;
+if(back.length)h+=`<div class="alert soft"><b>Mañana regresa${back.length>1?'n':''} de vacaciones:</b> ${back.map(v=>nm(v.pid)).join(', ')}</div>`;
+if(now.length)h+=`<p class="stops">De vacaciones hoy: ${now.map(v=>'<b>'+nm(v.pid)+'</b> hasta el '+fmtD(v.to)).join(' · ')}</p>`;
+return h;
+}
+function vacHTML(){
+const T=todayStr();
+let h=`<p class="sub">Registra las vacaciones aprobadas. Esos días la persona sale de la rotación, y la app avisa el día antes.</p>`;
+if(!S.people.length)return h+`<div class="warn">Agrega personal primero en la pestaña Personal.</div>`;
+h+=`<label for="vp">Persona</label><select id="vp">${S.people.map(p=>`<option value="${p.id}">${esc(p.name)}${mk(p)}</option>`).join('')}</select>`;
+h+=`<div class="row2"><div><label for="vf">Desde</label><input type="date" id="vf" value="${addDays(T,1)}"></div><div><label for="vt">Hasta (último día)</label><input type="date" id="vt" value="${addDays(T,7)}"></div></div>`;
+h+=`<label for="vn">Nota (opcional)</label><input id="vn" placeholder="Ej. papel aprobado por RRHH">`;
+h+=`<button class="btn" onclick="addVac()">Registrar vacaciones</button>`;
+const list=S.vac.slice().sort((a,b)=>a.from<b.from?-1:a.from>b.from?1:0);
+const up=list.filter(v=>v.to>=T),past=list.filter(v=>v.to<T);
+h+=`<h2 class="lh">Próximas y actuales</h2>`+(up.length?up.map(vacRow).join(''):`<p class="sub">No hay vacaciones próximas. Registra la primera arriba.</p>`);
+if(past.length)h+=`<h2 class="lh">Pasadas</h2>`+past.slice(-10).reverse().map(vacRow).join('');
+return h;
+}
+function vacRow(v){
+const T=todayStr();
+const st=v.from<=T&&T<=v.to?'De vacaciones':v.from===addDays(T,1)?'Empieza mañana':v.to<T?'Terminó':'Programada';
+const days=Math.round((new Date(v.to)-new Date(v.from))/864e5)+1;
+return `<div class="prow"><div class="nm"><b>${esc(pname(v.pid))}</b><br><span class="tag">${fmtD(v.from)} – ${fmtD(v.to)} · ${days} día${days>1?'s':''}${v.note?' · '+esc(v.note):''}</span></div><span class="tag">${st}</span><button class="x del" onclick="rm('vac','${v.id}')">${armed==='vac'+v.id?'¿Borrar?':'Quitar'}</button></div>`;
+}
+function addVac(){
+const pid=$('#vp').value,from=$('#vf').value,to=$('#vt').value,note=$('#vn').value.trim();
+if(!from||!to){notice={t:'Elige la fecha de inicio y la del último día.',bad:true};return rr()}
+if(to<from){notice={t:'El último día debe ser igual o posterior al primero.',bad:true};return rr()}
+if(S.vac.some(v=>v.pid===pid&&v.from<=to&&from<=v.to)){notice={t:pname(pid)+' ya tiene vacaciones registradas en esas fechas.',bad:true};return rr()}
+S.vac.push({id:uid(),pid,from,to,note});
+Object.keys(S.days).forEach(k=>{if(k>=from&&k<=to&&S.days[k].blocks.some(Boolean))S.days[k].dirty=true});
+save();notice={t:'Vacaciones registradas: '+pname(pid)+', del '+fmtD(from)+' al '+fmtD(to)+'.'};rr();
+}
+
+/* Motor de rotación: todos suben un puesto cada bloque y el primero pasa al último. */
+function ctx(){
+const posts=S.posts.filter(postActive);
+const dd=S.days[date],full=new Set(((dd&&dd.rt)||[]).filter(e=>e.from<=0&&e.to>=dd.n-1).map(e=>e.pid));
+const P=S.people.filter(p=>here(p)&&!full.has(p.id));
+const ops=P.filter(p=>p.role!=='util'&&p.role!=='senior'&&p.role!=='sup');
+const uts=P.filter(p=>p.role==='util').concat(P.filter(p=>p.role==='senior'));
+const need=Math.max(0,Math.min(uts.length,posts.length-ops.length));
+const E=ops.concat(uts.slice(0,need));
+return {posts,ids:E.map(p=>p.id)};
+}
+function seed(ring,c){
+const ok=new Set(c.ids),arr=[];
+(ring||[]).forEach(x=>{if(x&&ok.has(x)&&arr.indexOf(x)<0)arr.push(x)});
+c.ids.forEach(id=>{if(arr.indexOf(id)<0)arr.push(id)});
+while(arr.length<c.posts.length)arr.push(null);
+return arr;
+}
+function adapt(old,c){
+const ok=new Set(c.ids),keep={},left=[];
+old.posts.forEach((pid,j)=>{const x=old.arr[j];if(x&&ok.has(x))keep[pid]=x});
+old.arr.slice(old.posts.length).forEach(x=>{if(x&&ok.has(x))left.push(x)});
+old.posts.forEach((pid,j)=>{const x=old.arr[j];if(x&&ok.has(x)&&!c.posts.some(p=>p.id===pid)&&left.indexOf(x)<0)left.push(x)});
+const kept=Object.keys(keep).map(k=>keep[k]);
+c.ids.forEach(id=>{if(kept.indexOf(id)<0&&left.indexOf(id)<0)left.push(id)});
+const arr=c.posts.map(p=>keep[p.id]||left.shift()||null);
+return arr.concat(left);
+}
+const rotate=a=>a.length?a.slice(1).concat([a[0]]):a;
+/* La rotación sigue desde el último día que trabajaste: los días libres no la hacen avanzar. */
+function prevRing(){
+let keys=Object.keys(S.days).filter(k=>k<date&&S.days[k].nextRing&&calSt(k)==='w').sort();
+if(!keys.length)keys=Object.keys(S.days).filter(k=>k<date&&S.days[k].nextRing).sort();
+return keys.length?S.days[keys[keys.length-1]].nextRing:null;
+}
+function canGen(){const c=ctx();return c.posts.length>0&&c.ids.length>0}
+/* Pone el anillo en el orden de Personal: primero va todo el grupo, seguido, en su orden;
+   después los operarios extra, que así quedan en los puestos que el grupo deja libres. */
+const isExtra=id=>{const p=S.people.find(x=>x.id===id);return !!(p&&p.extra)};
+function byPersonal(arr){
+const D0=opRing(),inA=new Set(arr.filter(Boolean)),D=D0.filter(x=>inA.has(x));if(!D.length)return arr;
+const G=new Set(D),first=arr.findIndex(x=>x&&G.has(x)),k=D.indexOf(arr[first]);
+const seq=D.slice(k).concat(D.slice(0,k),arr.filter(x=>x&&!G.has(x)&&isExtra(x)),arr.filter(x=>x&&!G.has(x)&&!isExtra(x)));
+const L=arr.length,out=new Array(L).fill(null);
+seq.forEach((x,t)=>{out[(first+t)%L]=x});
+return out;
+}
+function gen(from,reorder){
+const d=day(),c=ctx();
+while(d.blocks.length<d.n)d.blocks.push(null);
+d.blocks.length=d.n;
+let arr;
+const base=b=>b.base?{posts:b.posts,arr:b.base}:b;
+/* Siempre sigue el orden del bloque anterior: cada uno sube un puesto. */
+if(from>0&&d.blocks[from-1])arr=rotate(adapt(base(d.blocks[from-1]),c));
+else if(d.blocks[from])arr=adapt(base(d.blocks[from]),c);
+else{arr=seed(prevRing(),c);reorder=true}
+if(reorder)arr=byPersonal(arr);
+const ids=c.posts.map(p=>p.id);
+for(let i=from;i<d.n;i++){d.blocks[i]={posts:ids.slice(),arr:applyRT(d,i,arr,ids.length),base:arr.slice()};arr=rotate(arr)}
+d.nextRing=arr.filter(Boolean);
+d.dirty=false;
+save();
+}
+/* Puesto de retrabajo, fuera de la rotación: fijos por bloques, o los libres de cada bloque. */
+const rtFixed=(d,i)=>new Set((d.rt||[]).filter(e=>i>=e.from&&i<=e.to).map(e=>e.pid));
+function applyRT(d,i,arr,n){
+const out=arr.slice(),R=rtFixed(d,i);
+for(let j=0;j<n;j++){if(!out[j]||!R.has(out[j]))continue;
+let k=-1;for(let q=n;q<out.length;q++)if(out[q]&&!R.has(out[q])){k=q;break}
+if(k>=0){const t=out[j];out[j]=out[k];out[k]=t}else{out.push(out[j]);out[j]=null}}
+return out;
+}
+function rtIds(d,i,b){
+const R=new Set();
+(d.rt||[]).forEach(e=>{if(e.k==='u')return;const p=S.people.find(x=>x.id===e.pid);if(p&&here(p)&&i>=e.from&&i<=e.to)R.add(e.pid)});
+if(d.rtLib&&b){const UT=utIds(d,i);b.arr.slice(b.posts.length).forEach(x=>{const p=S.people.find(q=>q.id===x);if(p&&!isUtil(p)&&!UT.has(x))R.add(x)})}
+return R;
+}
+/* Operarios sacados de la línea a cubrir como Material Handler en esos bloques: cubren descansos como un Material Handler. */
+function utIds(d,i){const U=new Set();(d.rt||[]).forEach(e=>{if(e.k!=='u')return;const p=S.people.find(x=>x.id===e.pid);if(p&&here(p)&&i>=e.from&&i<=e.to)U.add(e.pid)});return U}
+function utLine(d,i,id){const e=(d.rt||[]).find(x=>x.k==='u'&&x.pid===id&&i>=x.from&&i<=x.to);return e&&(e.line===1||e.line===2)?e.line:0}
+function rtRegen(msg){const d=day();if(d.blocks.some(Boolean)&&canGen()){const cur=curBlock(d);gen(Math.max(cur,0))}save();notice={t:msg};rr()}
+function addRT(){
+const d=day(),pid=$('#rtp').value,k=$('#rtk').value==='u'?'u':'',ln=Number($('#rtl').value)||0;let f=Number($('#rtf').value),t=Number($('#rtt').value);
+if(!pid){notice={t:k?'Elige quién sale a cubrir como Material Handler.':'Elige quién va a retrabajo.',bad:true};return rr()}
+if(t<f){const x=f;f=t;t=x}
+d.rt=(d.rt||[]).filter(e=>!(e.pid===pid&&e.from<=t&&f<=e.to));d.rt.push(k?{pid,from:f,to:t,k:'u',line:ln}:{pid,from:f,to:t});
+rtRegen(pname(pid)+(k?' cubriendo como Material Handler'+(ln?' ('+LN[ln]+')':'')+': ':' en retrabajo: ')+hm(d.start,f*d.hours*60)+' – '+hm(d.start,(t+1)*d.hours*60)+'.');
+}
+function rmRT(k){const d=day(),e=(d.rt||[])[k];if(!e)return;d.rt.splice(k,1);rtRegen(pname(e.pid)+' vuelve a la rotación.')}
+function rtKind(v){const l=$('#rtlw');if(l)l.hidden=v!=='u';const b=$('#rtgo');if(b)b.textContent=v==='u'?'Sacar a cubrir como Material Handler':'Agregar a retrabajo'}
+function toggleRTLib(){const d=day();d.rtLib=!d.rtLib;save();notice={t:d.rtLib?'Los libres de cada bloque van a retrabajo.':'Los libres ya no van a retrabajo; cubren descansos.'};rr()}
+function rtCfgHTML(d){
+let h=`<div class="rtbox"><h2>Retrabajo y Material Handler</h2><p class="sub" style="margin:0 0 6px">Puesto aparte, fuera de la rotación. Pon personas fijas todo el turno o por bloques (ej. dos hasta las 12:00 y otras dos después), o manda ahí a los que quedan libres en cada bloque. En desayuno y almuerzo salen solos a cubrir la máquina más cercana, antes que los Material Handler, y luego vuelven a retrabajo. También puedes sacar a un operario de la línea a <b>cubrir como Material Handler</b>: sale de la rotación en esos bloques y cubre descansos igual que un Material Handler.</p>`;
+h+=`<button class="pill ${d.rtLib?'hold':''}" aria-pressed="${!!d.rtLib}" onclick="toggleRTLib()">${d.rtLib?'✓ ':''}Los libres de cada bloque van a retrabajo</button>`;
+const L=(d.rt||[]);
+h+=L.map((e,k)=>`<div class="prow"><div class="nm"><b>${esc(pname(e.pid))}</b> <span class="chip ${e.k==='u'?'c'+(e.line||0):'ch'}" style="font-size:14px;padding:2px 10px">${e.k==='u'?'Cubriendo como Material Handler'+(e.line?' · L'+e.line:''):'Retrabajo'}</span><br><span class="tag">${e.from<=0&&e.to>=d.n-1?'Todo el turno · ':''}${hm(d.start,e.from*d.hours*60)} – ${hm(d.start,(e.to+1)*d.hours*60)}</span></div><button class="x del" onclick="rmRT(${k})">Quitar</button></div>`).join('');
+const used=new Set(L.map(e=>e.pid)),C=S.people.filter(p=>here(p)&&!isUtil(p)&&!isSup(p));
+const bo=sel=>Array.from({length:d.n},(_,i)=>`<option value="${i}" ${i===sel?'selected':''}>${i+1} · ${blockLabel(d,i)}</option>`).join('');
+h+=`<label for="rtk">Qué va a hacer</label><select id="rtk" onchange="rtKind(this.value)"><option value="">Retrabajo</option><option value="u">Cubrir como Material Handler</option></select>`;
+h+=`<label for="rtp">Persona</label><select id="rtp"><option value="">Elige la persona</option>${C.map(p=>`<option value="${p.id}">${esc(p.name)}${used.has(p.id)?' (ya tiene horario)':''}</option>`).join('')}</select>`;
+h+=`<div class="row2"><div><label for="rtf">Desde el bloque</label><select id="rtf">${bo(0)}</select></div><div><label for="rtt">Hasta el bloque</label><select id="rtt">${bo(d.n-1)}</select></div></div>`;
+h+=`<div id="rtlw" hidden><label for="rtl">Cubre en</label><select id="rtl">${LN.map((l,n)=>`<option value="${n}">${l}</option>`).join('')}</select></div>`;
+h+=`<button class="btn soft" id="rtgo" onclick="addRT()">Agregar a retrabajo</button></div>`;
+return h;
+}
+/* Cero operario: máquinas encendidas que no son puesto. Las atiende el Material Handler de la línea,
+   salvo las que eliges en una máquina detenida: el operario que pase por esa detenida las cubre. */
+const lineN=n=>{const m=S.machines.find(x=>x.n===n);return m?m.line:0};
+const inPost=n=>S.posts.some(p=>p.ms.indexOf(n)>=0);
+const zeroM=()=>S.machines.filter(m=>m.on&&!m.hold&&(m.zero||!inPost(m.n))).sort((a,b)=>a.line-b.line||a.n-b.n);
+const lineUtil=l=>S.people.find(p=>isUtil(p)&&here(p)&&uLine(p)===l)||S.people.find(p=>isUtil(p)&&here(p)&&uLine(p)===0)||null;
+const postZC=p=>{if(!postHeld(p))return [];const z=new Set(zeroM().map(m=>m.n)),o=[];S.machines.forEach(m=>{if(p.ms.indexOf(m.n)>=0&&m.on&&m.hold&&m.task==='zc')(m.zc||[]).forEach(n=>{if(z.has(n)&&o.indexOf(n)<0)o.push(n)})});return o.sort((a,b)=>a-b)};
+function zeroAssign(d,i,b){
+const Z=zeroM();if(!Z.length)return [];
+const by={};
+if(b)b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid),id=b.arr[j];const q=id&&S.people.find(x=>x.id===id);if(p&&q&&here(q))postZC(p).forEach(n=>{if(!by[n])by[n]={pid:id,from:p}})});
+return Z.map(m=>{const a=by[m.n];if(a)return {n:m.n,line:m.line,pid:a.pid,src:'det',from:a.from};const u=lineUtil(m.line);return {n:m.n,line:m.line,pid:u?u.id:null,src:'util'}});
+}
+function heldOf(p){return S.machines.filter(m=>p.ms.indexOf(m.n)>=0&&m.on&&m.hold)}
+function setPostTask(pid,v){const p=S.posts.find(x=>x.id===pid);if(!p)return;heldOf(p).forEach(m=>{m.task=v;if(v==='zc'&&!Array.isArray(m.zc))m.zc=[]});save();notice={t:'Máq. '+postLabel(p)+': '+(v==='rt'?'su operario va a retrabajo.':v==='zc'?'toca las máquinas sin puesto que cubre su operario.':'su operario cubre descansos.')};rr()}
+function togglePostZC(pid,n){const p=S.posts.find(x=>x.id===pid);if(!p)return;const H=heldOf(p);if(!H.length)return;const on=!(H[0].zc||[]).includes(n);
+S.machines.forEach(m=>{if(Array.isArray(m.zc))m.zc=m.zc.filter(x=>x!==n)});
+if(on){H[0].task='zc';H[0].zc=(H[0].zc||[]).concat([n])}
+save();rr()}
+function heldCtl(p){
+const H=heldOf(p),tk=H.length?(H[0].task||''):'',zc=postZC(p);
+let h=`<select class="tk" aria-label="Qué hace el operario de la máquina ${esc(postLabel(p))}" onchange="setPostTask('${p.id}',this.value)">`+[['','Cubre descansos'],['rt','Retrabajo'],['zc','Cubre máq. sin puesto']].map(([k,l])=>`<option value="${k}" ${tk===k?'selected':''}>${l}</option>`).join('')+`</select>`;
+if(tk==='zc'){const Z=zeroM(),taken={};S.posts.forEach(q=>{if(q.id!==p.id)postZC(q).forEach(n=>taken[n]=postLabel(q))});
+h+=`<div class="zcp">`+(Z.length?Z.map(m=>`<button class="pill ${zc.includes(m.n)?'zero':'ghost'}" aria-pressed="${zc.includes(m.n)}" onclick="togglePostZC('${p.id}',${m.n})">${m.n}${taken[m.n]?' <small>(de la '+esc(taken[m.n])+')</small>':''}</button>`).join(''):'<span class="tag">No hay máquinas encendidas sin puesto.</span>')+`</div>`}
+return h;
+}
+/* Ahora: dónde está cada quien en este momento (bloque + descanso + retrabajo + cero operario). */
+function nowHTML(d){
+if(date!==todayStr())return '';
+const i=curBlock(d),b=i>=0?d.blocks[i]:null;if(!b)return '';
+const slot=breakSlots().find(slotNow),rows=slot?cover(d,slot)||[]:[];
+const brk=new Set(rows.filter(r=>r.st!=='fuera').map(r=>r.id)),cov={};rows.forEach(r=>{if(r.st==='ok'&&r.u)cov[r.u]=r});
+const R=rtIds(d,i,b),UT=utIds(d,i),Z=zeroAssign(d,i,b),zOf={},RTH=new Set();
+b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(p&&postRT(p)&&b.arr[j])RTH.add(b.arr[j])});Z.forEach(z=>{if(z.src==='det')(zOf[z.pid]=zOf[z.pid]||[]).push(z.n)});
+const where=id=>brk.has(id)?'en '+slot.kind.toLowerCase():cov[id]?'cubriendo '+mql(cov[id]):R.has(id)||RTH.has(id)?'en retrabajo':UT.has(id)?'cubriendo como Material Handler':zOf[id]?'cubriendo '+zOf[id].join(', ')+' (sin puesto)':'libre';
+const A=[];
+b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(!p)return;const id=b.arr[j],ms=p.ms.filter(machOn),n0=ms[0]||p.ms[0];
+if(postHeld(p)){A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:'h',pp:'Detenida',sm:esc(heldReason(p))+(id?' · '+esc(pname(id))+' está '+where(id):'')});return}
+if(!id){A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:'x',pp:'Sin cubrir',sm:''});return}
+if(brk.has(id)){const r=rows.find(x=>x.id===id);A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:r&&r.u?'':'x',pp:r&&r.u?esc(pname(r.u)):'SIN CUBRIR',sm:'cubre a '+esc(pname(id))+' ('+slot.kind.toLowerCase()+')'});return}
+A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:'',pp:esc(pname(id))+pmark(id),sm:''});
+});
+const ZG=[];Z.forEach(z=>{let who=z.pid,sm=z.src==='det'?'operario de la '+esc(postLabel(z.from))+' (detenida)':'Material Handler';const busy=who&&(brk.has(who)||cov[who]);
+if(busy){sm=esc(pname(who))+' está '+where(who);const fr=S.people.filter(p=>isUtil(p)&&here(p)&&!cov[p.id]&&!brk.has(p.id));const u=fr.find(p=>uLine(p)===z.line)||fr.find(p=>uLine(p)===0)||fr[0];who=u?u.id:null}
+const k=(who||'')+'|'+sm,g=ZG.find(x=>x.k===k);if(g)g.ns.push(z.n);else ZG.push({k,who,sm,ns:[z.n],det:z.src==='det'&&!busy})});
+A.sort((x,y)=>x.line-y.line||x.n-y.n);
+const t=new Date(),hh=pad(t.getHours())+':'+pad(t.getMinutes());
+let h=`<div class="ahora"><h2>Ahora · ${hh}</h2><p class="sub" style="margin:0">Bloque ${i+1} (${blockLabel(d,i)})${slot?' · '+slot.kind+' turno '+slot.turn:''}</p>`;
+[1,2].forEach(l=>{const L=A.filter(a=>a.line===l);if(!L.length)return;h+=`<div class="lnh">Línea ${l}</div>`+L.map(a=>`<div class="arow ${a.cls}"><span class="mq">${a.mq}</span><span class="pp">${a.pp}${a.sm?'<small>'+a.sm+'</small>':''}</span></div>`).join('')});
+if(ZG.length)h+=`<div class="lnh">Sin puesto (cero operario)</div>`+ZG.map(g=>`<div class="arow z${g.who?'':' x'}"><span class="mq">${g.ns.join(', ')}</span><span class="pp">${g.who?esc(pname(g.who))+pmark(g.who):'Sin atender'}<small>${g.sm}</small></span></div>`).join('');
+const rtNow=[...R].filter(id=>!brk.has(id)&&!cov[id]);
+if(rtNow.length)h+=`<div class="lnh">Retrabajo</div><div class="arow"><span class="mq">—</span><span class="pp">${rtNow.map(x=>esc(pname(x))).join(', ')}</span></div>`;
+if(brk.size)h+=`<div class="lnh">${esc(slot.kind)} ahora</div><div class="arow"><span class="mq">${hmAbs(slot.start+slot.len)}</span><span class="pp">${[...brk].map(x=>esc(pname(x))).join(', ')}<small>regresan a esta hora</small></span></div>`;
+const utNow=[...UT].filter(id=>!brk.has(id)&&!cov[id]);
+if(utNow.length)h+=`<div class="lnh">Cubriendo como Material Handler</div><div class="arow"><span class="mq">—</span><span class="pp">${utNow.map(x=>esc(pname(x))+(utLine(d,i,x)?' <small style="display:inline">(L'+utLine(d,i,x)+')</small>':'')).join(', ')}</span></div>`;
+const zs=new Set(Object.keys(zOf)),lib=b.arr.slice(b.posts.length).filter(x=>x&&!R.has(x)&&!UT.has(x)&&!zs.has(x)&&!brk.has(x)&&!cov[x]);
+if(lib.length)h+=`<div class="lnh">Libres</div><div class="arow"><span class="mq">—</span><span class="pp">${lib.map(x=>esc(pname(x))).join(', ')}</span></div>`;
+return h+`</div>`;
+}
+/* Cualquier cambio de máquinas, puestos o personal actualiza la rotación sola:
+   hoy desde el bloque actual (o desde el primero si el turno aún no empieza) y los días siguientes completos. */
+function todayFrom(d){
+const keep=date;date=todayStr();const cur=curBlock(d);date=keep;if(cur>=0)return cur;
+const toStart=(toMin(d.start)-nowMin()+1440)%1440;return toStart<=6*60?0:-1;
+}
+let regenMsg=[];
+function markDirty(){
+const T=todayStr();regenMsg=[];
+Object.keys(S.days).forEach(k=>{const d=S.days[k];if(k>=T&&d&&d.blocks.some(Boolean))d.dirty=true});
+if(!canGen())return;
+Object.keys(S.days).sort().forEach(k=>{const d=S.days[k];if(k<T||!d||!d.blocks.some(Boolean))return;
+if(k===T){const f=todayFrom(d);if(f>=0){regenDay(T,f);regenMsg.push('hoy desde el bloque '+(f+1))}}
+else{regenDay(k,0);regenMsg.push(fmtD(k))}});
+}
+/* Rotación armada con puestos que ya no existen. */
+const stale=d=>d.blocks.some(b=>b&&b.posts.some(pid=>!S.posts.some(p=>p.id===pid)))
+
+/* Desayuno y almuerzo: salen 3 operarios por turno y los Material Handler cubren su máquina. */
+const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
+function findPerson(q){
+const n=norm(q),f=n.split(' ')[0];
+return S.people.find(p=>norm(p.name)===n)||S.people.find(p=>norm(p.name).indexOf(n)===0)||S.people.find(p=>norm(p.name).split(' ')[0]===f)||null;
+}
+function ensureBreaks(){if(!S.brk||!Array.isArray(S.brk.g)){S.brk=S.shift==='noche'?{bS:'21:00',bM:15,lS:'01:00',lM:30,g:[[],[],[]]}:{bS:'07:00',bM:15,lS:'12:00',lM:30,g:[[],[],[]]}}S.brkInit=1;S.brkOrd=2}
+const isUtil=p=>p&&(p.role==='util'||p.role==='senior');
+/* Reemplazos entre iguales: un operario por un operario, un Material Handler por un Material Handler (ej. un Material Handler de otro equipo). */
+const sameKind=(a,b)=>!!a&&!!b&&(isUtil(a)?isUtil(b):a.role==='op'&&b.role==='op');
+/* Supervisor: no rota ni sale en los turnos; en desayuno y almuerzo cubre UNA máquina solo si los Material Handler no dan abasto. */
+const isSup=p=>!!p&&p.role==='sup';
+const uLine=p=>p&&(p.uline===1||p.uline===2)?p.uline:0;
+const LN=['Ambas líneas','Línea 1','Línea 2'];
+/* Turnos del día: el orden fijo de Personal, más los cambios hechos ese día en cada comida (d.bx[comida][persona]=turno). */
+function brkGroups(kind){
+const d=S.days[date],bx=(d&&d.bx&&d.bx[kind])||{},G=S.brk.g.map(()=>[]);
+S.brk.g.forEach((g,gi)=>g.filter(Boolean).forEach(id=>{const t=bx[id];G[t!=null&&t<G.length?t:gi].push(id)}));
+/* Operarios extra del día: salen en el turno que les pongas (no en el de nadie). */
+xtFree().forEach(id=>{const t=bx[id]!=null?bx[id]:d&&d.xt?d.xt[id]:null;if(t!=null&&t>=0&&t<G.length)G[t].push(id)});
+return G;
+}
+/* Extras presentes que no están en los turnos fijos y no vienen por nadie (los que vienen por alguien salen en su turno). */
+function xtFree(){const inG=new Set([].concat.apply([],S.brk.g).filter(Boolean)),d=S.days[date],subs=(d&&d.subs)||{},used=new Set(Object.keys(subs).map(k=>subs[k]));
+S.people.forEach(q=>{if(q.sub&&inG.has(q.id)&&!here(q))used.add(q.sub)});
+return S.people.filter(p=>p.role==='op'&&here(p)&&!inG.has(p.id)&&!used.has(p.id)).map(p=>p.id)}
+function setXT(id,v){const d=day();d.xt=d.xt||{};if(v==='')delete d.xt[id];else d.xt[id]=Number(v);
+if(d.bx)['Desayuno','Almuerzo'].forEach(k=>{if(d.bx[k])delete d.bx[k][id]});
+save();notice={t:v===''?pname(id)+' queda sin turno de descanso.':pname(id)+' sale hoy en el turno '+(Number(v)+1)+' de desayuno y almuerzo.'};rr()}
+function xtHTML(){const X=xtFree();if(!X.length)return '';const d=S.days[date],B=S.brk;
+return `<div class="grp"><b>Operarios extra de hoy</b><p class="tag" style="margin:0 0 4px">Ponlos en el turno que haga falta; solo para hoy. Los que vienen por alguien salen solos en el turno de esa persona.</p>`+X.map(id=>{const t=d&&d.xt&&d.xt[id]!=null?d.xt[id]:'';return `<label style="margin:8px 0 4px">${esc(pname(id))}</label><select class="${t===''?'miss':''}" aria-label="Turno de descanso de ${esc(pname(id))}" onchange="setXT('${id}',this.value)"><option value="">Sin turno de descanso</option>${B.g.map((g,gi)=>`<option value="${gi}" ${t===gi?'selected':''}>Turno ${gi+1} · desayuno ${hmAbs(toMin(B.bS)+gi*B.bM)} · almuerzo ${hmAbs(toMin(B.lS)+gi*B.lM)}</option>`).join('')}</select>`}).join('')+`</div>`}
+function baseTurn(id){return S.brk.g.findIndex(g=>g.indexOf(id)>=0)}
+function breakSlots(){
+const B=S.brk,out=[];
+[['Desayuno',B.bS,B.bM],['Almuerzo',B.lS,B.lM]].forEach(([k,s,m])=>brkGroups(k).forEach((g,gi)=>out.push({kind:k,turn:gi+1,start:toMin(s)+gi*m,len:Number(m)||0,ids:g})));
+return out;
+}
+function moveBrk(kind,id,v){
+if(!v)return;const d=day();d.bx=d.bx||{};const bx=d.bx[kind]=d.bx[kind]||{};
+const G=brkGroups(kind),tOf=x=>G.findIndex(g=>g.indexOf(x)>=0),set=(x,t)=>{if(t===baseTurn(x))delete bx[x];else bx[x]=t};
+let msg='';
+if(v==='out'){bx[id]=-1;msg=pname(id)+' sale de este '+kind.toLowerCase()+'.'}
+else if(v==='reset'){delete bx[id];msg=pname(id)+' vuelve a su turno '+(baseTurn(id)+1)+' de '+kind.toLowerCase()+'.'}
+else if(v.indexOf('sw:')===0){const q=v.slice(3),a=tOf(id),b=tOf(q);set(id,b);set(q,a);msg=kind+': '+pname(id)+' pasa al turno '+(b+1)+' y '+pname(q)+' al turno '+(a+1)+'.'}
+else if(v.indexOf('to:')===0){const t=Number(v.slice(3));set(id,t);msg=kind+': '+pname(id)+' pasa al turno '+(t+1)+'.'}
+save();notice={t:msg+' Solo para hoy.'};rr();
+}
+function covSel(d,s,r){
+const i=blockOf(d,s.start),b=i>=0?d.blocks[i]:null;if(!b)return '';
+const n=b.posts.length,busy=new Set();
+b.arr.slice(0,n).forEach((id,j)=>{const p=S.posts.find(x=>x.id===b.posts[j]);if(id&&p&&(!postHeld(p)||postZC(p).length))busy.add(id)});
+const key=r.orig||r.id,cur=((d.cov&&d.cov[s.kind+s.turn])||{})[key]||'';
+const C=S.people.filter(p=>here(p)&&s.ids.indexOf(p.id)<0&&p.id!==r.id&&(isUtil(p)?!busy.has(p.id):!busy.has(p.id)));
+const UT=utIds(d,i),ops=C.filter(p=>!isUtil(p)&&!isSup(p)&&!UT.has(p.id)),uts=C.filter(p=>isUtil(p)||UT.has(p.id)),sps=C.filter(isSup);
+const lab=p=>{const j=b.arr.slice(0,n).indexOf(p.id);const q=j>=0?S.posts.find(x=>x.id===b.posts[j]):null;return esc(p.name)+(isUtil(p)?' (MH)':UT.has(p.id)?' (cubriendo como Material Handler)':q?' · máq. '+esc(postLabel(q))+(postRT(q)?' (retrabajo)':' (detenida)'):' · libre')};
+return `<select class="mv" aria-label="Quién cubre a ${esc(pname(key))}" onchange="setCov('${s.kind}',${s.turn},'${key}',this.value)"><option value="">${cur?'Volver a automático':'Quién cubre: automático'}</option>`+(ops.length?`<optgroup label="Operarios">`+ops.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${lab(p)}</option>`).join('')+`</optgroup>`:'')+(uts.length?`<optgroup label="Material Handler">`+uts.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${lab(p)}</option>`).join('')+`</optgroup>`:'')+(sps.length?`<optgroup label="Supervisor">`+sps.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${esc(p.name)} (supervisor)</option>`).join('')+`</optgroup>`:'')+`</select>`;
+}
+function setCov(kind,turn,key,v){const d=day();d.cov=d.cov||{};const k=kind+turn,o=d.cov[k]=d.cov[k]||{};if(v){Object.keys(o).forEach(x=>{if(o[x]===v)delete o[x]});o[key]=v}else delete o[key];save();notice={t:v?kind+' turno '+turn+': '+pname(v)+' cubre a '+pname(key)+'. Solo para hoy.':'Quién cubre a '+pname(key)+' vuelve a automático.'};rr()}
+function moveSel(s,key){
+const G=brkGroups(s.kind),cur=s.turn-1,bt=baseTurn(key);
+let o=`<option value="">Cambiar turno…</option>`;
+G.forEach((g,gi)=>{if(gi===cur)return;o+=`<optgroup label="Turno ${gi+1}">`+g.map(q=>`<option value="sw:${q}">Intercambiar con ${esc(pname(q))}</option>`).join('')+`<option value="to:${gi}">Mover solo al turno ${gi+1}</option></optgroup>`});
+if(bt>=0&&bt!==cur)o+=`<option value="reset">Volver a su turno ${bt+1}</option>`;
+if(bt<0)o+=`<option value="out">Quitar de este descanso</option>`;
+return `<select class="mv" aria-label="Cambiar el turno de ${esc(pname(key))}" onchange="moveBrk('${s.kind}','${key}',this.value)">${o}</select>`;
+}
+const hmAbs=t=>pad(Math.floor(((t%1440)+1440)%1440/60))+':'+pad(((t%60)+60)%60);
+function blockOf(d,t){const i=Math.floor(((t-toMin(d.start))%1440+1440)%1440/(d.hours*60));return i<d.n?i:-1}
+function cover(d,slot){
+const i=blockOf(d,slot.start),b=i>=0?d.blocks[i]:null;
+if(!b)return null;
+const onPost=b.arr.slice(0,b.posts.length),subs=d.subs||{};
+const eff=slot.ids.map(id=>{
+const p=S.people.find(x=>x.id===id);
+if(p&&here(p))return {id,orig:null};
+const qid=subs[id]||(p&&p.sub),q=qid&&S.people.find(x=>x.id===qid);
+return q&&here(q)?{id:q.id,orig:id}:{id,orig:null,abs:true};
+});
+const effIds=eff.map(e=>e.id);
+const UT=utIds(d,i),U=S.people.filter(p=>(isUtil(p)||UT.has(p.id))&&here(p)&&onPost.indexOf(p.id)<0&&effIds.indexOf(p.id)<0);
+const uL=p=>UT.has(p.id)?utLine(d,i,p.id):uLine(p);
+/* Operarios libres (su máquina está parada o sobran): cubren primero, menos los que están en su propio descanso. */
+const R=rtIds(d,i,b);
+const F=S.people.filter(p=>!isUtil(p)&&!isSup(p)&&!UT.has(p.id)&&here(p)&&!R.has(p.id)&&onPost.indexOf(p.id)<0&&effIds.indexOf(p.id)<0);
+const H=onPost.map((id,j)=>{const p=S.posts.find(x=>x.id===b.posts[j]);return id&&p&&postHeld(p)&&!postRT(p)&&!postZC(p).length&&effIds.indexOf(id)<0?S.people.find(x=>x.id===id&&here(x)):null}).filter(Boolean);
+const used=new Set();
+const rows=eff.map(e=>{
+const id=e.id,orig=e.orig;
+if(e.abs)return {id,st:'fuera'};
+const j=onPost.indexOf(id);
+if(j<0)return {id,orig,st:R.has(id)?'rtp':UT.has(id)?'utp':'libre'};
+const post=S.posts.find(x=>x.id===b.posts[j]);
+const ms=post?post.ms.filter(machOn):[];
+const m=S.machines.find(x=>x.n===(ms[0]||(post&&post.ms[0])));
+if(post&&postHeld(post)){const zc=postZC(post);if(zc.length)return {id,orig,st:'ok',zc:true,ms:zc,line:lineN(zc[0]),u:null,off:false};return {id,orig,st:'det',rt:postRT(post),ms:post.ms.filter(machOn),sx:post.sfx||''}}
+return {id,orig,st:'ok',ms:ms.length?ms:(post?post.ms:[]),sx:post?post.sfx||'':'',line:m?m.line:0,u:null,off:false};
+});
+const pick=(r,f)=>{const u=U.find(x=>!used.has(x.id)&&f(x));if(u){used.add(u.id);r.u=u.id}return !!u};
+const need=rows.filter(r=>r.st==='ok');
+/* Relevo automático antes que los Material Handler: detenidas, libres y retrabajo; cada uno a la máquina más cercana a la suya. */
+const HR=onPost.map((id,j)=>{const p=S.posts.find(x=>x.id===b.posts[j]);return id&&p&&postRT(p)&&effIds.indexOf(id)<0?S.people.find(x=>x.id===id&&here(x)):null}).filter(Boolean);
+const RTp=S.people.filter(p=>R.has(p.id)&&here(p)&&onPost.indexOf(p.id)<0&&effIds.indexOf(p.id)<0);
+/* Elección a mano de quién cubre (solo ese día): se respeta primero, lo demás se reparte solo. */
+const ov=(d.cov&&d.cov[slot.kind+slot.turn])||{},kindOf=v=>H.some(x=>x.id===v)?'det':F.some(x=>x.id===v)?'libre':(HR.some(x=>x.id===v)||RTp.some(x=>x.id===v))?'rt':null;
+need.forEach(r=>{const v=ov[r.orig||r.id];if(!v||used.has(v)||effIds.indexOf(v)>=0)return;const q=S.people.find(x=>x.id===v);if(!q||!here(q))return;/* Si ahora está trabajando en una máquina encendida, no puede cubrir: se ignora la elección a mano. */if(isUtil(q)||isSup(q)||UT.has(v)?onPost.indexOf(v)>=0:!kindOf(v))return;used.add(v);r.u=v;r.man=true;r.free=kindOf(v);if(isSup(q))r.sup=1});
+const need2=need.filter(r=>!r.u);
+const cand=H.map(p=>[p,'det']).concat(F.map(p=>[p,'libre']),HR.map(p=>[p,'rt']),RTp.map(p=>[p,'rt'])).filter(c=>!used.has(c[0].id)).slice(0,need2.length);
+const homeOf=id=>{const j=onPost.indexOf(id);if(j<0)return null;const p=S.posts.find(x=>x.id===b.posts[j]);return p?p.ms[0]:null};
+const lineOf=n=>{const m=S.machines.find(x=>x.n===n);return m?m.line:0};
+const pairs=[];cand.forEach((c,ci)=>{const h=homeOf(c[0].id);need2.forEach((r,ri)=>{const m=r.ms[0];pairs.push([h==null?500:Math.abs(h-m)+(lineOf(h)===r.line?0:100),ci,ri])})});
+pairs.sort((x,y)=>x[0]-y[0]||x[1]-y[1]||x[2]-y[2]);
+const cu=new Set(),ru=new Set();
+pairs.forEach(([_,ci,ri])=>{if(cu.has(ci)||ru.has(ri))return;cu.add(ci);ru.add(ri);const r=need2[ri],c=cand[ci];used.add(c[0].id);r.u=c[0].id;r.free=c[1]});
+need.filter(r=>!r.u).forEach(r=>pick(r,u=>uL(u)===r.line&&r.line>0));
+need.filter(r=>!r.u).forEach(r=>pick(r,u=>uL(u)===0));
+need.forEach(r=>{if(r.u&&UT.has(r.u))r.ut=1});
+need.filter(r=>!r.u).forEach(r=>{if(pick(r,()=>true))r.off=true});
+/* Si los Material Handler no dan abasto (ej. salen 4), el supervisor cubre una máquina. */
+const SV=S.people.filter(p=>isSup(p)&&here(p)&&!used.has(p.id)&&effIds.indexOf(p.id)<0&&onPost.indexOf(p.id)<0);
+need.filter(r=>!r.u).forEach(r=>{const s=SV.shift();if(s){used.add(s.id);r.u=s.id;r.sup=1}});
+return rows.filter(r=>r.st!=="fuera");
+}
+function chip(r){
+if(r.st==='fuera')return `<span class="chip cn">No está hoy · elige quién viene</span>`;
+if(r.st==='libre')return `<span class="chip cm">Libre, no hace falta cubrir</span>`;
+if(r.st==='rtp')return `<span class="chip ch">En retrabajo, no hace falta cubrir</span>`;
+if(r.st==='utp')return `<span class="chip cm">Cubriendo como Material Handler, no hace falta cubrir</span>`;
+if(r.st==='det')return `<span class="chip ch">${r.rt?'En retrabajo':'Máquina detenida'}, no hace falta cubrir</span>`;
+if(!r.u)return `<span class="chip cn">Sin Material Handler</span>`;
+const u=S.people.find(x=>x.id===r.u);
+if(r.sup)return `<span class="chip cs">${esc(u.name)} (supervisor)</span>`;
+if(r.free)return `<span class="chip cf">${esc(u.name)} (${r.free==='det'?'máq. detenida':r.free==='rt'?'retrabajo':'libre'})</span>`;
+return `<span class="chip ${r.off?'cx':r.ut?'cf':'c'+uLine(u)}">${esc(u.name)}${r.ut?' (cubriendo como Material Handler)':''}${r.off?' (fuera de su línea)':''}</span>`;
+}
+function slotHTML(d,s,on){
+const rows=cover(d,s);
+let h=`<div class="brk ${on?'on':''}"><div class="bh"><b class="tn tn${(s.turn-1)%3+1}">TURNO ${s.turn}</b>${hmAbs(s.start)} – ${hmAbs(s.start+s.len)} · ${s.kind}${on?' <span>· ahora</span>':''}</div>`;
+if(!s.ids.length)return h+`<p class="free">No hay operarios en este turno. Ajústalo en Personal.</p>`+xtAdd(s)+`</div>`;
+if(!rows)return h+`<p class="free">Genera la rotación de este bloque para ver la cobertura.</p></div>`;
+h+=rows.map(r=>{
+const info=[r.orig?'por '+esc(pname(r.orig)):'',r.st==='ok'?'Máq. '+esc(mql(r))+' · línea '+r.line+(r.zc?' · sin puesto':''):r.st==='det'?'Máq. '+esc(mql(r))+(r.rt?' · retrabajo':' · detenida'):''].filter(Boolean).join(' · ')||'&nbsp;';
+const o=r.orig||(r.st==='fuera'?r.id:null),key=r.orig||r.id,bt=baseTurn(key),mv=bt>=0&&bt!==s.turn-1?'<b class="mvd">cambiado del turno '+(bt+1)+'</b>':'';
+return `<div class="brow"><span class="op">${esc(pname(r.id))}${mv}<small>${info}</small></span>${chip(r)}${r.man?'<b class="mvd" style="flex-basis:100%">elegido a mano</b>':''}${o?subSel(d,o,r.orig?r.id:''):''}${r.st==='ok'?covSel(d,s,r):''}${moveSel(s,key)}</div>`;
+}).join('');
+return h+xtAdd(s)+`</div>`;
+}
+/* Agregar a un operario extra (o a quien no tiene turno fijo) a este descanso. */
+function xtAdd(s){
+const inMeal=new Set([].concat.apply([],brkGroups(s.kind))),X=xtFree().filter(id=>!inMeal.has(id));
+if(!X.length)return '';
+return `<select class="mv" style="margin-top:6px;border-color:var(--accent);color:var(--accent);font-weight:700" aria-label="Agregar operario extra al turno ${s.turn} de ${s.kind.toLowerCase()}" onchange="addXT('${s.kind}',${s.turn-1},this.value)"><option value="">+ Agregar operario extra a este turno</option>${X.map(id=>`<option value="${id}">${esc(pname(id))}</option>`).join('')}</select>`;
+}
+function addXT(kind,t,id){if(!id)return;const d=day();d.bx=d.bx||{};const bx=d.bx[kind]=d.bx[kind]||{};bx[id]=t;save();notice={t:pname(id)+' sale en el turno '+(t+1)+' de '+kind.toLowerCase()+'. Solo para hoy.'};rr()}
+function subSel(d,orig,cur){
+const inG=new Set([].concat.apply([],S.brk.g).filter(Boolean)),subs=d.subs||{};
+const taken=new Set(Object.keys(subs).filter(k=>k!==orig).map(k=>subs[k]));
+const C=S.people.filter(p=>p.role==='op'&&here(p)&&!inG.has(p.id)&&!taken.has(p.id));
+if(!C.length&&!cur)return `<p class="free" style="flex-basis:100%;margin:2px 0 0">Para que alguien salga por ${esc(pname(orig))}, agrégalo en Personal como operario.</p>`;
+return `<select class="subs" style="flex-basis:100%" aria-label="Quién viene por ${esc(pname(orig))}" onchange="setSub('${orig}',this.value)"><option value="">${cur?'Quitar reemplazo':'¿Quién viene por '+esc(pname(orig))+'?'}</option>`+C.map(p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.name)}</option>`).join('')+(cur&&!C.some(p=>p.id===cur)?`<option value="${cur}" selected>${esc(pname(cur))}</option>`:'')+`</select>`;
+}
+function setSub(orig,v){const d=day();d.subs=d.subs||{};if(v)d.subs[orig]=v;else delete d.subs[orig];save();notice={t:v?pname(v)+' sale hoy en el turno de '+pname(orig)+'.':'Reemplazo quitado.'};rr()}
+const nowMin=()=>{const n=new Date();return n.getHours()*60+n.getMinutes()};
+function slotNow(s){return date===todayStr()&&nowMin()>=s.start&&nowMin()<s.start+s.len}
+function blockBreaks(d,i){return breakSlots().filter(s=>blockOf(d,s.start)===i).map(s=>slotHTML(d,s,slotNow(s))).join('')}
+function breakBanner(d){
+if(date!==todayStr())return '';
+const sl=breakSlots(),t=nowMin();
+const cur=sl.find(slotNow);
+if(cur)return `<div class="bnow">${slotHTML(d,cur,true)}</div>`;
+const nx=sl.filter(s=>s.start>t&&s.start-t<=20).sort((a,b)=>a.start-b.start)[0];
+return nx?`<div class="bnow"><p class="sub" style="margin:0 0 4px">Próximo descanso en ${nx.start-t} min</p>${slotHTML(d,nx,false)}</div>`:'';
+}
+function legendHTML(){
+const U=S.people.filter(p=>isUtil(p)&&here(p));
+const SP=S.people.filter(p=>isSup(p)&&here(p));
+return U.length||SP.length?`<div class="legend">`+U.map(u=>{const f=S.people.find(q=>q.sub===u.id&&isUtil(q)&&!here(q));return `<span class="chip c${uLine(u)}">${esc(u.name)} · ${LN[uLine(u)]}${f?' · por '+esc(f.name):''}</span>`}).join('')+SP.map(u=>`<span class="chip cs">${esc(u.name)} · Supervisor</span>`).join('')+(S.people.some(p=>isUtil(p)&&(uLine(p)===1||uLine(p)===2))?`<button class="pill swl" onclick="swapLines()">⇄ Cambio de líneas</button>`:'')+`</div>`:'';
+}
+/* Cambio de líneas: los Material Handler y Utility senior de la línea 1 pasan a la 2 y viceversa. Los de ambas líneas no cambian. */
+function swapLines(){const M=S.people.filter(p=>isUtil(p)&&(uLine(p)===1||uLine(p)===2));if(!M.length)return;M.forEach(p=>{p.uline=uLine(p)===1?2:1});save();notice={t:'Cambio de líneas: '+M.map(p=>p.name+' → línea '+p.uline).join(', ')+'.'};rr()}
+function brkCfgHTML(){
+const B=S.brk,ops=S.people.filter(p=>p.role==='op');
+let h=`<h2 class="lh">Desayuno y almuerzo</h2><p class="sub">Cada turno lleva las personas que pongas (3, 4 o las que hagan falta). Primero cubren, solos, los operarios de máquinas detenidas, los libres y los de retrabajo, cada uno en la máquina más cercana (en su propio descanso salen y no cubren; al regresar cubren al siguiente turno). Después, el Material Handler de su línea; si no está libre, quien atiende ambas líneas. Si aun así falta alguien (por ejemplo, salen 4 y los Material Handler no dan abasto), el supervisor cubre una máquina. Si alguien falta, en Hoy eliges quién sale en su lugar ese día; el orden de aquí no cambia.</p>`;
+h+=`<div class="row2"><div><label for="bs">Desayuno empieza</label><input type="time" id="bs" value="${esc(B.bS)}" onchange="setBrk('bS',this.value)"></div><div><label for="bm">Minutos</label><input type="number" id="bm" min="5" max="60" value="${B.bM}" onchange="setBrk('bM',this.value)"></div></div>`;
+h+=`<div class="row2"><div><label for="ls">Almuerzo empieza</label><input type="time" id="ls" value="${esc(B.lS)}" onchange="setBrk('lS',this.value)"></div><div><label for="lm">Minutos</label><input type="number" id="lm" min="5" max="90" value="${B.lM}" onchange="setBrk('lM',this.value)"></div></div>`;
+const opt=(sel)=>ops.filter(p=>here(p)||p.id===sel).map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>${esc(p.name)}${here(p)?'':' (no está)'}</option>`).join('');
+const comes=S.people.filter(p=>p.role==='op'&&here(p)).length;
+h+=`<button class="btn soft" onclick="repartir()">Repartir entre los ${comes} que vienen</button><p class="sub" style="margin:6px 0 0">Quita de los turnos a quien no viene y reparte a los que faltan, parejo entre los tres turnos. Después puedes cambiar a mano lo que quieras.</p>`;
+h+=B.g.map((g,gi)=>{const ids=g.filter(Boolean);return `<div class="grp"><b>Turno ${gi+1} · ${ids.length} persona${ids.length===1?'':'s'} · desayuno ${hmAbs(toMin(B.bS)+gi*B.bM)} · almuerzo ${hmAbs(toMin(B.lS)+gi*B.lM)}</b>`+ids.map((id,k)=>`<select aria-label="Turno ${gi+1}, persona ${k+1}" onchange="setG(${gi},${k},this.value)"><option value="">— quitar del turno —</option>${opt(id)}</select>`).join('')+`<select aria-label="Agregar persona al turno ${gi+1}" onchange="setG(${gi},${ids.length},this.value)"><option value="">+ Agregar persona al turno ${gi+1}</option>${opt('')}</select></div>`}).join('');
+h+=xtHTML();
+const U=S.people.filter(p=>isUtil(p)&&here(p)).length,mx=Math.max.apply(null,B.g.map(g=>g.filter(Boolean).length));
+const SPn=S.people.filter(p=>isSup(p)&&here(p)).length;
+const lib=Math.max(0,S.people.filter(p=>!isUtil(p)&&!isSup(p)&&here(p)).length-S.posts.filter(postActive).length)+S.posts.filter(postHeld).length,A0=U+lib,A=A0+SPn;
+if(mx>A)h+=`<div class="warn">Un turno saca ${mx} personas a la vez y hoy hay ${U} Material Handler${lib?' y '+lib+' operario'+(lib>1?'s':'')+' libre'+(lib>1?'s':''):''}${SPn?' y '+SPn+' supervisor':''}. Hasta ${mx-A} máquina${mx-A>1?'s':''} podría${mx-A>1?'n':''} quedar sin cubrir en ese descanso.</div>`;
+else if(mx>A0&&SPn)h+=`<p class="sub" style="margin-top:8px">Un turno saca ${mx} personas a la vez: el supervisor cubrirá ${mx-A0>1?mx-A0+' máquinas':'una máquina'} en ese descanso.</p>`;
+else if(mx>A0)h+=`<div class="warn">Un turno saca ${mx} personas y no alcanzan los Material Handler. Agrega al supervisor en la lista de arriba (función «Supervisor») para que cubra una máquina.</div>`;
+return h;
+}
+function setBrk(k,v){const B=S.brk;if(k==='bS'||k==='lS')B[k]=v||B[k];else B[k]=Math.max(1,Math.round(Number(v))||B[k]);save();rr()}
+function setG(gi,k,v){S.brk.g=S.brk.g.map(g=>g.filter(Boolean));S.brk.g.forEach((g,i)=>{if(i===gi)return;for(let x=0;x<g.length;x++)if(v&&g[x]===v)g[x]=''});const G=S.brk.g[gi],j=v?G.indexOf(v):-1;if(j>=0&&j!==k)G[j]='';G[k]=v;S.brk.g=S.brk.g.map(g=>g.filter(Boolean));save();rr()}
+function repartir(){
+const P=S.people.filter(p=>p.role==='op'&&here(p)).map(p=>p.id);
+const G=S.brk.g.map(g=>g.filter(id=>id&&P.indexOf(id)>=0));
+const inG=new Set([].concat.apply([],G));
+const small=()=>{let m=0;G.forEach((g,i)=>{if(g.length<G[m].length)m=i});return m};
+P.filter(id=>!inG.has(id)).forEach(id=>G[small()].push(id));
+for(let n=0;n<50;n++){let a=0;G.forEach((g,i)=>{if(g.length>G[a].length)a=i});const b=small();if(G[a].length-G[b].length<=1)break;G[b].push(G[a].pop())}
+S.brk.g=G;save();notice={t:'Turnos repartidos: '+G.map(g=>g.length).join(', ')+' personas.'};rr();
+}
+function setULine(id,v){S.people.find(p=>p.id===id).uline=Number(v);save();rr()}
+
+/* Calendario mensual: qué días trabajas y cuáles libras. Sale de tu patrón (rotación o días fijos) más los cambios que marques a mano. */
+let calM=todayStr().slice(0,7);
+const P223=[3,2,2,3,2,2];/* trabajo 3, libre 2, trabajo 2, libre 3, trabajo 2, libre 2 → 14 días */
+function C(){fixS();return S.cal}
+const dnum=s=>{const p=s.split('-').map(Number);return Date.UTC(p[0],p[1]-1,p[2])/864e5};
+function calBase(ds){const c=C();
+if(c.mode==='p223'){const L=14,k=((dnum(ds)-dnum(c.s223||'2026-10-30'))%L+L)%L;let a=0;for(let i=0;i<P223.length;i++){a+=P223[i];if(k<a)return i%2?'o':'w'}}
+if(c.mode==='semana'){const p=ds.split('-').map(Number);return (c.wd||[]).indexOf(new Date(p[0],p[1]-1,p[2]).getDay())>=0?'w':'o'}
+const on=Math.max(1,+c.on||1),off=Math.max(0,+c.off||0),L=on+off,k=((dnum(ds)-dnum(c.start||todayStr()))%L+L)%L;return k<on?'w':'o'}
+function calSt(ds){const c=C();if(c.pid&&onVac(c.pid,ds))return 'v';return c.ov[ds]||calBase(ds)}
+/* Próximo turno: hoy si trabajas y el turno no ha terminado; si no, el siguiente día de trabajo. */
+const isWork=ds=>calSt(ds)==='w';
+function shiftOver(ds){const d=S.days[ds],st=toMin(d?d.start:'06:00'),len=(d?d.hours*d.n:12)*60;const n=new Date(),m=n.getHours()*60+n.getMinutes();return st+len<=1440&&m>=st+len}
+function nextShift(){let ds=todayStr();if(isWork(ds)&&!shiftOver(ds))return ds;for(let i=1;i<=60;i++){ds=addDays(todayStr(),i);if(isWork(ds))return ds}return todayStr()}
+function nextWorkAfter(ds){for(let i=1;i<=60;i++){const x=addDays(ds,i);if(isWork(x))return x}return addDays(ds,1)}
+function calNav(n){const p=calM.split('-').map(Number),t=new Date(p[0],p[1]-1+n,1);calM=n===0?todayStr().slice(0,7):t.getFullYear()+'-'+pad(t.getMonth()+1);rr()}
+function calTap(ds){const c=C();if(c.pid&&onVac(c.pid,ds)){notice={t:'Ese día está en tus vacaciones. Cámbialas en la pestaña Vacaciones.'};return rr()}
+if(c.ov[ds])delete c.ov[ds];else c.ov[ds]=calBase(ds)==='w'?'o':'w';save();notice={t:fmtD(ds)+': '+(calSt(ds)==='w'?'trabajas':'libre')+(c.ov[ds]?' (cambio a mano)':' (según tu patrón)')+'.'};rr()}
+function calSet(k,v){const c=C();if(k==='on'||k==='off'){v=Math.max(k==='on'?1:0,Math.min(30,parseInt(v,10)||0))}c[k]=v;save();rr()}
+function calWd(d){const c=C(),i=c.wd.indexOf(d);i>=0?c.wd.splice(i,1):c.wd.push(d);save();rr()}
+function calClear(){const c=C(),n=Object.keys(c.ov).filter(k=>k.slice(0,7)===calM);if(armed!=='calc'){armed='calc';return rr()}armed=null;n.forEach(k=>delete c.ov[k]);save();notice={t:'Se quitaron los cambios a mano de este mes.'};rr()}
+function calHTML(){
+{const c=C();let ch=false;Object.keys(c.ov).forEach(k=>{if(c.ov[k]===calBase(k)){delete c.ov[k];ch=true}});if(ch)save()}
+const c=C(),T=todayStr(),[y,m]=calM.split('-').map(Number),first=new Date(y,m-1,1),nd=new Date(y,m,0).getDate(),lead=(first.getDay()+6)%7;
+const tst=calSt(T),tm=addDays(T,1),mst=calSt(tm);
+let h=`<p class="ctoday">Hoy ${tst==='w'?'trabajas':tst==='v'?'estás de vacaciones':'libras'} · mañana ${mst==='w'?'trabajas':mst==='v'?'vacaciones':'libras'}</p>`;
+let cnt={w:0,o:0,v:0},cells='';
+for(let i=0;i<lead;i++)cells+=`<span class="cd e"></span>`;
+for(let d=1;d<=nd;d++){const ds=y+'-'+pad(m)+'-'+pad(d),st=calSt(ds);cnt[st]++;
+cells+=`<button class="cd ${st}${ds===T?' t':''}${c.ov[ds]&&st!=='v'?' ov':''}" aria-label="${fmtD(ds)}: ${st==='w'?'trabajo':st==='v'?'vacaciones':'libre'}" onclick="calTap('${ds}')">${d}<small>${st==='w'?'Trab.':st==='v'?'Vac.':'Libre'}</small></button>`}
+const mname=first.toLocaleDateString('es',{month:'long'})+' '+y;
+h+=`<div class="cal"><div class="calh"><button aria-label="Mes anterior" onclick="calNav(-1)">‹</button><b>${mname}</b><button aria-label="Mes siguiente" onclick="calNav(1)">›</button></div>`;
+h+=`<div class="cg">`+['L','M','X','J','V','S','D'].map(x=>`<span class="dw">${x}</span>`).join('')+cells+`</div>`;
+h+=`<div class="csum"><div><b>${cnt.w}</b>trabajo</div><div><b>${cnt.o}</b>libres</div>${cnt.v?`<div><b>${cnt.v}</b>vacaciones</div>`:''}</div></div>`;
+h+=`<div class="pbar" style="margin-top:8px">${calM!==T.slice(0,7)?`<button class="btn soft" onclick="calNav(0)">Volver a este mes</button>`:''}${Object.keys(c.ov).some(k=>k.slice(0,7)===calM)?`<button class="btn soft" onclick="calClear()">${armed==='calc'?'¿Quitar cambios del mes?':'Quitar cambios a mano'}</button>`:''}</div>`;
+h+=`<p class="sub" style="margin-top:6px">Toca un día para cambiarlo solo ese día (queda con un punto). Tócalo otra vez para volver a tu patrón.</p>`;
+h+=`<h2 class="lh">Tu patrón</h2><div class="tabs">`+[['p223','2-2-3'],['ciclo','Rotación'],['semana','Días fijos']].map(([k,l])=>`<button class="tab ${c.mode===k?'on':''}" onclick="calSet('mode','${k}')">${l}</button>`).join('')+`</div>`;
+if(c.mode==='p223'){
+h+=`<p class="sub">Trabajas 3 días, libras 2, trabajas 2, libras 3, trabajas 2, libras 2, y se repite cada 2 semanas.</p><label for="c223">Primer día de un bloque de 3 días de trabajo</label><input id="c223" type="date" value="${esc(c.s223||'2026-10-30')}" onchange="calSet('s223',this.value)">`;
+}else if(c.mode==='semana'){
+h+=`<p class="sub">Marca los días de la semana que trabajas.</p><div class="wdp">`+[[1,'L'],[2,'M'],[3,'X'],[4,'J'],[5,'V'],[6,'S'],[0,'D']].map(([d,l])=>`<button class="pill ${c.wd.indexOf(d)>=0?'on':''}" aria-pressed="${c.wd.indexOf(d)>=0}" onclick="calWd(${d})">${l}</button>`).join('')+`</div>`;
+}else{
+h+=`<p class="sub">Días seguidos de trabajo y luego días libres, y se repite. Ej. 4 y 4, o 5 y 2.</p><div class="row3"><div><label for="con">Trabajo</label><input id="con" type="number" min="1" max="30" inputmode="numeric" value="${c.on}" onchange="calSet('on',this.value)"></div><div><label for="cof">Libres</label><input id="cof" type="number" min="0" max="30" inputmode="numeric" value="${c.off}" onchange="calSet('off',this.value)"></div><div><label for="cst">1er día trab.</label><input id="cst" type="date" value="${esc(c.start)}" onchange="calSet('start',this.value)"></div></div>`;
+}
+h+=`<label for="cpid">Mostrar vacaciones de</label><select id="cpid" onchange="calSet('pid',this.value)"><option value="">Nadie</option>${S.people.map(p=>`<option value="${p.id}" ${c.pid===p.id?'selected':''}>${esc(p.name)}${mk(p)}</option>`).join('')}</select>`;
+return h;
+}
+
+/* Pantallas */
+/* ===== Recordatorios del supervisor =====
+   Cada X minutos, dentro de X minutos o a una hora fija. Suenan mientras la página esté abierta.
+   Si el teléfono la congeló (pantalla apagada u otra app), al volver salen los que se pasaron. */
+const RL=()=>Array.isArray(S.rem)?S.rem:(S.rem=[]);
+let remQ=[],remK='cada',remAC=null,remBeepT=null,remWL=null;
+const hhmm=t=>{const d=new Date(t);return pad(d.getHours())+':'+pad(d.getMinutes())};
+function remNextAt(at,from){const p=String(at).split(':').map(Number),d=new Date(from);d.setHours(p[0]||0,p[1]||0,0,0);if(d.getTime()<=from)d.setDate(d.getDate()+1);return d.getTime()}
+function remDesc(r){const nx=r.on?(' · próximo '+hhmm(r.next)+(new Date(r.next).toDateString()!==new Date().toDateString()?' (mañana)':'')):'';
+return r.k==='cada'?'Cada '+remMin(r.min)+nx:r.k==='en'?(r.on?'Una vez · suena a las '+hhmm(r.next):'Ya sonó'):(r.daily?'Todos los días a las '+r.at:'Una vez a las '+r.at)+(r.on&&r.k==='hora'&&r.daily?nx:'')}
+const remMin=m=>m%60===0?(m/60)+(m===60?' hora':' horas'):m>60?Math.floor(m/60)+' h '+(m%60)+' min':m+' min';
+function remHTML(){
+const L=RL();
+let h=`<p class="sub">Escribe lo que no se te puede olvidar y cuándo. A la hora suena una alarma, vibra y sale el aviso en pantalla hasta que toques «Hecho».</p>`;
+h+=`<div class="warn" style="font-size:16px"><b>Importante:</b> los avisos solo suenan con esta página abierta en pantalla. Si apagas la pantalla o cambias de app, el teléfono la pausa y no suena; al volver te salen los que se pasaron. Deja el teléfono o la tablet con la app abierta y sube el volumen.</div>`;
+h+=`<h2 class="lh">Nuevo recordatorio</h2><label for="rmt">Qué hay que hacer</label><input id="rmt" maxlength="120" placeholder="Ej. Chequear los secadores">`;
+h+=`<label>Cuándo</label><div class="tabs">`+[['cada','Cada…'],['en','Dentro de…'],['hora','A una hora']].map(([k,l])=>`<button class="tab ${remK===k?'on':''}" onclick="remKind('${k}')">${l}</button>`).join('')+`</div>`;
+if(remK==='hora')h+=`<div class="row2"><div><label for="rma">Hora</label><input id="rma" type="time" value="${hm(nowHM(),60).slice(0,3)}00"></div><div><label for="rmd">Repetir</label><select id="rmd"><option value="1">Todos los días</option><option value="0">Solo una vez</option></select></div></div>`;
+else h+=`<label for="rmm">${remK==='cada'?'Cada cuántos minutos':'Dentro de cuántos minutos'}</label><input id="rmm" type="number" inputmode="numeric" min="1" max="1440" value="${remK==='cada'?60:40}"><div class="pbar" style="flex-wrap:wrap;margin-top:6px">`+[15,30,40,60,90,120].map(m=>`<button class="pill" onclick="$('#rmm').value=${m}">${remMin(m)}</button>`).join('')+`</div>`;
+h+=`<button class="btn" onclick="remAdd()">Agregar recordatorio</button>`;
+h+=`<h2 class="lh">Tus recordatorios</h2>`;
+h+=L.length?L.map(r=>`<div class="prow rem ${r.on?'':'off'}"><span class="nm"><b>${esc(r.text)}</b><small>${esc(remDesc(r))}</small></span><button class="pill ${r.on?'on':''}" aria-pressed="${!!r.on}" onclick="remToggle('${r.id}')">${r.on?'Activo':'Apagado'}</button><button class="x del" onclick="remDel('${r.id}')">${armed==='rem'+r.id?'¿Borrar?':'Quitar'}</button></div>`).join(''):`<p class="sub">Todavía no tienes recordatorios.</p>`;
+h+=`<button class="btn soft" onclick="remTest()">Probar la alarma</button>`;
+return h;
+}
+function remKind(k){const t=$('#rmt')?$('#rmt').value:'';remK=k;rr();const i=$('#rmt');if(i)i.value=t}
+function remAdd(){const text=String($('#rmt').value||'').trim();if(!text){notice={t:'Escribe qué hay que hacer.',bad:true};return rr()}
+const now=Date.now(),r={id:uid(),text,k:remK,on:true};
+if(remK==='hora'){const at=$('#rma').value;if(!at){notice={t:'Elige la hora.',bad:true};return rr()}r.at=at;r.daily=$('#rmd').value==='1';r.next=remNextAt(at,now)}
+else{const m=Math.round(Number($('#rmm').value));if(!(m>=1&&m<=1440)){notice={t:'Escribe los minutos (de 1 a 1440).',bad:true};return rr()}r.min=m;r.next=now+m*60000}
+RL().push(r);save();remUnlock();notice={t:'Recordatorio agregado: «'+text+'». Suena a las '+hhmm(r.next)+'.'};rr()}
+function remToggle(id){const r=RL().find(x=>x.id===id);if(!r)return;r.on=!r.on;if(r.on){const now=Date.now();r.next=r.k==='hora'?remNextAt(r.at,now):now+r.min*60000}save();rr()}
+function remDel(id){if(armed!=='rem'+id){armed='rem'+id;return rr()}armed=null;S.rem=RL().filter(x=>x.id!==id);remQ=remQ.filter(x=>x.id!==id);save();remPaint();rr()}
+function remTick(){if(!ready||!S||!Array.isArray(S.rem))return;const now=Date.now();let ch=false;
+S.rem.forEach(r=>{if(!r.on||!(r.next<=now))return;const late=now-r.next>90000;
+if(!remQ.some(x=>x.id===r.id))remQ.push({id:r.id,text:r.text,at:r.next,late});
+if(r.k==='cada'){while(r.next<=now)r.next+=r.min*60000}else if(r.k==='hora'&&r.daily){r.next=remNextAt(r.at,now)}else r.on=false;ch=true});
+S.rem=S.rem.filter(r=>!(r.snooze&&!r.on));
+if(ch){save();remPaint();if(tab==='avisos'&&!printing){const a=document.activeElement;if(!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)))rr()}}}
+function remPaint(){let o=document.getElementById('remov');if(!remQ.length){if(o)o.remove();remSound(false);return}
+if(!o){o=document.createElement('div');o.id='remov';o.setAttribute('role','alertdialog');o.setAttribute('aria-live','assertive');document.body.appendChild(o)}
+o.innerHTML=`<div class="rembox"><div class="remh">🔔 Recordatorio</div>`+remQ.map(q=>`<div class="remi"><b>${esc(q.text)}</b><small>${q.late?'Se pasó: era a las '+hhmm(q.at):'Ahora · '+hhmm(q.at)}</small><div class="pbar"><button class="btn" onclick="remAck('${q.id}')">Hecho</button><button class="btn soft" onclick="remSnooze('${q.id}')">En 5 min</button></div></div>`).join('')+`</div>`;
+remSound(true);try{if(navigator.vibrate)navigator.vibrate([500,250,500,250,500])}catch(e){}}
+function remAck(id){remQ=remQ.filter(x=>x.id!==id);remPaint()}
+function remSnooze(id){const q=remQ.find(x=>x.id===id);remQ=remQ.filter(x=>x.id!==id);if(q){const s={id:'s'+uid(),text:q.text,k:'en',min:5,on:true,next:Date.now()+300000,snooze:1};RL().push(s);save()}remPaint();if(tab==='avisos')rr()}
+function remTest(){remUnlock();remQ.push({id:'test'+uid(),text:'Prueba de alarma',at:Date.now(),late:false});remPaint()}
+/* Sonido: el navegador solo deja sonar después de que tocaste la pantalla alguna vez. */
+function remUnlock(){try{if(!remAC){const A=window.AudioContext||window.webkitAudioContext;if(A)remAC=new A()}if(remAC&&remAC.state==='suspended')remAC.resume()}catch(e){}remWake()}
+document.addEventListener('pointerdown',remUnlock,{passive:true});
+function remBeep(){if(!remAC)return;try{const t=remAC.currentTime;[0,0.35,0.7].forEach(d=>{const o=remAC.createOscillator(),g=remAC.createGain();o.type='square';o.frequency.value=880;g.gain.setValueAtTime(0.0001,t+d);g.gain.exponentialRampToValueAtTime(0.25,t+d+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+d+0.25);o.connect(g);g.connect(remAC.destination);o.start(t+d);o.stop(t+d+0.3)})}catch(e){}}
+function remSound(on){clearInterval(remBeepT);remBeepT=null;if(!on)return;remBeep();let n=0;remBeepT=setInterval(()=>{if(++n>40||!remQ.length){clearInterval(remBeepT);remBeepT=null;return}remBeep();try{if(n%3===0&&navigator.vibrate)navigator.vibrate([500,250,500])}catch(e){}},2000)}
+/* Pide que la pantalla no se apague mientras haya recordatorios activos (si el navegador lo permite). */
+async function remWake(){try{if(remWL||!navigator.wakeLock||document.hidden||!S||!RL().some(r=>r.on))return;remWL=await navigator.wakeLock.request('screen');remWL.addEventListener('release',()=>{remWL=null})}catch(e){remWL=null}}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){remTick();remWake()}});
+function remNextHTML(){if(!S||!Array.isArray(S.rem))return '';const A=S.rem.filter(r=>r.on).sort((a,b)=>a.next-b.next);if(!A.length)return '';const r=A[0];return `<button class="remnext" onclick="setTab('avisos')">🔔 Próximo: <b>${esc(r.text)}</b> a las ${hhmm(r.next)}${A.length>1?` · ${A.length} activos`:''}</button>`}
+setInterval(remTick,5000);
+
+function setTab(t){if(t!=='personal')evLock();printing=false;tab=t;armed=null;render();window.scrollTo(0,0)}
+function rr(){const y=window.scrollY;render();window.scrollTo(0,y)}
+function render(){
+if(!S||!S.g){$('#app').innerHTML=startHTML();return}
+const d=day();
+if(printing){$('#app').innerHTML=printHTML(d);if(onZebra())fitLabels();return}
+if(tab==='hoy'&&!d.blocks.some(Boolean)&&canGen()&&isWork(date))gen(0);
+else if(tab==='hoy'&&date>todayStr()&&stale(d)&&canGen()){gen(0);notice=notice||{t:'La rotación de '+fmtD(date)+' se rehízo con los puestos actuales.'}}
+else if(stale(d))d.dirty=true;
+let h=`<div class="gtop"><div><h1>Grupo ${esc(S.g)}</h1><span class="shiftchip ${S.shift==='noche'?'n':''}">${S.shift==='noche'?'Noche · 18:00 a 6:00':'Día · 6:00 a 18:00'}</span></div><div class="hbtns"><button class="pill new" onclick="leave(true)">+ Nuevo grupo</button><button class="link" onclick="leave()">Cambiar de grupo</button></div></div>`;
+if(S.example)h+=`<div class="ex">Estás viendo un ejemplo con nombres inventados. No se guarda. Para tu grupo, toca «+ Nuevo grupo».</div>`;
+h+=`<div class="tabs mt">`+[['hoy','Hoy'],['maquinas','Máquinas'],['personal','Personal'],['vacaciones','Vacaciones'],['calendario','Mes'],['reporte','Reporte'],['avisos','Avisos'],['grupo','Grupo'],['ayuda','Cómo usar']].map(t=>`<button class="tab ${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`).join('')+`</div>`;
+h+=alertsHTML();if(tab==='hoy')h+=remNextHTML();
+if(notice)h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;
+h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML():tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='ayuda'?guideHTML():personalHTML();
+notice=null;
+$('#app').innerHTML=h;
+if(tab==='reporte'&&repShow===date)repFill();
+}
+
+let pfmt='hoja';try{pfmt=localStorage.getItem('rotPrint')||'hoja'}catch(e){}
+let zor='h';try{zor=localStorage.getItem('rotZor')||'h'}catch(e){}
+function setZor(v){zor=v;try{localStorage.setItem('rotZor',v)}catch(e){}render()}
+const zdim=()=>zor==='v'?[3,4]:[4,3];
+/* Achica la letra de cada etiqueta hasta que todo quepa, para que nada se corte. */
+function fitLabels(){document.querySelectorAll('.lbl').forEach(el=>{let fs=16;el.style.fontSize=fs+'px';while((el.scrollHeight>el.clientHeight+1||el.scrollWidth>el.clientWidth+1)&&fs>8){fs-=.5;el.style.fontSize=fs+'px'}})}
+function setPfmt(v){pfmt=v;try{localStorage.setItem('rotPrint',v)}catch(e){}render()}
+/* Margen de la etiqueta: deja espacio para el margen que agrega la impresora. */
+let zmg='a';try{zmg=localStorage.getItem('rotZmg')||'a'}catch(e){}
+const zin=()=>({n:.25,a:.6,x:.9})[zmg]||.6;
+function setZmg(v){zmg=v;try{localStorage.setItem('rotZmg',v)}catch(e){}render()}
+const zmgTabs=()=>`<p class="sub" style="margin:4px 0 2px">Margen de la etiqueta (si se pasa a la siguiente hoja o se corta, sube el margen):</p><div class="tabs">`+[['n','Normal'],['a','Amplio'],['x','Extra']].map(([k,l])=>`<button class="tab ${zmg===k?'on':''}" onclick="setZmg('${k}')">${l}</button>`).join('')+`</div>`;
+let nout='zebra';try{nout=localStorage.getItem('rotNout')||'zebra'}catch(e){}
+function setNout(v){nout=v;try{localStorage.setItem('rotNout',v)}catch(e){}render()}
+const onZebra=()=>pfmt==='zebra'||(pfmt==='notas'&&nout==='zebra');
+/* Notas por persona: su propio descanso y cada relevo (hora, máquina, a quién cubre). */
+function notesData(d){
+const P={},get=id=>P[id]=P[id]||{id,own:[],cov:[]};
+breakSlots().filter(s=>s.ids.length).forEach(s=>{const rows=cover(d,s);if(!rows)return;
+rows.forEach(r=>{if(r.st!=='fuera')get(r.id).own.push(s);if(r.st==='ok'&&r.u)get(r.u).cov.push({s,ms:r.ms,sx:r.sx,who:r.id})})});
+return Object.values(P).filter(x=>x.cov.length).sort((a,b)=>{const ua=isUtil(S.people.find(p=>p.id===a.id))?1:0,ub=isUtil(S.people.find(p=>p.id===b.id))?1:0;return ua-ub||a.cov[0].s.start-b.cov[0].s.start});
+}
+function noteBody(x){
+const tt=s=>hmAbs(s.start)+'–'+hmAbs(s.start+s.len);
+let h=`<div class="nh"><b>${esc(pname(x.id))}${pmark(x.id)}</b></div>`;
+if(x.own.length)h+=`<div class="no">Tu descanso: ${x.own.map(s=>s.kind.toLowerCase()+' '+tt(s)).join(' · ')}</div>`;
+h+=`<table><thead><tr><th>Hora</th><th>Cubres máq.</th><th>Por</th></tr></thead><tbody>`+x.cov.map(c=>`<tr><td><b>${tt(c.s)}</b><i>${c.s.kind.toLowerCase()}</i></td><td><b>${esc(mql(c))}</b></td><td>${esc(pname(c.who))}</td></tr>`).join('')+`</tbody></table>`;
+return h;
+}
+function pageCSS(){let st=document.getElementById('pgsize');if(!st){st=document.createElement('style');st.id='pgsize';document.head.appendChild(st)}
+st.textContent=onZebra()?'@media print{@page{size:'+zdim()[0]+'in '+zdim()[1]+'in;margin:0}.lbl{margin:'+Math.min(.1,zin()/4)+'in auto 0!important}}':'@media print{@page{size:letter portrait;margin:8mm}}'}
+function brData(d,s){
+const rows=cover(d,s);if(!rows)return null;
+return rows.map(r=>{let cv,cl='cv',tp='';
+if(r.st==='ok'){if(r.u){cv=pname(r.u);tp=r.sup?'supervisor':r.free==='det'?'máq. det.':r.free==='rt'?'retrabajo':r.free==='libre'?'libre':'Material Handler'}else{cv='SIN CUBRIR';cl='bad'}}
+else{cl='nc';cv=r.st==='det'?(r.rt?'No hace falta · retrabajo':'No hace falta · máq. det.'):r.st==='rtp'?'No hace falta · retrabajo':r.st==='libre'?'No hace falta · libre':'No está hoy'}
+const mq=r.ms&&r.ms.length?mql(r):'—',ml=r.st==='det'?'det.':r.line?'L'+r.line:'';
+return {sale:pname(r.id),por:r.orig?pname(r.orig):'',mq,ml,cv,cl,tp}});
+}
+function printHTML(d){
+pageCSS();
+let h=`<div class="noprint"><div class="pbar"><button class="btn" onclick="doPrint()">Imprimir</button><button class="btn soft" onclick="printing=false;render();window.scrollTo(0,0)">Volver</button></div>`;
+h+=`<div class="tabs">`+[['hoja','Hoja carta'],['zebra','Zebra por turno'],['notas','Notas por persona']].map(([k,l])=>`<button class="tab ${pfmt===k?'on':''}" onclick="setPfmt('${k}')">${l}</button>`).join('')+`</div>`;
+if(pfmt==='notas')h+=`<div class="tabs">`+[['zebra','En la Zebra (una por persona)'],['hoja','En hoja carta para recortar']].map(([k,l])=>`<button class="tab ${nout===k?'on':''}" onclick="setNout('${k}')">${l}</button>`).join('')+`</div>`+(nout==='zebra'?`<div class="tabs">`+[['h','Horizontal 4 × 3'],['v','Vertical 3 × 4']].map(([k,l])=>`<button class="tab ${zor===k?'on':''}" onclick="setZor('${k}')">${l}</button>`).join('')+`</div>`+zmgTabs():'')+`<p class="sub">Una nota para cada operario y Material Handler que cubre a alguien: su descanso y, en cada relevo, la hora, la máquina y a quién cubre.${nout==='zebra'?' En el cuadro de imprimir: la Zebra, papel <b>'+zdim()[0]+' × '+zdim()[1]+' pulg.</b>, márgenes <b>Ninguno</b>.':''}</p>`;
+else h+=pfmt==='zebra'?`<div class="tabs">`+[['h','Horizontal · 4 ancho × 3 alto'],['v','Vertical · 3 ancho × 4 alto']].map(([k,l])=>`<button class="tab ${zor===k?'on':''}" onclick="setZor('${k}')">${l}</button>`).join('')+`</div>`+zmgTabs()+`<p class="sub">Una etiqueta por turno. En el cuadro de imprimir: impresora Zebra, tamaño de papel <b>${zdim()[0]} × ${zdim()[1]} pulg.</b>, márgenes <b>Ninguno</b>, escala <b>Predeterminada</b>. Si sale girada, cambia la orientación aquí arriba.</p>`:`<p class="sub">Todo en una hoja carta. En el cuadro de imprimir deja la escala en <b>Ajustar</b> o 100%.</p>`;
+h+=`</div>`;
+const sl=breakSlots().filter(s=>s.ids.length);
+if(pfmt==='notas'){
+const N=notesData(d),ph=pad(new Date().getHours())+':'+pad(new Date().getMinutes()),ft=`<div class="ld">${esc(fmtD(date))} · impreso ${ph}</div>`;
+if(!N.length)return h+`<p class="sub">Nadie cubre descansos todavía. Genera la rotación primero.</p>`;
+if(nout==='zebra'){const [zw,zh]=zdim();return h+`<div class="zb">`+N.map(x=>`<div class="lbl note" style="width:${zw-zin()}in;height:${zh-zin()}in">${noteBody(x)}${ft}</div>`).join('')+`</div>`}
+return h+`<div class="ncards">`+N.map(x=>`<div class="ncard">${noteBody(x)}${ft}</div>`).join('')+`</div>`;
+}
+if(pfmt==='zebra'){
+h+=`<div class="zb">`+sl.map(s=>{const R=brData(d,s);const n=R?R.length:1;
+const [zw,zh]=zdim();let t=`<div class="lbl" style="width:${zw-zin()}in;height:${zh-zin()}in"><div class="lh"><b>${s.kind.toUpperCase()} · T${s.turn}</b><span>${hmAbs(s.start)}–${hmAbs(s.start+s.len)}</span></div><div class="ld">${esc(fmtD(date))} · impreso ${pad(new Date().getHours())+':'+pad(new Date().getMinutes())}</div>`;
+if(!R)return t+`<p>Genera la rotación de este bloque.</p></div>`;
+t+=`<table><thead><tr><th>Sale</th><th>Máq.</th><th>Lo cubre</th></tr></thead><tbody>`+R.map(r=>`<tr><td>${esc(r.sale)}${r.por?' <i>por '+esc(r.por)+'</i>':''}</td><td>${esc(r.mq)}${r.ml?' <i>'+r.ml+'</i>':''}</td><td class="${r.cl}">${esc(r.cl==='nc'?r.cv.split(' · ')[0]:r.cv)}${r.tp?' <i>'+r.tp+'</i>':''}</td></tr>`).join('')+`</tbody></table></div>`;
+return t}).join('')+`</div>`;
+return h;
+}
+const pt=new Date(),phh=pad(pt.getHours())+':'+pad(pt.getMinutes());
+h+=`<div class="pr cp"><div class="phd"><b>Desayuno y almuerzo</b><span>${esc(fmtD(date))} · impreso ${phh}</span></div>`;
+['Desayuno','Almuerzo'].forEach(k=>{
+h+=`<h2>${k}</h2><table><thead><tr><th>Hora</th><th>Sale</th><th>Máquina</th><th>Lo cubre</th></tr></thead><tbody>`;
+sl.filter(s=>s.kind===k).forEach(s=>{
+const hr=`${hmAbs(s.start)}–${hmAbs(s.start+s.len)} <i>T${s.turn}</i>`,R=brData(d,s);
+if(!R){h+=`<tr class="tb"><td class="hr">${hr}</td><td colspan="3" class="nc">Genera la rotación de este bloque</td></tr>`;return}
+R.forEach((r,ix)=>{h+=`<tr class="${ix===0?'tb':''}">${ix===0?`<td class="hr" rowspan="${R.length}">${hr}</td>`:''}<td>${esc(r.sale)}${r.por?' <i>por '+esc(r.por)+'</i>':''}</td><td>${esc(r.mq)}${r.ml?' <i>'+r.ml+'</i>':''}</td><td class="${r.cl}">${esc(r.cv)}${r.tp?' <i>'+r.tp+'</i>':''}</td></tr>`});
+});
+h+=`</tbody></table>`;
+});
+return h+`</div>`;
+}
+/* Firma de la cobertura de descansos: si cambia después de imprimir, se avisa para reimprimir. */
+function brSig(d){return JSON.stringify(breakSlots().map(s=>{const r=cover(d,s);return r?r.map(x=>[x.id,x.st,x.u||'']):null}))}
+function doPrint(){const d=day();d.printSig=brSig(d);d.printAt=Date.now();save();window.print()}
+function printWarn(d){
+if(!d.printSig||d.printSig===brSig(d))return '';
+const t=new Date(d.printAt),hh=pad(t.getHours())+':'+pad(t.getMinutes());
+return `<div class="alert"><b>La hoja de desayuno y almuerzo que imprimiste a las ${hh} ya no sirve.</b> Cambió quién cubre a quién. Vuelve a imprimirla y retira la vieja.<button class="btn" style="margin-top:8px" onclick="openPrint()">Imprimir de nuevo</button></div>`;
+}
+function openPrint(){printing=true;render();window.scrollTo(0,0)}
+function rotNowHTML(d,cur){
+if(date!==todayStr()||cur<0)return '';
+const b=d.blocks[cur];
+const end=(toMin(d.start)+(cur+1)*d.hours*60)%1440,left=(end-nowMin()+1440)%1440;
+const lt=left>=60?Math.floor(left/60)+' h '+pad(left%60)+' min':left+' min';
+let h=`<div class="rnow"><div class="rh">${blockLabel(d,cur)}<span>Rotación · bloque ${cur+1} · ahora · quedan ${lt}</span></div>`;
+if(!b){return h+`<p class="sub" style="margin:6px 0 0">Este bloque todavía no está generado.</p></div>`}
+h+=b.posts.map((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(!p)return '';const sel=b.arr[j]||'',hd=postHeld(p);
+return `<div class="rr${hd?' h':''}"><b>${esc(postLabel(p))}</b><span>${sel?esc(pname(sel))+pmark(sel):'Sin cubrir'}${hd?'<small>Detenida</small>':''}</span></div>`}).join('');
+return h+`<button class="go" onclick="var e=document.getElementById('blk${cur}');if(e)e.scrollIntoView({behavior:'smooth',block:'start'})">Ver y editar el bloque ↓</button></div>`;
+}
+function hoyHTML(d){
+const c=ctx(),cur=curBlock(d);
+const P=S.people.filter(here);
+const cnt=r=>P.filter(p=>p.role===r).length,ops=P.length-cnt('util')-cnt('senior')-cnt('sup');
+const nx=nextShift(),wk=isWork(date);
+let h=`<div class="${wk?'alert soft':'alert'}"><b>Próximo turno: ${fmtD(nx)}</b>${date!==nx?` <button class="rt" onclick="setDate('${nx}')">Ir a ese día</button>`:' · es el que estás viendo'}${wk?'':`<br>El ${fmtD(date)} libras: la rotación no avanza ese día y sigue en tu próximo día de trabajo.`}</div>`;
+if(!wk&&!d.blocks.some(Boolean))return h+`<label for="dt">Fecha</label><input type="date" id="dt" value="${date}" onchange="setDate(this.value)"><p class="sub" style="margin-top:8px">Si este día sí trabajas, márcalo en el calendario y aquí aparecerá la rotación.</p>`;
+h+=rotNowHTML(d,cur)+breakBanner(d)+`<p class="sub">${ops} operarios · ${cnt('util')} Material Handler · ${cnt('senior')} Utility senior${cnt('sup')?' · '+cnt('sup')+' supervisor':''} · ${c.posts.length} puestos activos</p>`;
+const off=S.machines.filter(m=>!m.on);
+if(off.length){
+const g={};off.forEach(m=>{const k=m.reason||'Sin motivo';(g[k]=g[k]||[]).push(m.n)});
+h+=`<p class="stops">Paradas: `+Object.keys(g).map(k=>`<b>${esc(k)}</b> (${g[k].join(', ')})`).join(' · ')+`</p>`;
+}
+const hl=S.machines.filter(m=>m.on&&m.hold);
+const hc=hl.filter(m=>m.task!=='rt'),hr=hl.filter(m=>m.task==='rt'),ml=a=>a.map(m=>m.n+(m.reason?' ('+esc(m.reason)+')':'')).join(', ');
+if(hc.length)h+=`<p class="stops">Detenidas, su operario cubre descansos: <b>${ml(hc)}</b></p>`;
+if(hr.length)h+=`<p class="stops">Detenidas, su operario va a retrabajo: <b>${ml(hr)}</b></p>`;
+const zm=zeroM();if(zm.length)h+=`<p class="stops">Sin puesto (cero operario, las atiende el Material Handler): <b>${zm.map(m=>m.n).join(', ')}</b></p>`;
+const orphan=S.machines.filter(m=>machOn(m.n)&&!S.posts.some(p=>p.ms.indexOf(m.n)>=0)).map(m=>m.n);
+/* Las máquinas encendidas sin puesto son de cero operario: no hace falta aviso. */
+if(c.ids.length&&c.ids.length<c.posts.length)h+=`<div class="warn">Faltan ${c.posts.length-c.ids.length} persona(s) para cubrir todos los puestos. Los puestos sin cubrir también rotan.</div>`;
+if(!c.posts.length||!c.ids.length)h+=`<div class="warn">Necesitas al menos un puesto con máquina encendida y una persona presente.</div>`;
+h+=printWarn(d);
+h+=lateHTML(d)+leftHTML(d,cur);
+h+=`<label for="dt">Fecha</label><input type="date" id="dt" value="${date}" onchange="setDate(this.value)">`;
+h+=`<div class="row3"><div><label for="st">Inicio</label><input type="time" id="st" value="${esc(d.start)}" onchange="cfg('start',this.value)"></div><div><label for="hr">Horas por bloque</label><input type="number" id="hr" min="1" max="12" step="0.5" value="${d.hours}" onchange="cfg('hours',this.value)"></div><div><label for="nb">Bloques</label><input type="number" id="nb" min="1" max="12" value="${d.n}" onchange="cfg('n',this.value)"></div></div>`;
+if(d.dirty)h+=`<div class="warn">Cambió el personal, los puestos o las máquinas. Aplica los cambios desde el bloque actual.</div>`;
+const has=d.blocks.some(Boolean);
+const fi=fromSel!=null&&fromSel<d.n?fromSel:(cur>=0?cur:0);
+h+=`<label for="fr">Aplicar desde el bloque</label><select id="fr" onchange="fromSel=Number(this.value)">`+Array.from({length:d.n},(_,i)=>`<option value="${i}" ${i===fi?'selected':''}>${i+1} · ${blockLabel(d,i)}${i===cur?' (ahora)':''}</option>`).join('')+`</select>`;
+h+=`<button class="btn" onclick="doGen()">${has?'Recalcular rotación':'Generar rotación'}</button>`;
+if(has)h+=`<button class="btn soft" onclick="openPrint()">Imprimir desayuno y almuerzo</button>`;
+h+=rtCfgHTML(d);
+h+=legendHTML();
+d.blocks.forEach((b,i)=>{h+=b?blockHTML(d,b,i,i===cur):`<div class="blk"><h3>${blockLabel(d,i)}<span>sin generar</span></h3></div>`});
+if(d.nextRing&&c.posts.length){
+const nb={posts:c.posts.map(p=>p.id),arr:seed(d.nextRing,c)};
+h+=`<div class="blk next"><h3>${hm(d.start,0)}<span>próximo turno (${fmtD(nextWorkAfter(date))}), arranque</span></h3>`+blockRows(nb,-1)+blockFree(nb)+`</div>`;
+}
+if(has)h+=`<button class="btn soft" onclick="copyDay()">Copiar rotación</button><div class="sub" id="cs" style="margin:8px 0 0"></div>`;
+return h;
+}
+function blockRows(b,i){
+return b.posts.map((pid,j)=>{
+const p=S.posts.find(x=>x.id===pid);if(!p)return '';
+const sel=b.arr[j]||'';
+const hd=postHeld(p),rt=hd&&postRT(p),zc=hd?postZC(p):[],cls=hd?'mrow held':'mrow',lab=esc(postLabel(p))+(hd?'<small>Detenida · '+esc(heldReason(p))+'</small>':'');
+const task=rt?'Retrabajo':zc.length?'Cubre '+zc.join(', ')+' (sin puesto)':hd?'Cubre descansos':'';
+if(i<0)return `<div class="${cls}"><span>${lab}</span><span class="who">${sel?esc(pname(sel))+pmark(sel):'Sin cubrir'}${hd?'<b>'+task+'</b>':''}</span></div>`;
+if(hd)return `<div class="${cls}"><span>${lab}</span><span class="rtname">${sel?esc(pname(sel))+pmark(sel):'Sin cubrir'}<small>${task}</small></span><div class="hctl">${heldCtl(p)}</div></div>`;
+return `<div class="${cls}"><span>${lab}</span><select class="${sel?'':'miss'}" aria-label="Persona en ${esc(postLabel(p))}" onchange="setCell(${i},${j},this.value)"><option value="">Sin cubrir</option>`+S.people.filter(q=>here(q)||q.id===sel).map(q=>`<option value="${q.id}" ${q.id===sel?'selected':''}>${esc(q.name)}${mk(q)}</option>`).join('')+`</select></div>`;
+}).join('');
+}
+function heldReason(p){const m=S.machines.find(x=>held(x.n)&&p.ms.indexOf(x.n)>=0);return m&&m.reason?m.reason:'sin motivo'}
+function blockFree(b,R,UT){
+R=R||new Set();UT=UT||new Set();
+const libres=b.arr.slice(b.posts.length).filter(x=>x&&!R.has(x)&&!UT.has(x));
+const inArr=new Set(b.arr.filter(Boolean));
+const apoyo=S.people.filter(p=>here(p)&&!inArr.has(p.id)&&!R.has(p.id)&&!UT.has(p.id));
+let h='';
+if(R.size)h+=`<div class="mrow held"><span>Retrabajo<small>fuera de la rotación</small></span><span class="rtname">${[...R].map(x=>esc(pname(x))).join(', ')}</span></div>`;
+if(UT.size)h+=`<div class="mrow zero"><span>Cubriendo como Material Handler<small>fuera de la rotación</small></span><span class="rtname">${[...UT].map(x=>esc(pname(x))).join(', ')}</span></div>`;
+if(libres.length)h+=`<p class="free">Libre: ${libres.map(x=>esc(pname(x))+pmark(x)).join(', ')}</p>`;
+if(apoyo.length)h+=`<p class="free">Apoyo: ${apoyo.map(p=>esc(p.name)+mk(p)).join(', ')}</p>`;
+return h;
+}
+function blockHTML(d,b,i,now){
+return `<div class="blk ${now?'now':''}" id="blk${i}" style="scroll-margin-top:12px"><h3>${blockLabel(d,i)}<span>bloque ${i+1}${now?' · ahora':''}</span></h3>`+blockRows(b,i)+blockFree(b,rtIds(d,i,b),utIds(d,i))+(i>0&&d.blocks[i-1]?`<button class="rt noprint" onclick="followPrev(${i})">↺ Seguir la rotación del bloque ${i}</button>`:'')+blockBreaks(d,i)+`</div>`;
+}
+function setDate(v){printing=false;date=v||todayStr();fromSel=null;render()}
+function cfg(k,v){
+const d=day();
+if(k==='start')d.start=v||d.start;
+if(k==='hours')d.hours=Math.min(12,Math.max(0.5,Number(v)||d.hours));
+if(k==='n'){d.n=Math.min(12,Math.max(1,Math.round(Number(v))||d.n));while(d.blocks.length<d.n)d.blocks.push(null);d.blocks.length=d.n}
+save();rr();
+}
+function doGen(){
+if(!canGen()){notice={t:'Necesitas al menos un puesto con máquina encendida y una persona presente.',bad:true};return rr()}
+const d=day(),cur=curBlock(d);
+const from=fromSel!=null&&fromSel<d.n?fromSel:(cur>=0?cur:0);
+gen(from,true);
+notice={t:'Rotación calculada desde el bloque '+(from+1)+'.'};
+rr();
+}
+/* Orden fijo de los operarios (pestaña Personal). Quien falta y tiene reemplazo: el reemplazo ocupa su lugar
+   en el orden; quien falta sin reemplazo se salta. */
+function opRing(){
+const ok=new Set(ctx().ids),R=[];
+/* Quien reemplaza a alguien que falta va en el lugar de esa persona, no en el suyo. */
+const subOf=new Set();S.people.forEach(p=>{if(p.role==='op'&&!p.extra&&!here(p)&&p.sub){const s=S.people.find(x=>x.id===p.sub&&here(x));if(s&&ok.has(s.id))subOf.add(s.id)}});
+S.people.forEach(p=>{if(p.role!=='op'||p.extra)return;
+if(here(p)){if(ok.has(p.id)&&!subOf.has(p.id)&&R.indexOf(p.id)<0)R.push(p.id)}
+else{const s=p.sub&&S.people.find(x=>x.id===p.sub&&here(x));if(s&&ok.has(s.id)&&R.indexOf(s.id)<0)R.push(s.id)}});
+return R;
+}
+/* Pones a un operario en un puesto y el resto del bloque se llena solo siguiendo el orden de Personal. */
+function fillFrom(b,j,pid,skip){
+/* Quien está fuera de la rotación en este bloque (Material Handler o retrabajo) se salta: el siguiente del orden ocupa su lugar. */
+const R=opRing().filter(x=>!(skip&&skip.has(x))),k=R.indexOf(pid),n=b.posts.length;
+const L=R.length;
+if(k<0)return false;
+/* Desde el puesto elegido se recorre el turno completo (13 → 14 → 15…) con el personal que hay, en su orden;
+   los puestos que quedan al final del recorrido se dejan vacíos para los extras. */
+const M=Math.max(n,L),all=new Array(M).fill(null),md=(a,m)=>((a%m)+m)%m;
+for(let t=0;t<L;t++)all[md(j-t,M)]=R[md(k-t,L)];
+const arr=all.slice(0,n),tail=all.slice(n).filter(Boolean);
+const placed=new Set(arr.concat(tail).filter(Boolean));
+b.arr.forEach(x=>{if(x&&!placed.has(x)){tail.push(x);placed.add(x)}});
+/* Los puestos que el grupo deja libres los toman los operarios extra, siguiendo el recorrido. */
+const xs=tail.filter(x=>isExtra(x)&&here(S.people.find(p=>p.id===x)));
+for(let t=L;t<M&&xs.length;t++){const q=md(j-t,M);if(q<n&&!arr[q]){const x=xs.shift();arr[q]=x;tail.splice(tail.indexOf(x),1)}}
+for(let q=0;q<n&&xs.length;q++)if(!arr[q]){const x=xs.shift();arr[q]=x;tail.splice(tail.indexOf(x),1)}
+b.arr=arr.concat(tail);
+return arr.filter(x=>!x).length;
+}
+function setCell(i,j,pid){
+const d=day(),b=d.blocks[i],n=b.posts.length;
+/* Si pones a un operario del grupo en un puesto, la rotación arranca desde ahí: el resto del bloque se llena
+   siguiendo el orden de Personal (saltando a quien está de Material Handler o en retrabajo) y los bloques siguientes siguen desde este. */
+const skip=new Set([...rtFixed(d,i),...utIds(d,i)]);
+if(pid&&!skip.has(pid)&&opRing().indexOf(pid)>=0){
+const t={posts:b.posts.slice(),arr:(b.base||b.arr).slice()};
+fillFrom(t,j,pid,skip);
+b.base=t.arr.slice();b.arr=applyRT(d,i,t.arr,n);
+if(i+1<d.n&&canGen())gen(i+1);else{d.nextRing=rotate(b.base).filter(Boolean);save()}
+notice={t:'La rotación arranca con '+pname(pid)+' en '+postLabel(S.posts.find(x=>x.id===b.posts[j]))+'. Los bloques siguientes siguen desde aquí.'};
+return rr();
+}
+/* Extras, Material Handler o dejar sin cubrir: solo un intercambio en ESTE bloque; la rotación (b.base) no se toca. */
+if(!b.base)b.base=b.arr.slice();
+const prev=b.arr[j]||null;
+if(pid){
+const q=b.arr.indexOf(pid);
+if(q>=0&&q!==j)b.arr[q]=prev;
+else if(q<0&&prev)b.arr.push(prev);
+b.arr[j]=pid;
+}else{b.arr[j]=null;if(prev)b.arr.push(prev)}
+b.arr=b.arr.slice(0,n).concat(b.arr.slice(n).filter(Boolean));
+notice={t:'Cambio hecho solo en el bloque '+(i+1)+'. La rotación de los bloques siguientes no cambia.'};
+save();rr();
+}
+/* Rehace este bloque y los siguientes siguiendo la rotación del bloque anterior (cada uno sube un puesto). */
+function followPrev(i){
+const d=day();if(i<1||!d.blocks[i-1]||!canGen())return;
+gen(i);
+notice={t:'Bloque '+(i+1)+' y siguientes rehechos siguiendo la rotación del bloque '+i+'.'};
+rr();
+}
+async function copyDay(){
+const d=day(),c=ctx(),s=$('#cs');
+let t='Rotación '+date+'\n';
+d.blocks.forEach((b,i)=>{if(!b)return;t+='\n'+blockLabel(d,i)+'\n';b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(p)t+='Máq. '+postLabel(p)+': '+(b.arr[j]?pname(b.arr[j]):'sin cubrir')+'\n'});const R=rtIds(d,i,b),UT=utIds(d,i),l=b.arr.slice(b.posts.length).filter(x=>x&&!R.has(x)&&!UT.has(x));if(R.size)t+='Retrabajo: '+[...R].map(pname).join(', ')+'\n';if(UT.size)t+='Cubriendo como Material Handler: '+[...UT].map(pname).join(', ')+'\n';if(l.length)t+='Libre: '+l.map(pname).join(', ')+'\n'});
+t+='\nDesayuno y almuerzo\n';
+breakSlots().forEach(s=>{const rows=cover(d,s);if(!rows||!s.ids.length)return;t+=hmAbs(s.start)+' '+s.kind+' T'+s.turn+': '+rows.map(r=>pname(r.id)+(r.orig?' por '+pname(r.orig):'')+(r.st==='ok'?' (máq. '+mql(r)+') → '+(r.u?pname(r.u):'SIN MATERIAL HANDLER'):r.st==='libre'?' (libre)':r.st==='rtp'?' (retrabajo)':r.st==='det'?' (máq. detenida)':' (no está)')).join('; ')+'\n'});
+const off=S.machines.filter(m=>!m.on);
+if(off.length)t+='\nParadas: '+off.map(m=>m.n+(m.reason?' ('+m.reason+(m.note?': '+m.note:'')+')':'')).join(', ')+'\n';
+try{await navigator.clipboard.writeText(t);s.textContent='Copiado.'}catch(e){
+try{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();s.textContent=ok?'Copiado.':'No se pudo copiar.'}catch(x){s.textContent='No se pudo copiar.'}}
+}
+
+function maquinasHTML(){
+let h=`<p class="sub"><b>Encendida</b>: trabaja normal. <b>Detenida</b>: parada por un motivo pero sigue en la rotación con su operario; en desayuno y almuerzo ese operario cubre primero a los que salen, o lo mandas a retrabajo. <b>Cero operario</b>: encendida pero no es puesto; la atiende el Material Handler. Las encendidas que no están en ningún puesto ya cuentan como cero operario. Si una detenida tiene «Cubre máq. sin puesto», su operario cubre las que elijas. <b>Parada</b>: fuera todo el turno y sale de la rotación.</p>`;
+[1,2].forEach(l=>{
+h+=`<h2 class="lh">Línea ${l}</h2>`+S.machines.filter(m=>m.line===l).map(m=>`<div class="prow"><b class="num">${m.n}</b>${mState(m)}${m.on&&m.hold?`<select class="nm" aria-label="Operario de la máquina ${m.n}" onchange="setTask(${m.n},this.value)"><option value="" ${m.task!=='rt'?'selected':''}>Operario cubre descansos</option><option value="rt" ${m.task==='rt'?'selected':''}>Operario va a retrabajo</option><option value="zc" ${m.task==='zc'?'selected':''}>Operario cubre máq. sin puesto (se eligen en Hoy)</option></select>`:''}${m.on&&!m.hold?'':`<select class="nm ${m.reason?'':'miss'}" aria-label="Motivo máquina ${m.n}" onchange="setReason(${m.n},this.value)"><option value="">Elige el motivo</option>${reasonOpts(m.reason)}</select><input class="nm" style="flex-basis:100%" maxlength="140" value="${esc(m.note||'')}" placeholder="Describe el problema" aria-label="Descripción del problema de la máquina ${m.n}" onchange="setNote(${m.n},this.value)">`}</div>`).join('');
+});
+h+=`<h2 class="lh">Puestos de rotación</h2><p class="sub">Cada puesto es una máquina, o varias, que cubre una sola persona. Separa los números con coma, punto o espacio (ej. 1, 2 ó 1.2). Para poner dos operarios en la misma máquina, agrega otro puesto con una letra al final: <b>21</b> y <b>21A</b> (adelante y atrás) son dos puestos distintos; puedes usar A, B, C… El orden de la lista es el orden de la rotación, y la rotación de hoy se actualiza sola al cambiar un puesto.</p>`;
+h+=`<label for="np">Agregar puesto (números de máquina)</label><input id="np" inputmode="text" autocapitalize="characters" placeholder="Ej. 6, 8  ó  21A"><button class="btn soft" onclick="addPost()">Agregar puesto</button>`;
+h+=S.posts.map(p=>{const a=postActive(p);return `<div class="prow"><input class="nm" inputmode="text" autocapitalize="characters" value="${esc(postLabel(p))}" aria-label="Máquinas del puesto" onchange="setPost('${p.id}',this.value)"><span class="tag">${a?(postHeld(p)?'Detenido, en rotación':'Activo'):'Parado'}</span><button class="x" aria-label="Subir" onclick="movePost('${p.id}',-1)">↑</button><button class="x" aria-label="Bajar" onclick="movePost('${p.id}',1)">↓</button><button class="x del" onclick="rm('posts','${p.id}')">${armed==='posts'+p.id?'¿Borrar?':'Quitar'}</button></div>`}).join('');
+h+=lineCfgHTML()+ACEPTAR;
+return h;
+}
+function mState(m){const st=!m.on?'off':m.zero?'zero':m.hold?'hold':'on';return [['on','Encendida','on'],['hold','Detenida','hold'],['zero','Cero operario','zero'],['off','Parada','stop']].map(([k,l,c])=>`<button class="pill ${st===k?c:'ghost'}" aria-pressed="${st===k}" onclick="setMState(${m.n},'${k}')">${l}</button>`).join('')}
+function setTask(n,v){S.machines.find(x=>x.n===n).task=v;save();rr()}
+function markZero(ns){ns.forEach(n=>{const m=S.machines.find(x=>x.n===n);if(m){m.on=true;m.zero=true;m.hold=false;m.task=''}});save();notice={t:'Máquina'+(ns.length>1?'s ':' ')+ns.join(', ')+' de cero operario.'};rr()}
+function setMState(n,k){const m=S.machines.find(x=>x.n===n),was=machOn(n);m.on=k!=='off';m.hold=k==='hold';m.zero=k==='zero';if(k==='on'){m.reason='';m.note=''}if(k!=='hold')m.task='';if(was!==machOn(n))markDirty();save();rr()}
+function togglePower(n){const m=S.machines.find(x=>x.n===n);m.on=!m.on;if(m.on){m.reason='';m.note=''}markDirty();save();rr()}
+function setNote(n,v){const m=S.machines.find(x=>x.n===n);if(!m)return;m.note=String(v).trim();save();notice={t:m.note?'Descripción guardada para la máquina '+n+'. Sale en el reporte.':'Descripción de la máquina '+n+' borrada.'};rr()}
+function setReason(n,v){S.machines.find(x=>x.n===n).reason=v;save();rr()}
+const parseNums=v=>{const a=[];String(v).split(/[^0-9]+/).filter(Boolean).map(Number).forEach(n=>{if(S.machines.some(m=>m.n===n)&&a.indexOf(n)<0)a.push(n)});return a};
+const parseSfx=v=>{const m=String(v).match(/\d\s*([A-Za-z])\s*$/);return m?m[1].toUpperCase():''};
+const badNums=v=>String(v).split(/[^0-9]+/).filter(Boolean).map(Number).filter(n=>!S.machines.some(m=>m.n===n));
+/* Una máquina solo puede estar en un puesto con la misma letra: si ya estaba en otro, se mueve aquí. 21 y 21A son puestos distintos. */
+function claim(ms,id,sfx){let moved=[];S.posts.forEach(p=>{if(p.id===id||(p.sfx||'')!==(sfx||''))return;const k=p.ms.filter(n=>ms.indexOf(n)<0);if(k.length!==p.ms.length){moved=moved.concat(p.ms.filter(n=>ms.indexOf(n)>=0));p.ms=k}});S.posts=S.posts.filter(p=>p.id===id||p.ms.length);return moved}
+/* Al cambiar los puestos, la rotación de hoy se recalcula desde el bloque actual. */
+function regenDay(k,from){const keep=date;date=k;try{gen(from,true)}finally{date=keep}}
+function postsChanged(){
+markDirty();
+return regenMsg.length?' Rotación actualizada: '+regenMsg.join(', ')+'.':'';
+}
+function postMsg(ms,moved,bad,head,sfx){return head+ms.join(', ')+(sfx||'')+'.'+(moved.length?' Se quitó '+moved.join(', ')+' del puesto donde estaba.':'')+(bad.length?' No existe'+(bad.length>1?'n':'')+' la'+(bad.length>1?'s':'')+' máquina'+(bad.length>1?'s':'')+' '+bad.join(', ')+'.':'')}
+function setPost(id,v){const ms=parseNums(v),bad=badNums(v);if(!ms.length){notice={t:'Escribe números de máquina que existan, por ejemplo 3, 4, 5.',bad:true};return rr()}const sfx=parseSfx(v),moved=claim(ms,id,sfx);const pp=S.posts.find(p=>p.id===id);pp.ms=ms;if(sfx)pp.sfx=sfx;else delete pp.sfx;const ap=postsChanged();save();notice={t:postMsg(ms,moved,bad,'Puesto guardado: ',sfx)+ap,bad:bad.length>0};rr()}
+function addPost(){const v=$('#np').value,ms=parseNums(v),bad=badNums(v);if(!ms.length){notice={t:'Escribe números de máquina que existan, por ejemplo 6, 8.',bad:true};return rr()}const id=uid(),sfx=parseSfx(v),np={id,ms};if(sfx)np.sfx=sfx;S.posts.push(np);const moved=claim(ms,id,sfx);const ap=postsChanged();save();notice={t:postMsg(ms,moved,bad,'Puesto agregado: ',sfx)+ap,bad:bad.length>0};rr()}
+function movePost(id,dir){const i=S.posts.findIndex(p=>p.id===id),j=i+dir;if(j<0||j>=S.posts.length)return;const t=S.posts[i];S.posts[i]=S.posts[j];S.posts[j]=t;postsChanged();save();rr()}
+
+function personalHTML(){
+let h=`<p class="sub">Marca quién está hoy. Los Material Handler y Utility senior cubren puestos cuando faltan operarios. El <b>Supervisor</b> no entra en la rotación; en desayuno y almuerzo cubre una máquina solo si los Material Handler no dan abasto. A quien no vino le eliges el motivo y quién lo reemplaza. Marca como <b>Extra</b> a los operarios y Material Handler que vienen de fuera del grupo y elige por quién viene cada uno (un Material Handler extra viene por el Material Handler que falta); los que no reemplazan a nadie salen en el reporte como extras necesitados.</p>`;
+h+=`<label for="addp">Agregar personal (uno por línea)</label><textarea id="addp" placeholder="Nombre y apellido"></textarea><label for="addr">Función</label><select id="addr"><option value="op">Operario</option><option value="util">Material Handler</option><option value="senior">Utility senior</option><option value="sup">Supervisor</option></select><button class="btn" onclick="addPeople()">Agregar</button><h2 class="lh">Tu personal</h2>`+evBarHTML();
+h+=`<p class="tag" style="margin:0 0 4px">Usa las flechas ↑ ↓ para ponerlos en el orden en que caen: cada uno va detrás del de arriba.</p>`;
+h+=S.people.map((p,pi)=>`<div class="prow"><span class="num" aria-label="Orden">${pi+1}</span><input class="nm" value="${esc(p.name)}" aria-label="Nombre" onchange="ren('${p.id}',this.value)"><select aria-label="Función" onchange="setRole('${p.id}',this.value)"><option value="op" ${p.role==='op'?'selected':''}>Operario</option><option value="util" ${p.role==='util'?'selected':''}>Material Handler</option><option value="senior" ${p.role==='senior'?'selected':''}>Utility senior</option><option value="sup" ${p.role==='sup'?'selected':''}>Supervisor</option></select>${isUtil(p)?`<select aria-label="Línea que cubre" onchange="setULine('${p.id}',this.value)">${[1,2,0].map(l=>`<option value="${l}" ${uLine(p)===l?'selected':''}>${LN[l]}</option>`).join('')}</select>`:''}${onVac(p.id,todayStr())?'<span class="tag">De vacaciones</span>':leftOn(p.id,todayStr())?`<button class="pill hold" aria-label="Deshacer la salida de ${esc(p.name)}" onclick="undoLeft('${p.id}')">${armed==='left'+p.id?'¿Deshacer salida?':'Se fue '+esc(hm12(leftOn(p.id,todayStr()).t))+' ✕'}</button>`:`<button class="pill ${p.present?'on':''}" onclick="togglePresent('${p.id}')">${p.present?'Hoy sí':'Hoy no'}</button>`}${lateOn(p.id,todayStr())?`<span class="chip ch">Llegó ${esc(hm12(lateOn(p.id,todayStr()).t))}</span>`:''}${p.role==='op'||isUtil(p)?`<button class="pill ${p.extra?'on':'ghost'}" aria-pressed="${!!p.extra}" onclick="toggleExtra('${p.id}')">Extra</button>`:''}<button class="x" aria-label="Subir a ${esc(p.name)}" ${pi===0?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',-1)">↑</button><button class="x" aria-label="Bajar a ${esc(p.name)}" ${pi===S.people.length-1?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',1)">↓</button><button class="x del" onclick="rm('people','${p.id}')">${armed==='people'+p.id?'¿Borrar?':'Quitar'}</button>${absentCtl(p)}${isSup(p)||p.extra?'':scoreHTML(p)}</div>`).join('');
+h+=brkCfgHTML()+ACEPTAR;
+return h;
+}
+/* Orden del personal: la rotación los toma en este orden (quién va detrás de quién). */
+/* Evaluación del 1 al 5 (escala de la empresa). Confidencial: se guarda cifrada con la contraseña del supervisor (AES-GCM, clave derivada con PBKDF2). Sin la contraseña no se puede leer, ni en este aparato ni en el respaldo. */
+const EVL=['','Requiere mejoras significativas','Por debajo de las expectativas','Cumple con los estándares','Supera las expectativas','Desempeño sobresaliente'];
+let EV=null,EVK=null,evBusy=false,evMode='';
+const b64e=u=>{let s='';new Uint8Array(u).forEach(x=>s+=String.fromCharCode(x));return btoa(s)};
+const b64d=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function evKey(pin,salt){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:200000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+let evQ=Promise.resolve();
+function evEnc(){if(!evOn())return evQ;const k=EVK,d=JSON.stringify(EV),sl=(S.evx&&S.evx.s)||EVS,run=()=>evEnc1(k,d,sl);evQ=evQ.then(run,run);return evQ}
+async function evEnc1(k,d,sl){const iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,new TextEncoder().encode(d));S.evx={s:sl,i:b64e(iv),c:b64e(ct)};save()}
+let EVS='';
+function evLegacy(){const o={};S.people.forEach(p=>{if(p.ev||p.eh)o[p.id]={ev:p.ev||3,eh:p.eh||[]};delete p.ev;delete p.eh;delete p.score;delete p.sh});return o}
+function evLock(){EV=null;EVK=null;evMode=''}
+const evOn=()=>!!(EV&&EVK);
+function evBarHTML(){
+if(evOn())return `<div class="evbar on"><span>🔓 <b>Evaluaciones visibles</b>. Solo tú las ves; se ocultan al salir de Personal.</span><div class="pbar"><button class="pill" onclick="evLock();rr()">Ocultar</button><button class="pill" onclick="evMode='chg';rr()">Cambiar contraseña</button></div>${evMode==='chg'?`<label for="evn1">Contraseña nueva</label><input id="evn1" type="password" autocomplete="new-password"><label for="evn2">Repítela</label><input id="evn2" type="password" autocomplete="new-password"><button class="btn soft" onclick="evChange()">Guardar contraseña nueva</button>`:''}</div>`;
+if(!S.evx)return `<div class="evbar"><span>🔒 <b>Evaluaciones confidenciales</b>. Crea una contraseña que solo sepas tú. Las evaluaciones quedan cifradas con ella: sin la contraseña nadie las puede ver, ni en el respaldo. Si la olvidas, se pierden.</span><label for="evp1">Contraseña (mínimo 4)</label><input id="evp1" type="password" autocomplete="new-password"><label for="evp2">Repítela</label><input id="evp2" type="password" autocomplete="new-password"><button class="btn" ${evBusy?'disabled':''} onclick="evCreate()">Crear contraseña y ver evaluaciones</button></div>`;
+return `<div class="evbar"><span>🔒 <b>Evaluaciones ocultas</b>. Escribe tu contraseña para verlas.</span><div class="pbar"><input id="evp" type="password" autocomplete="current-password" aria-label="Contraseña de evaluaciones" onkeydown="if(event.key==='Enter')evOpen()"><button class="btn" style="margin-top:0;width:auto;padding:10px 18px" ${evBusy?'disabled':''} onclick="evOpen()">Ver</button></div>${evMode==='reset'||armed==='evreset'?`<button class="link" style="color:var(--bad)" onclick="evReset()">${armed==='evreset'?'Toca otra vez: se borran todas las evaluaciones':'Olvidé la contraseña: borrar evaluaciones y empezar de nuevo'}</button>`:`<button class="link" onclick="evMode='reset';rr()">Olvidé la contraseña</button>`}</div>`;
+}
+async function evCreate(){const a=$('#evp1').value,b=$('#evp2').value;if(a.length<4){notice={t:'La contraseña debe tener al menos 4 caracteres.',bad:true};return rr()}if(a!==b){notice={t:'Las dos contraseñas no coinciden.',bad:true};return rr()}
+evBusy=true;try{const salt=crypto.getRandomValues(new Uint8Array(16));EVS=b64e(salt);S.evx=null;EVK=await evKey(a,salt);EV=evLegacy();await evEnc();notice={t:'Contraseña creada. Las evaluaciones quedan cifradas.'}}catch(e){evLock();notice={t:'Este navegador no permite cifrar. Ábrelo desde el enlace https.',bad:true}}evBusy=false;rr()}
+async function evOpen(){const pin=$('#evp').value;if(!pin)return;evBusy=true;try{const x=S.evx;const k=await evKey(pin,b64d(x.s));const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64d(x.i)},k,b64d(x.c));EV=JSON.parse(new TextDecoder().decode(pt));EVK=k;EVS=x.s;const L=evLegacy();Object.keys(L).forEach(id=>{if(!EV[id])EV[id]=L[id]});if(Object.keys(L).length)await evEnc();evMode=''}catch(e){evLock();notice={t:'Contraseña incorrecta.',bad:true}}evBusy=false;rr()}
+async function evChange(){const a=$('#evn1').value,b=$('#evn2').value;if(a.length<4){notice={t:'La contraseña debe tener al menos 4 caracteres.',bad:true};return rr()}if(a!==b){notice={t:'Las dos contraseñas no coinciden.',bad:true};return rr()}
+const salt=crypto.getRandomValues(new Uint8Array(16));EVS=b64e(salt);EVK=await evKey(a,salt);S.evx=null;await evEnc();evMode='';notice={t:'Contraseña cambiada.'};rr()}
+function evReset(){if(armed!=='evreset'){armed='evreset';return rr()}armed=null;S.evx=null;evLegacy();evLock();save();notice={t:'Se borraron las evaluaciones. Crea una contraseña nueva.'};rr()}
+const scoreOf=p=>{const e=EV&&EV[p.id];return Math.max(1,Math.min(5,Math.round(Number(e&&e.ev)||3)))};
+const scoreCol=v=>'hsl('+Math.round((v-1)/4*120)+' 70% 40%)';
+function scoreHTML(p){if(!evOn())return '';const v=scoreOf(p),e=EV[p.id]||{},H=e.eh||[],pn=e.pn||0,pp=e.pp||0,c=scoreCol(v),T=todayStr();
+const wk=(()=>{const t=new Date();const k=(t.getDay()+6)%7;return addDays(T,-k)})(),mo=T.slice(0,7);
+const cnt=(f)=>{const a=H.filter(x=>f(x[0]));return [a.filter(x=>x[1]<0).length,a.filter(x=>x[1]>0).length]};
+const W=cnt(d=>d>=wk&&d<=T),M=cnt(d=>d.slice(0,7)===mo),last=H[H.length-1];
+const dots=(n,col)=>[0,1,2].map(i=>`<i style="background:${i<n?col:'transparent'};border-color:${col}"></i>`).join('');
+return `<div class="score" data-ev="${p.id}"><div class="srow"><span class="sbars" role="meter" aria-valuemin="1" aria-valuemax="5" aria-valuenow="${v}" aria-label="Evaluación de ${esc(p.name)}: ${v}, ${EVL[v]}">${[1,2,3,4,5].map(i=>`<i style="height:${8+i*6}px;background:${i<=v?c:'var(--line)'}"></i>`).join('')}</span><span class="sl"><b style="color:${c}">${v}</b> ${EVL[v]}</span></div>
+<div class="srow"><span class="sg"><button class="pill sinc" aria-label="Anotar incidencia de ${esc(p.name)}" onclick="rate('${p.id}',-1)">− Incidencia</button><span class="dots" title="Cada 3 incidencias baja un nivel">${dots(pn,'var(--bad)')}</span></span><span class="sg"><button class="pill sgood" aria-label="Anotar buena acción de ${esc(p.name)}" onclick="rate('${p.id}',1)">+ Buena acción</button><span class="dots" title="Cada 3 buenas acciones sube un nivel">${dots(pp,'#2E8B3A')}</span></span></div>
+<small>Semana: ${W[0]} incidencia${W[0]===1?'':'s'}, ${W[1]} buena${W[1]===1?'':'s'} · Mes: ${M[0]} incidencia${M[0]===1?'':'s'}, ${M[1]} buena${M[1]===1?'':'s'}${last?` · última ${last[1]<0?'incidencia':'buena acción'} el ${esc(fmtD(last[0]))}${last[2]?(last[2]<0?' (bajó de nivel)':' (subió de nivel)'):''} <button class="link" style="font-size:14px;padding:0 4px" onclick="undoRate('${p.id}')">Deshacer</button>`:''}</small></div>`}
+/* Cada 3 incidencias baja un nivel; cada 3 buenas acciones sube uno. Al cambiar de nivel, ese contador vuelve a 0. */
+async function rate(id,dv){if(!evOn())return;const p=S.people.find(x=>x.id===id);if(!p)return;const e=EV[id]=EV[id]||{ev:3,eh:[]};e.ev=scoreOf(p);let ch=0;
+if(dv<0){e.pn=(e.pn||0)+1;if(e.pn>=3){e.pn=0;if(e.ev>1){e.ev--;ch=-1}}}else{e.pp=(e.pp||0)+1;if(e.pp>=3){e.pp=0;if(e.ev<5){e.ev++;ch=1}}}
+e.eh=(e.eh||[]).concat([[todayStr(),dv,ch]]).slice(-500);evRR(id);evEnc()}
+/* Redibuja sin mover la fila que se tocó. */
+function evRR(id){const sel='[data-ev="'+id+'"]',a=document.querySelector(sel),y0=a?a.getBoundingClientRect().top:null;rr();const b=document.querySelector(sel);if(b&&y0!=null)window.scrollBy(0,b.getBoundingClientRect().top-y0)}
+async function undoRate(id){if(!evOn())return;const e=EV[id];if(!e||!e.eh||!e.eh.length)return;const [d,dv,ch]=e.eh.pop();
+if(ch){e.ev-=ch;if(dv<0)e.pn=2;else e.pp=2}else if(dv<0)e.pn=Math.max(0,(e.pn||0)-1);else e.pp=Math.max(0,(e.pp||0)-1);evRR(id);evEnc()}
+function movePerson(id,dir){const i=S.people.findIndex(p=>p.id===id),j=i+dir;if(i<0||j<0||j>=S.people.length)return;const t=S.people[i];S.people[i]=S.people[j];S.people[j]=t;markDirty();save();rr()}
+function ren(id,v){const n=String(v).trim();if(n){S.people.find(p=>p.id===id).name=n;save()}rr()}
+function setRole(id,v){S.people.find(p=>p.id===id).role=v;markDirty();save();rr()}
+function togglePresent(id){const p=S.people.find(x=>x.id===id);p.present=!p.present;if(p.present){delete p.why;delete p.sub}else S.people.forEach(q=>{if(q.sub===id)delete q.sub});markDirty();save();rr()}
+const WHY=[['enferma','Se reportó enferma'],['enfermo','Se reportó enfermo'],['vac','Vacaciones'],['baja','Pidió la baja']];
+const absentOn=(p,d)=>!p.present||onVac(p.id,d);
+function absentCtl(p){
+const T=todayStr();if(p.extra&&!absentOn(p,T))return forCtl(p);
+if(p.extra||!absentOn(p,T))return '';
+const vac=onVac(p.id,T);
+const used=new Set(S.people.filter(q=>q.id!==p.id&&q.sub).map(q=>q.sub));
+const C=S.people.filter(c=>sameKind(p,c)&&!absentOn(c,T)&&!used.has(c.id)).sort((a,b)=>(b.extra?1:0)-(a.extra?1:0));
+let h=`<div style="flex-basis:100%;display:grid;gap:6px">`;
+if(!vac)h+=`<select class="${p.why?'':'miss'}" aria-label="Motivo de la ausencia de ${esc(p.name)}" onchange="setWhy('${p.id}',this.value)"><option value="">¿Por qué no vino?</option>${WHY.map(([k,l])=>`<option value="${k}" ${p.why===k?'selected':''}>${l}</option>`).join('')}</select>`;
+const cur=p.sub&&S.people.find(x=>x.id===p.sub);
+if(C.length||cur)h+=`<select aria-label="Quién reemplaza a ${esc(p.name)}" onchange="setSubP('${p.id}',this.value)"><option value="">${cur?'Quitar reemplazo':'¿Quién lo reemplaza? (sin reemplazo)'}</option>${C.map(c=>`<option value="${c.id}" ${c.id===p.sub?'selected':''}>${esc(c.name)}</option>`).join('')}${cur&&!C.some(c=>c.id===cur.id)?`<option value="${cur.id}" selected>${esc(cur.name)}</option>`:''}</select>`;
+else h+=`<span class="tag">${isUtil(p)?'No hay Material Handler disponibles para reemplazarlo. Agrega al Material Handler que viene en su lugar y márcalo como Extra.':'No hay operarios disponibles para reemplazarlo. Agrega en la lista de abajo a quien viene en su lugar.'}</span>`;
+return h+`</div>`;
+}
+function forCtl(p){
+const T=todayStr(),A=S.people.filter(q=>!q.extra&&sameKind(p,q)&&absentOn(q,T)&&(!q.sub||q.sub===p.id||!S.people.some(x=>x.id===q.sub&&!absentOn(x,T))));
+const cur=S.people.find(q=>q.sub===p.id);
+if(!A.length)return `<span class="tag" style="flex-basis:100%">${isUtil(p)?'Viene como Material Handler extra (no falta ningún Material Handler).':'Viene como operario extra (no falta nadie).'}</span>`;
+return `<select style="flex-basis:100%" aria-label="Por quién viene ${esc(p.name)}" onchange="setFor('${p.id}',this.value)"><option value="">${cur?'No reemplaza a nadie (extra)':isUtil(p)?'¿Viene por algún Material Handler? (si no, es extra)':'¿Viene por alguien? (si no, es extra)'}</option>${A.map(q=>`<option value="${q.id}" ${cur&&cur.id===q.id?'selected':''}>Viene por ${esc(q.name)}</option>`).join('')}</select>`;
+}
+function setFor(pid,v){S.people.forEach(q=>{if(q.sub===pid)delete q.sub});const q=v&&S.people.find(x=>x.id===v);if(q)q.sub=pid;save();notice={t:q?pname(pid)+' reemplaza a '+q.name+'.':pname(pid)+' queda como extra.'};rr()}
+function setWhy(id,v){const p=S.people.find(x=>x.id===id);if(v)p.why=v;else delete p.why;save();rr()}
+function setSubP(id,v){const p=S.people.find(x=>x.id===id);if(v)S.people.forEach(q=>{if(q.sub===v)delete q.sub});if(v)p.sub=v;else delete p.sub;save();notice={t:v?pname(v)+' reemplaza a '+p.name+'.':'Reemplazo quitado.'};rr()}
+function toggleExtra(id){const p=S.people.find(x=>x.id===id);p.extra=!p.extra;if(p.extra){delete p.why;delete p.sub}else S.people.forEach(q=>{if(q.sub===id)delete q.sub});save();rr()}
+
+/* Reporte diario: puntos 1 y 4 se llenan solos con Máquinas y Personal; lo que escribas se agrega debajo. */
+
+let repShow=null;
+function repD(){const d=day();if(!d.rep)d.rep={};return d.rep}
+const numD=k=>{const[y,m,dd]=k.split('-');return dd+'/'+m+'/'+y};
+const whyTxt=p=>onVac(p.id,date)||p.why==='vac'?'está de vacaciones':p.why==='enferma'?'se reportó enferma':p.why==='enfermo'?'se reportó enfermo':p.why==='baja'?'pidió la baja':'no vino';
+function prodAuto(){return S.machines.filter(m=>m.on&&!m.hold).map(m=>m.n).join(', ')}
+function paradasAuto(){return S.machines.filter(m=>!m.on||m.hold).map(m=>'Máquina '+m.n+(m.reason?': '+m.reason:'')+(m.note?' – '+m.note:'')+(m.hold?(m.task==='rt'?' (detenida, operario en retrabajo)':' (detenida)'):'')).join('\n')}
+function asisAuto(){
+const ext=S.people.filter(p=>p.extra&&!absentOn(p,date)),abs=S.people.filter(p=>!p.extra&&absentOn(p,date));
+const used=new Set(),L=[];
+const pres=S.people.filter(p=>!absentOn(p,date));
+abs.forEach(p=>{const s=p.sub&&pres.find(x=>x.id===p.sub);if(s){used.add(s.id);L.push(s.name+(isUtil(s)?' (Material Handler)':'')+' reemplaza a '+p.name+(isUtil(p)?' (Material Handler)':'')+', que '+whyTxt(p)+'.')}});
+abs.forEach(p=>{if(!(p.sub&&pres.some(x=>x.id===p.sub)))L.push(p.name+' '+whyTxt(p)+' (sin reemplazo).')});
+S.people.forEach(p=>{const l=lateOn(p.id,date);if(l&&!absentOn(p,date))L.push(lateTxt(p,l))});
+S.people.forEach(p=>{const l=leftOn(p.id,date);if(l&&!absentOn(p,date))L.push(leftTxt(p,l))});
+const rest=ext.filter(x=>!used.has(x.id));
+const rO=rest.filter(x=>!isUtil(x)),rU=rest.filter(isUtil);
+if(rO.length)L.push('Operarios extras necesitados: '+rO.map(x=>x.name).join(', ')+'.');
+if(rU.length)L.push('Material Handler extra de apoyo: '+rU.map(x=>x.name).join(', ')+'.');
+return L.join('\n');
+}
+const joinN=(a,b)=>[a,b].map(x=>String(x||'').trim()).filter(Boolean).join('\n');
+const P4='4. Cómo fue la asistencia y puntualidad, nombre de los ausentes y llegadas tarde. Reportar si se apagaron máquinas por este motivo:';
+function repHead(){const r=repD();return ['Grupo '+S.g,'Fecha: '+numD(date),'Informa: '+(String(r.informa||'').trim()||S.informa||''),'']}
+function repAsis(){return joinN(asisAuto(),repD().asis)||'Asistencia completa.'}
+function repText(){
+const r=repD(),v=k=>String(r[k]||'').trim();
+return repHead().concat([
+'1. ¿Cómo funcionaron las máquinas en su turno y qué problemas hubo?','',
+'Máquinas entregadas produciendo:',joinN(prodAuto(),r.prod),'',
+'Máquinas paradas y motivos:',joinN(paradasAuto(),r.paradas),'','',
+'2. Como funcionaron los moldes',v('moldes'),'',
+'3. ¿Qué hubo con los periféricos?','',v('perif')||'(Sin novedades )','',
+P4,repAsis(),'',
+'5. Nombre y apellidos de los implicados en violaciones a las Buenas Prácticas de Manufactura:','',v('bpm')||'(Sin incidencias)','',
+'6. Otras observaciones generales:',v('otras')]).join('\n').replace(/\n{4,}/g,'\n\n\n').trimEnd();
+}
+function repRH(){return repHead().concat([P4,repAsis()]).join('\n').trimEnd()}
+function setRep(k,v){repD()[k]=v;save();if(repShow===date)repFill()}
+function repFill(){const t=repText(),h=repRH();const a=$('#rpv'),b=$('#rpv2');if(a)a.textContent=t;if(b)b.textContent=h;const w=$('#rwa'),w2=$('#rwa2');if(w)w.href='https://wa.me/?text='+encodeURIComponent(t);if(w2)w2.href='https://wa.me/?text='+encodeURIComponent(h)}
+function genRep(){repShow=date;rr();repFill();const e=$('#rout');if(e)e.scrollIntoView({behavior:'smooth',block:'start'})}
+async function repCopy(rh){
+const t=rh?repRH():repText(),s=$(rh?'#rcs2':'#rcs');
+try{await navigator.clipboard.writeText(t);s.textContent='Copiado. Pégalo en WhatsApp.'}catch(e){
+try{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();s.textContent=ok?'Copiado. Pégalo en WhatsApp.':'No se pudo copiar. Mantén presionado el texto para copiarlo.'}catch(x){s.textContent='No se pudo copiar. Mantén presionado el texto para copiarlo.'}}
+}
+function reporteHTML(){
+const r=repD(),ta=(k,lab,ph,hint)=>`<label for="r_${k}">${lab}</label><textarea id="r_${k}" placeholder="${esc(ph||'')}" oninput="setRep('${k}',this.value)">${esc(r[k]||'')}</textarea>${hint?`<p class="tag" style="margin:4px 0 0">${hint}</p>`:''}`;
+const box=(t,c)=>`<div class="blk"><h3 style="font-size:19px">${t}</h3>${c}</div>`;
+const auto=(t)=>`<pre style="white-space:pre-wrap;font:inherit;font-size:16px;background:var(--now);border-radius:10px;padding:8px 10px;margin:6px 0 0">${esc(t)||'<span class="tag">Nada por ahora</span>'}</pre>`;
+const noR=S.machines.filter(m=>(!m.on||m.hold)&&!m.reason).map(m=>m.n),noW=S.people.filter(p=>!p.extra&&absentOn(p,date)&&!onVac(p.id,date)&&!p.why).map(p=>p.name);
+let h=`<p class="sub">Escribe lo que quieras agregar en cada punto y toca «Generar reporte». Las máquinas y la asistencia se llenan solas con lo que tienes en Máquinas y Personal.</p>`;
+h+=`<div class="row2"><div><label for="rdate">Fecha</label><input type="date" id="rdate" value="${date}" onchange="setDate(this.value)"></div><div><label for="r_informa">Informa</label><input id="r_informa" value="${esc(r.informa||S.informa||'')}" oninput="setRep('informa',this.value);S.informa=this.value;save()"></div></div>`;
+h+=box('1. Máquinas',`<b style="font-size:16px">Produciendo (de Máquinas)</b>${auto(prodAuto())}<b style="font-size:16px;display:block;margin-top:8px">Paradas y motivos (de Máquinas)</b>${auto(paradasAuto())}${noR.length?`<div class="warn">Falta el motivo de la máquina ${noR.join(', ')}. Ponlo en la pestaña Máquinas.</div>`:''}`+ta('prod','Agregar a produciendo','')+ta('paradas','Agregar a paradas','Ej. Máquina 3 estuvo parada 2 h por cambio de molde'));
+h+=box('2. Moldes',ta('moldes','Cómo funcionaron los moldes',''));
+h+=box('3. Periféricos',ta('perif','Qué hubo con los periféricos','','Si lo dejas vacío se pone «(Sin novedades )».'));
+h+=box('4. Asistencia y puntualidad',`<b style="font-size:16px">De Personal</b>${auto(asisAuto())}${noW.length?`<div class="warn">Falta el motivo de ${esc(noW.join(', '))}. Ponlo en la pestaña Personal.</div>`:''}`+ta('asis','Agregar (llegadas tarde, máquinas apagadas por esto…)',''));
+h+=box('5. Buenas Prácticas de Manufactura',ta('bpm','Implicados (nombre y apellidos)','','Si lo dejas vacío se pone «(Sin incidencias)».'));
+h+=box('6. Otras observaciones',ta('otras','Otras observaciones generales',''));
+h+=`<button class="btn" onclick="genRep()">Generar reporte</button>`;
+if(repShow===date){
+h+=`<div id="rout" class="blk"><h3>Reporte completo</h3><button class="btn" onclick="repCopy(false)">Copiar reporte</button><a class="btn soft" id="rwa" href="#" target="_blank" rel="noopener" style="text-decoration:none">Abrir en WhatsApp</a><div class="tag" id="rcs" style="margin-top:6px"></div><pre id="rpv" style="white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;line-height:1.45;background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:10px;margin:10px 0 0"></pre></div>`;
+h+=`<div class="blk"><h3>Reporte para Recursos Humanos</h3><p class="tag" style="margin:0">Mismo encabezado y solo el punto 4.</p><button class="btn" onclick="repCopy(true)">Copiar reporte de RR. HH.</button><a class="btn soft" id="rwa2" href="#" target="_blank" rel="noopener" style="text-decoration:none">Abrir en WhatsApp</a><div class="tag" id="rcs2" style="margin-top:6px"></div><pre id="rpv2" style="white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;line-height:1.45;background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:10px;margin:10px 0 0"></pre></div>`;
+}
+return h;
+}
+
+/* Salida antes de hora: quien se va a mitad del turno sale de la rotación desde ese momento
+   (los bloques anteriores quedan igual), se puede apagar su puesto y queda en el reporte (punto 4). */
+const LWHY=[['enf','Enfermedad'],['per','Asunto personal'],['fam','Emergencia familiar'],['otro','Otro motivo']];
+const hm12=t=>{const p=String(t||'').split(':');return p.length<2?String(t||''):String(Number(p[0]))+':'+p[1]};
+const nowHM=()=>{const n=new Date();return pad(n.getHours())+':'+pad(n.getMinutes())};
+const listY=a=>a.length>1?a.slice(0,-1).join(', ')+' y '+a[a.length-1]:a.join('');
+function leftWhy(l){return l.why==='enf'?'por enfermedad':l.why==='per'?'por asunto personal':l.why==='fam'?'por emergencia familiar':(String(l.note||'').trim()?'por '+String(l.note).trim():'antes de terminar el turno')}
+function leftTxt(p,l){const off=(l.off||[]).map(m=>m.n);return p.name+' se fue a las '+hm12(l.t)+' '+leftWhy(l)+'.'+(off.length?' Se apag'+(off.length>1?'aron las máquinas ':'ó la máquina ')+listY(off)+' por este motivo.':' Su puesto se siguió cubriendo.')}
+let lvOpen=false,lvF={};
+function curPostOf(d,cur,pid){const b=cur>=0&&d.blocks[cur];if(!b)return '';const j=b.arr.indexOf(pid);return j>=0&&j<b.posts.length?b.posts[j]:''}
+function lvSet(k,v){lvF[k]=v;if(k==='p'){lvF.post=curPostOf(day(),curBlock(day()),v)}if(k==='p'||k==='w')rr()}
+function lvOpenF(){lvOpen=true;lvF={t:nowHM(),w:'enf'};rr()}
+function lvClose(){lvOpen=false;lvF={};rr()}
+function leftHTML(d,cur){
+if(date!==todayStr())return '';
+const L=d.left||{},ids=Object.keys(L);
+let h='';
+if(ids.length)h+=`<div class="alert soft"><b>Se fueron antes de hora hoy</b>`+ids.map(id=>{const l=L[id],off=(l.off||[]).map(m=>m.n);return `<div style="display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;margin-top:6px"><span style="flex:1 1 180px">${esc(pname(id))} · ${esc(hm12(l.t))} · ${esc(leftWhy(l))}${off.length?' · apagada'+(off.length>1?'s':'')+' '+off.join(', '):''}</span><button class="rt" onclick="undoLeft('${id}')">Deshacer</button></div>`}).join('')+`</div>`;
+if(!lvOpen)return h+`<button class="btn soft" onclick="lvOpenF()">🚪 Alguien se va antes de hora</button>`;
+const P=S.people.filter(here);
+const posts=S.posts.filter(postActive);
+h+=`<div class="rtbox"><h2>Salida antes de hora</h2><p class="sub" style="margin:0">Sale de la rotación desde ahora. Lo que ya pasó no cambia y queda en el reporte.</p>`;
+h+=`<label for="lv_p">¿Quién se va?</label><select id="lv_p" class="${lvF.p?'':'miss'}" onchange="lvSet('p',this.value)"><option value="">Elige a la persona</option>${P.map(p=>`<option value="${p.id}" ${lvF.p===p.id?'selected':''}>${esc(p.name)}${mk(p)}</option>`).join('')}</select>`;
+h+=`<div class="row2"><div><label for="lv_t">Hora</label><input type="time" id="lv_t" value="${esc(lvF.t||nowHM())}" onchange="lvSet('t',this.value)"></div><div><label for="lv_w">Motivo</label><select id="lv_w" onchange="lvSet('w',this.value)">${LWHY.map(([k,l])=>`<option value="${k}" ${lvF.w===k?'selected':''}>${l}</option>`).join('')}</select></div></div>`;
+if(lvF.w==='otro')h+=`<label for="lv_n">¿Cuál motivo?</label><input id="lv_n" value="${esc(lvF.note||'')}" placeholder="Ej. cita médica" oninput="lvF.note=this.value">`;
+h+=`<label for="lv_post">¿Se apaga algún puesto?</label><select id="lv_post" onchange="lvSet('post',this.value)"><option value="">No, el puesto se sigue cubriendo</option>${posts.map(p=>{const mine=lvF.p&&curPostOf(d,cur,lvF.p)===p.id;return `<option value="${p.id}" ${lvF.post===p.id?'selected':''}>Apagar máq. ${esc(postLabel(p))}${mine?' (donde está ahora)':''}</option>`}).join('')}</select>`;
+h+=`<button class="btn" onclick="saveLeft()">Registrar salida</button><button class="btn soft" onclick="lvClose()">Cancelar</button></div>`;
+return h;
+}
+function saveLeft(){
+const pid=lvF.p;if(!pid){notice={t:'Elige quién se va.',bad:true};return rr()}
+const t=lvF.t||nowHM(),why=lvF.w||'enf',note=why==='otro'?String(lvF.note||'').trim():'';
+const d=S.days[todayStr()]||(date=todayStr(),day());d.left=d.left||{};
+const rec={t,why};if(note)rec.note=note;
+const post=lvF.post&&S.posts.find(p=>p.id===lvF.post);
+if(post){const why2=(LWHY.find(x=>x[0]===why)||[])[1]||'motivo';
+rec.off=S.machines.filter(m=>post.ms.indexOf(m.n)>=0&&m.on).map(m=>({n:m.n,on:m.on,hold:!!m.hold,zero:!!m.zero,reason:m.reason||'',task:m.task||''}));
+rec.off.forEach(o=>{const m=S.machines.find(x=>x.n===o.n);m.on=false;m.hold=false;m.zero=false;m.task='';m.reason='Operario se fue ('+why2.toLowerCase()+')'})}
+d.left[pid]=rec;lvOpen=false;lvF={};
+markDirty();save();
+const p=S.people.find(x=>x.id===pid);
+notice={t:leftTxt(p,rec)+' Rotación recalculada desde el bloque actual.'};rr();
+}
+function undoLeft(pid){
+const d=S.days[todayStr()];if(!d||!d.left||!d.left[pid])return;
+if(armed!=='left'+pid){armed='left'+pid;notice={t:'Toca «Deshacer» otra vez para confirmar: '+pname(pid)+' vuelve a la rotación y se encienden las máquinas que se apagaron.'};return rr()}
+armed=null;
+(d.left[pid].off||[]).forEach(o=>{const m=S.machines.find(x=>x.n===o.n);if(m&&!m.on){m.on=o.on;m.hold=o.hold;m.zero=o.zero;m.reason=o.reason;m.task=o.task}});
+delete d.left[pid];
+markDirty();save();notice={t:pname(pid)+' vuelve a la rotación.'};rr();
+}
+
+/* Llegadas tarde: solo para el reporte (punto 4). Se guardan por día. */
+const lateOn=(id,ds)=>{const d=S.days[ds];return d&&d.late&&d.late[id]||null};
+function lateTxt(p,l){const n=String(l.note||'').trim();return p.name+' llegó tarde: se incorporó a las '+hm12(l.t)+(n?' ('+n+')':'')+'.'}
+let ltOpen=false,ltF={};
+function ltOpenF(){ltOpen=true;ltF={t:nowHM()};rr()}
+function ltClose(){ltOpen=false;ltF={};rr()}
+function lateHTML(d){
+if(date!==todayStr())return '';
+const L=d.late||{},ids=Object.keys(L);
+let h='';
+if(ids.length)h+=`<div class="alert soft"><b>Llegaron tarde hoy</b>`+ids.map(id=>`<div style="display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;margin-top:6px"><span style="flex:1 1 180px">${esc(pname(id))} · se incorporó a las ${esc(hm12(L[id].t))}${L[id].note?' · '+esc(L[id].note):''}</span><button class="rt" onclick="undoLate('${id}')">Deshacer</button></div>`).join('')+`</div>`;
+if(!ltOpen)return h+`<button class="btn soft" onclick="ltOpenF()">⏰ Alguien llegó tarde</button>`;
+const P=S.people.filter(p=>here(p)&&!L[p.id]);
+h+=`<div class="rtbox"><h2>Llegada tarde</h2><p class="sub" style="margin:0">Queda en el reporte, en el punto 4.</p>`;
+h+=`<label for="lt_p">¿Quién llegó tarde?</label><select id="lt_p" class="${ltF.p?'':'miss'}" onchange="ltF.p=this.value"><option value="">Elige a la persona</option>${P.map(p=>`<option value="${p.id}" ${ltF.p===p.id?'selected':''}>${esc(p.name)}${mk(p)}</option>`).join('')}</select>`;
+h+=`<label for="lt_t">¿A qué hora se incorporó?</label><input type="time" id="lt_t" value="${esc(ltF.t||nowHM())}" onchange="ltF.t=this.value">`;
+h+=`<label for="lt_n">Motivo (opcional)</label><input id="lt_n" value="${esc(ltF.note||'')}" placeholder="Ej. problema con el transporte" oninput="ltF.note=this.value">`;
+h+=`<button class="btn" onclick="saveLate()">Registrar llegada tarde</button><button class="btn soft" onclick="ltClose()">Cancelar</button></div>`;
+return h;
+}
+function saveLate(){
+const pid=ltF.p;if(!pid){notice={t:'Elige quién llegó tarde.',bad:true};return rr()}
+const d=day();d.late=d.late||{};const rec={t:ltF.t||nowHM()};const n=String(ltF.note||'').trim();if(n)rec.note=n;
+d.late[pid]=rec;ltOpen=false;ltF={};save();
+notice={t:lateTxt(S.people.find(x=>x.id===pid),rec)};rr();
+}
+function undoLate(pid){
+const d=S.days[todayStr()];if(!d||!d.late||!d.late[pid])return;
+if(armed!=='late'+pid){armed='late'+pid;notice={t:'Toca «Deshacer» otra vez para quitar la llegada tarde de '+pname(pid)+'.'};return rr()}
+armed=null;delete d.late[pid];save();notice={t:'Se quitó la llegada tarde de '+pname(pid)+'.'};rr();
+}
+function addPeople(){
+const names=$('#addp').value.split('\n').map(s=>s.trim()).filter(Boolean),role=$('#addr').value;
+if(!names.length){notice={t:'Escribe al menos un nombre.',bad:true};return rr()}
+names.forEach(name=>S.people.push({id:uid(),name,role,present:true}));
+markDirty();save();notice={t:names.length+' persona(s) agregada(s).'};rr();
+}
+function rm(kind,id){
+if(armed!==kind+id){armed=kind+id;return rr()}
+armed=null;
+S[kind]=S[kind].filter(x=>x.id!==id);
+if(kind==='people')S.vac=S.vac.filter(v=>v.pid!==id);
+if(kind==='posts')postsChanged();else markDirty();save();rr();
+}
+
+/* ===== Grupos: cada grupo guarda sus datos aparte en este dispositivo ===== */
+let newShift='dia',startGuide=false,focusNew=false;
+function savedGroups(){const out=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf(GKEY+'g:')===0){const g=lsGet(k);if(g&&g.g!=null&&g.g!=='')out.push(g)}}}catch(e){}return out.sort((a,b)=>String(a.g).localeCompare(String(b.g),'es',{numeric:true}))}
+function grpInfo(g){const P=g.people||[];if(!g.machines)return P.length+' personas · formato anterior, se actualiza al abrir';const ops=P.filter(p=>p.role==='op'&&!p.extra).length,ut=P.filter(p=>(p.role==='util'||p.role==='senior')&&!p.extra).length,ex=P.filter(p=>p.extra).length;return ops+' operarios · '+ut+' Material Handler'+(ex?' · '+ex+' extra':'')}
+function calDef(){return {mode:'ciclo',on:1,off:0,start:todayStr(),wd:[1,2,3,4,5],ov:{},pid:''}}
+function startHTML(){
+let h=`<h1>Rotación de grupos PCI Miami</h1><p class="sub">Cada grupo arma su propia rotación: máquinas, personal, desayuno y almuerzo, vacaciones, mes y reporte. Lo que guardes aquí queda solo en este dispositivo y no cambia nada de otros grupos.</p>`;
+if(notice){h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;notice=null}
+const G=savedGroups();
+if(G.length)h+=`<h2 class="lh">Tus grupos en este dispositivo</h2><div class="glist">`+G.map(g=>`<button class="gbtn" onclick="openGroup('${esc(String(g.g)).replace(/'/g,'&#39;')}')"><span>Grupo ${esc(g.g)}<small style="display:block">${g.shift==='noche'?'Noche · 18:00 a 6:00':'Día · 6:00 a 18:00'} · ${esc(grpInfo(g))}</small></span><span aria-hidden="true">›</span></button>`).join('')+`</div>`;
+h+=`<h2 class="lh">${G.length?'Crear otro grupo':'Crear tu grupo'}</h2><label for="ng">Número de grupo</label><input id="ng" inputmode="numeric" placeholder="Ej. 5" autocomplete="off">
+<label>Horario del grupo</label><div class="seg">${[['dia','Día','6:00 a 18:00'],['noche','Noche','18:00 a 6:00']].map(([k,l,s])=>`<button class="${newShift===k?'on':''}" aria-pressed="${newShift===k}" onclick="pickShift('${k}')">${l}<small>${s}</small></button>`).join('')}</div>
+<button class="btn" onclick="createGroup()">Crear grupo</button>`;
+h+=`<h2 class="lh">Cargar un respaldo</h2><p class="sub">Si ya armaste tu grupo en otro teléfono, pega aquí el código de respaldo (se copia en la pestaña Grupo).</p><textarea id="imp" class="code" placeholder="ROTG2:…"></textarea><button class="btn soft" onclick="importCode()">Cargar respaldo</button>`;
+h+=`<div class="pbar" style="margin-top:14px"><button class="btn soft" onclick="loadExample()">Ver un ejemplo</button><button class="btn soft" onclick="startGuide=!startGuide;render()">${startGuide?'Ocultar instrucciones':'Cómo usar'}</button></div>`;
+if(startGuide)h+=`<div style="margin-top:14px">${guideHTML()}</div>`;
+return h;
+}
+function pickShift(v){newShift=v;const g=$('#ng')?$('#ng').value:'';render();const i=$('#ng');if(i)i.value=g}
+function prepS(){evLock();SHIFT=S.shift==='noche'?'noche':'dia';if(!S.cal)S.cal=calDef();fixS();ensureBreaks();if(!Array.isArray(S.machines))S.machines=[];if(!Array.isArray(S.posts))S.posts=[]}
+function enterGroup(o,msg,t){S=o;prepS();printing=false;repShow=null;armed=null;fromSel=null;lvOpen=false;ltOpen=false;tab=t||'hoy';calM=todayStr().slice(0,7);date=nextShift();notice=msg?{t:msg}:null;if(!S.example){saveNow()}render();window.scrollTo(0,0)}
+function openGroup(g){let o=lsGet(GKEY+'g:'+g);if(!o){notice={t:'No se encontró ese grupo.',bad:true};return render()}let msg=null;if(!o.machines){o=convertSimple(o);msg='El grupo '+o.g+' se pasó a la versión completa. Revisa Máquinas, Personal y Desayuno y almuerzo.'}enterGroup(o,msg)}
+function createGroup(){
+const g=String($('#ng').value||'').trim().replace(/^grupo\s*/i,'');
+if(!g){notice={t:'Escribe el número de tu grupo.',bad:true};render();const i=$('#ng');if(i)i.focus();return}
+if(lsGet(GKEY+'g:'+g)){notice={t:'Ya hay un grupo '+g+' en este dispositivo. Ábrelo en la lista de arriba.',bad:true};return render()}
+const o=newFull(g,newShift);o.cal=calDef();
+enterGroup(o,'Grupo '+g+' creado. Primero escribe los números de tus máquinas al final de esta pestaña; luego agrega a tu personal.','maquinas');
+}
+function loadExample(){
+const o=newFull('Ejemplo','dia');o.example=true;o.cal=calDef();
+const on=new Set([3,4,5,7,11,13,14,15,16,17,18]);o.machines.forEach(m=>{if(!on.has(m.n)){m.on=false;m.reason='Operaciones'}});
+o.posts=[[3,4,5,7],[11],[13],[14],[15],[16],[17],[18]].map(ms=>({id:uid(),ms}));
+const ops=['Ana Pérez','Luis Gómez','Marta Díaz','Jorge Ruiz','Carla Soto','Pedro León','Rosa Vega','Iván Mora','Elena Cruz'];
+o.people=ops.map(name=>({id:uid(),name,role:'op',present:true}));
+o.people.push({id:uid(),name:'Hugo Sanz',role:'op',extra:true,present:false},{id:uid(),name:'Nora Ríos',role:'op',extra:true,present:false});
+o.people.push({id:uid(),name:'Raúl Castro',role:'util',uline:1,present:true},{id:uid(),name:'Sonia Paz',role:'util',uline:2,present:true},{id:uid(),name:'Tomás Gil',role:'sup',present:true});
+const I=o.people.filter(p=>p.role==='op'&&!p.extra).map(p=>p.id);o.brk.g=[I.slice(0,3),I.slice(3,6),I.slice(6,9)];
+enterGroup(o,null,'hoy');
+}
+function leave(nw){if(saveT)saveNow();S=defaults();SHIFT='dia';printing=false;tab='hoy';startGuide=false;notice=null;render();window.scrollTo(0,0);if(nw){const i=$('#ng');if(i)i.focus()}}
+/* Grupos guardados con la versión sencilla anterior: se pasan al formato completo. */
+function convertSimple(o){
+const posts=[],seen=new Set();
+(o.posts||[]).forEach(nm=>{const ns=(String(nm).match(/\d+/g)||[]).map(Number).filter(n=>n>0&&!seen.has(n));ns.forEach(n=>seen.add(n));if(ns.length)posts.push(ns)});
+let G;
+if(posts.length){const all=[].concat.apply([],posts);G=newFull(o.g,o.shift,all.filter(n=>n<=11),all.filter(n=>n>11));G.posts=posts.map(ms=>({id:uid(),ms}))}
+else{const k=Math.max(1,(o.posts||[]).length||6),ns=Array.from({length:k},(_,i)=>i+1);G=newFull(o.g,o.shift,ns,[])}
+const R={op:['op',0],extra:['op',1],util:['util',0],xutil:['util',1],sup:['sup',0]};
+G.people=(o.people||[]).map(p=>{const r=R[p.role]||R.op,q={id:p.id||uid(),name:String(p.name||'?'),role:r[0],present:!r[1]};if(r[1])q.extra=true;if(r[0]==='util')q.uline=0;return q});
+const g=[[],[],[]];(o.people||[]).forEach(p=>{if(p.role==='op'&&p.turn!=null)g[Math.max(0,Math.min(2,Number(p.turn)||0))].push(p.id)});G.brk.g=g;
+const b=Array.isArray(o.brk)?o.brk:[];if(b[0]){G.brk.bS=b[0].start||G.brk.bS;G.brk.bM=Number(b[0].min)||G.brk.bM}if(b[1]){G.brk.lS=b[1].start||G.brk.lS;G.brk.lM=Number(b[1].min)||G.brk.lM}
+G.cal=calDef();return G;
+}
+/* Respaldo: el código lleva todo el grupo (máquinas, personal, días, vacaciones, mes). */
+const enc2=o=>'ROTG2:'+btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+function importCode(){
+const v=String($('#imp').value||'').replace(/\s+/g,'');let o=null;
+try{const k=v.slice(0,6);if(k!=='ROTG1:'&&k!=='ROTG2:')throw 0;o=JSON.parse(decodeURIComponent(escape(atob(v.slice(6)))))}catch(e){notice={t:'Ese código no es válido. Cópialo completo desde la pestaña Grupo.',bad:true};return render()}
+if(!o||o.g==null||String(o.g)===''||!Array.isArray(o.people)){notice={t:'Ese código no es válido.',bad:true};return render()}
+delete o.example;const had=!!lsGet(GKEY+'g:'+o.g);let msg='Grupo '+o.g+' cargado en este dispositivo.'+(had?' Reemplazó al que ya estaba.':'');
+if(!o.machines){o=convertSimple(o);msg+=' Venía de la versión anterior: revisa Máquinas, Personal y Desayuno y almuerzo.'}
+enterGroup(o,msg,'hoy');
+}
+async function copyBackup(){if(saveT)saveNow();const c=enc2(S);try{await navigator.clipboard.writeText(c);notice={t:'Código copiado. Guárdalo en un chat contigo mismo o mándalo al otro teléfono.'};rr()}catch(e){const a=$('#bk');a.hidden=false;a.value=c;a.focus();a.select();const o=$('#bko');if(o)o.textContent='No se pudo copiar solo. El código quedó seleccionado: cópialo a mano.'}}
+function setShiftG(v){if(S.shift===v)return;const was=S.shift;S.shift=v;SHIFT=v;
+const dB={bS:'07:00',lS:'12:00'},nB={bS:'21:00',lS:'01:00'},from=was==='noche'?nB:dB,to=v==='noche'?nB:dB;
+if(S.brk.bS===from.bS&&S.brk.lS===from.lS){S.brk.bS=to.bS;S.brk.lS=to.lS}
+const T=todayStr(),st=v==='noche'?'18:00':'06:00';Object.keys(S.days).forEach(k=>{const d=S.days[k];if(k>=T&&!d.blocks.some(Boolean))d.start=st});
+date=nextShift();save();notice={t:'Horario cambiado a '+(v==='noche'?'noche (18:00 a 6:00).':'día (6:00 a 18:00).')+' Revisa las horas de desayuno y almuerzo en Personal.'};rr()}
+function renGroup(){const g=String($('#rg').value||'').trim().replace(/^grupo\s*/i,'');if(!g||g===S.g)return;if(lsGet(GKEY+'g:'+g)){notice={t:'Ya existe un grupo '+g+' en este dispositivo.',bad:true};return rr()}if(!S.example)lsDel(GKEY+'g:'+S.g);S.g=g;if(!S.example)saveNow();notice={t:'Ahora es el grupo '+g+'.'};rr()}
+function delGroup(){if(armed!=='delg'){armed='delg';return rr()}armed=null;clearTimeout(saveT);saveT=null;lsDel(GKEY+'g:'+S.g);const g=S.g;try{if(localStorage.getItem(GKEY+'last')===JSON.stringify(g))lsDel(GKEY+'last')}catch(e){}S=defaults();SHIFT='dia';tab='hoy';notice={t:'Se borró el grupo '+g+' de este dispositivo.'};render();window.scrollTo(0,0)}
+function grupoHTML(){
+let h=`<h2>Horario del grupo</h2><div class="seg">${[['dia','Día','6:00 a 18:00'],['noche','Noche','18:00 a 6:00']].map(([k,l,s])=>`<button class="${S.shift===k?'on':''}" aria-pressed="${S.shift===k}" onclick="setShiftG('${k}')">${l}<small>${s}</small></button>`).join('')}</div>`;
+h+=`<p class="sub" style="margin-top:8px">En el turno de noche, la rotación de la noche que empezó ayer sigue en pantalla hasta las 6:00.</p>`;
+h+=`<label for="inf">Quién informa en el reporte</label><input id="inf" value="${esc(S.informa||'')}" placeholder="Nombre del supervisor" onchange="S.informa=this.value.trim();save()">`;
+if(S.example)h+=`<div class="ex">Esto es un ejemplo: no se guarda ni tiene respaldo.</div>`;
+else{
+h+=`<h2 class="lh">Código de respaldo</h2><p class="sub">Todo tu grupo queda guardado solo en este teléfono o computadora. Copia este código para pasarlo a otro teléfono o para tenerlo guardado: en el otro, pégalo en la primera pantalla, en «Cargar un respaldo».</p><button class="btn" onclick="copyBackup()">Copiar código de respaldo</button><p class="sub" id="bko" role="status"></p><textarea id="bk" class="code" hidden readonly></textarea>`;
+h+=`<h2 class="lh">Número del grupo</h2><div class="pbar"><input id="rg" inputmode="numeric" value="${esc(S.g)}" aria-label="Número del grupo"><button class="btn soft" style="margin-top:0;width:auto;padding:10px 18px" onclick="renGroup()">Cambiar</button></div>`;
+h+=`<h2 class="lh">Borrar el grupo</h2><p class="sub">Borra el grupo ${esc(S.g)} solo de este dispositivo. Copia antes el código de respaldo si lo quieres guardar.</p><button class="btn soft" style="border-color:var(--bad);color:var(--bad)" onclick="delGroup()">${armed==='delg'?'Toca otra vez para borrar':'Borrar grupo '+esc(S.g)}</button>`;
+}
+return h+ACEPTAR;
+}
+/* Máquinas del grupo: números de cada línea. */
+function lineCfgHTML(){
+const ls=l=>S.machines.filter(m=>m.line===l).map(m=>m.n).join(', ');
+return `<h2 class="lh">Máquinas de tu grupo</h2><p class="sub">Escribe los números de máquina de cada línea, separados por coma, y toca «Guardar máquinas». Las nuevas se agregan encendidas y cada una con su propio puesto; las que quites salen de la lista y de su puesto.</p>
+<label for="ml1">Línea 1</label><input id="ml1" inputmode="text" value="${esc(ls(1))}" placeholder="Ej. 1, 2, 3, 4, 5">
+<label for="ml2">Línea 2</label><input id="ml2" inputmode="text" value="${esc(ls(2))}" placeholder="Ej. 12, 13, 14 (déjalo vacío si no hay)">
+<button class="btn soft" onclick="setLines()">Guardar máquinas</button>`;
+}
+function setLines(){
+const rd=id=>{const a=[];String($(id).value||'').split(/[^0-9]+/).filter(Boolean).map(Number).forEach(n=>{if(n>0&&a.indexOf(n)<0)a.push(n)});return a};
+const l1=rd('#ml1'),l2=rd('#ml2').filter(n=>l1.indexOf(n)<0);
+if(!l1.length&&!l2.length){notice={t:'Escribe al menos un número de máquina.',bad:true};return rr()}
+const keep=new Set(l1.concat(l2)),old={};S.machines.forEach(m=>old[m.n]=m);
+const added=[];
+S.machines=l1.map(n=>[n,1]).concat(l2.map(n=>[n,2])).map(([n,line])=>{if(old[n]){old[n].line=line;return old[n]}added.push(n);return {n,line,on:true,reason:''}});
+const removed=Object.keys(old).map(Number).filter(n=>!keep.has(n));
+S.posts.forEach(p=>{p.ms=p.ms.filter(n=>keep.has(n))});S.posts=S.posts.filter(p=>p.ms.length);
+added.forEach(n=>S.posts.push({id:uid(),ms:[n]}));
+const r=postsChanged();save();
+notice={t:'Máquinas guardadas.'+(added.length?' Nuevas: '+added.join(', ')+'.':'')+(removed.length?' Quitadas: '+removed.join(', ')+'.':'')+(r||'')};rr();
+}
+const ACEPTAR=`<button class="btn" style="margin-top:22px" onclick="setTab('hoy')">Aceptar y ver la rotación</button>`;
+
+/* Guía */
+function guideBody(){return `<div id="gbody">
+<p>Esta aplicación arma la rotación del personal de tu grupo en bloques de horas, dice quién cubre a quién en el desayuno y el almuerzo, lleva las vacaciones, el calendario del mes y prepara el reporte del turno. Cada grupo tiene sus propios datos y no afecta a los demás.</p>
+<div class="step"><h3><b>1</b>Crea tu grupo</h3><p>En la primera pantalla escribe el <b>número de tu grupo</b> y elige el horario: <b>Día (6:00 a 18:00)</b> o <b>Noche (18:00 a 6:00)</b>. Toca «Crear grupo».</p></div>
+<div class="step"><h3><b>2</b>Pon tus máquinas</h3><p>En <b>Máquinas</b>, al final, escribe los números de máquina de la línea 1 y de la línea 2 y toca «Guardar máquinas». Arriba marca cada una:</p><dl><dt>Encendida</dt><dd>Trabaja normal.</dd><dt>Detenida</dt><dd>Parada por un motivo, pero su operario sigue en la rotación: cubre descansos, va a retrabajo o cubre máquinas sin puesto.</dd><dt>Cero operario</dt><dd>Encendida pero sin operario fijo: la atiende el Material Handler.</dd><dt>Parada</dt><dd>Fuera todo el turno. Sale de la rotación. Elige el motivo.</dd></dl><p>En <b>Puestos de rotación</b> cada puesto es una máquina o varias que cubre una sola persona (ej. «3, 4, 5»). El orden de esa lista es el orden en que se rota.</p></div>
+<div class="step"><h3><b>3</b>Agrega al personal</h3><p>En <b>Personal</b> escribe los nombres, uno por línea, elige la función (Operario, Material Handler, Utility senior o Supervisor) y toca «Agregar».</p><p><b>El orden de la lista es el orden de la rotación</b>: cada persona va detrás de la de arriba. Súbelos o bájalos con las flechas <b>↑ ↓</b> hasta que quede igual que en la planta.</p></div>
+<div class="step"><h3><b>4</b>Faltas, extras y reemplazos</h3><ol><li>Quien no vino: toca <b>«Hoy sí»</b> para que diga «Hoy no» y elige el motivo y quién lo reemplaza.</li><li>Marca como <b>Extra</b> a los operarios y Material Handler que vienen de fuera del grupo. Elige por quién viene cada uno: toma su lugar en la rotación y su turno de comida.</li><li>Un <b>Material Handler de otro equipo</b> que viene a cubrir al Material Handler que falta: márcalo Extra y elige por cuál Material Handler viene.</li><li>Los extras que no vienen por nadie cubren los puestos que quedan vacíos y salen en el reporte como extras necesitados.</li></ol><p><b>No borres a los extras.</b> Los días que no vienen déjalos en «Hoy no» y quedan guardados para cuando vuelvan.</p></div>
+<div class="step"><h3><b>5</b>Evaluaciones confidenciales</h3><p>En <b>Personal</b>, debajo de «Tu personal», crea una <b>contraseña</b> que solo sepas tú. Las evaluaciones quedan cifradas con ella: nadie más las puede ver, ni en este teléfono ni en el código de respaldo. Para verlas, escribe la contraseña y toca «Ver»; se ocultan solas al salir de Personal. <b>Si la olvidas, no se pueden recuperar</b>: solo se pueden borrar y empezar de nuevo.</p><p>Cada persona de tu grupo tiene su nivel (los extras y el supervisor no se evalúan):</p><dl><dt>1</dt><dd>Requiere mejoras significativas</dd><dt>2</dt><dd>Por debajo de las expectativas</dd><dt>3</dt><dd>Cumple con los estándares (todos empiezan aquí)</dd><dt>4</dt><dd>Supera las expectativas</dd><dt>5</dt><dd>Desempeño sobresaliente</dd></dl><ol><li>Toca <b>− Incidencia</b> cada vez que haya una llamada de atención. Se llena un puntito rojo; <b>cada 3 incidencias baja un nivel</b>.</li><li>Toca <b>+ Buena acción</b> cuando ayude, tenga buena actitud o haga bien su trabajo. <b>Cada 3 buenas acciones sube un nivel</b>.</li><li>Abajo ves cuántas lleva esta semana y este mes, con la fecha de la última. Si tocaste por error, toca «Deshacer».</li></ol></div>
+<div class="step"><h3><b>6</b>Desayuno y almuerzo</h3><p>Al final de <b>Personal</b> pon la hora y los minutos de cada comida y elige quién sale en cada turno, o toca «Repartir». Los operarios de máquinas detenidas cubren primero, luego los Material Handler y por último el supervisor.</p></div>
+<div class="step"><h3><b>7</b>Pon tus días de trabajo en Mes</h3><p>En <b>Mes</b> elige tu patrón: 2-2-3, Rotación (ej. 4 y 4) o Días fijos. Toca un día para cambiarlo solo ese día. Los días libres la rotación no avanza y sigue en tu próximo día de trabajo.</p></div>
+<div class="step"><h3><b>8</b>La rotación del día en Hoy</h3><ol><li>Toca <b>«Generar rotación»</b>. Arriba ves quién está en cada máquina ahora y cuánto falta para el cambio.</li><li>Para decir dónde empieza alguien, en un bloque elige a la persona en su máquina (ej. <b>Ana en la máquina 13</b>). A partir de ahí toda la rotación sigue sola, bloque tras bloque y día tras día.</li><li>Si cambia el personal o las máquinas, toca «Recalcular rotación» desde el bloque actual.</li><li><b>⏰ Alguien llegó tarde</b> y <b>🚪 Alguien se va antes de hora</b> lo anotan con la hora y salen en el reporte.</li><li>Los Material Handler cambian de línea cada cierto tiempo: toca <b>«⇄ Cambio de líneas»</b>, junto a sus nombres en Hoy, y el de la línea 1 pasa a la 2 y el de la 2 a la 1. Los de «Ambas líneas» no se mueven.</li><li>En <b>Retrabajo y Material Handler</b> eliges quién va a retrabajo y a qué operario sacas a cubrir como Material Handler.</li><li><b>Imprimir desayuno y almuerzo</b>: hoja carta, etiqueta Zebra por turno o notas por persona.</li></ol></div>
+<div class="step"><h3><b>9</b>Recordatorios (Avisos)</h3><p>En <b>Avisos</b> escribe lo que no se te puede olvidar y elige cuándo: <b>Cada…</b> (ej. chequear los secadores cada 1 hora), <b>Dentro de…</b> (ej. en 40 minutos encender temperatura) o <b>A una hora</b> (todos los días o una sola vez). A la hora suena una alarma, vibra y sale el aviso en pantalla: toca «Hecho» o «En 5 min». En Hoy, arriba, ves el próximo recordatorio.</p><p><b>Solo suenan con la app abierta en pantalla.</b> Si apagas la pantalla o cambias de app, el teléfono la pausa; al volver te salen los que se pasaron. Usa «Probar la alarma» para comprobar el volumen.</p></div>
+<div class="step"><h3><b>10</b>Vacaciones</h3><p>En <b>Vacaciones</b> registra las aprobadas. Esos días la persona sale de la rotación y la app avisa el día antes.</p></div>
+<div class="step"><h3><b>11</b>El reporte sale solo</h3><p>En <b>Reporte</b> las máquinas y la asistencia se llenan con lo que marcaste. Si marcas bien las máquinas detenidas y paradas con su motivo, quién faltó y por quién viene cada extra, el reporte sale completo. Agrega lo demás y toca «Generar reporte» para copiarlo o mandarlo por WhatsApp. También sale el reporte para Recursos Humanos.</p></div>
+<div class="step"><h3><b>12</b>Guarda un respaldo</h3><p>Todo queda guardado <b>solo en este teléfono o computadora</b>. En <b>Grupo</b> toca «Copiar código de respaldo», mándatelo y pégalo en la primera pantalla del otro teléfono, en «Cargar un respaldo».</p></div>
+<div class="step"><h3><b>13</b>Manda tus sugerencias</h3><p>Al final de <b>Cómo usar</b> hay un formulario de <b>Sugerencias</b>. Escribe qué te gustaría cambiar y mándalo por WhatsApp.</p></div>
+<p class="sub" style="margin-top:12px">Para crear otro grupo toca «+ Nuevo grupo» arriba. Si en un mismo teléfono hay varios grupos, toca «Cambiar de grupo» para pasar de uno a otro. Un grupo nunca cambia los datos de otro.</p></div>`}
+async function copyGuide(){const g=$('#gbody');const t='Instructivo · Rotación de grupos PCI Miami\n\n'+g.innerText.replace(/\n{3,}/g,'\n\n');const o=$('#gco');try{await navigator.clipboard.writeText(t);o.textContent='Instructivo copiado. Pégalo en WhatsApp.'}catch(e){const r=document.createRange();r.selectNodeContents(g);const sel=getSelection();sel.removeAllRanges();sel.addRange(r);o.textContent='No se pudo copiar solo. El texto quedó seleccionado: cópialo a mano.'}}
+function guideHTML(){return `<div class="guide"><h2 style="margin-top:0">Cómo usar la aplicación</h2><div class="pills"><button class="pill on" onclick="copyGuide()">Copiar instructivo para WhatsApp</button><button class="pill" onclick="document.getElementById('sug').scrollIntoView({block:'start'})">Ir a sugerencias ↓</button></div><p class="sub" id="gco" role="status"></p>${guideBody()}</div>`+sugHTML()+(S&&S.g?ACEPTAR:'')}
+/* Sugerencias: se arman aquí y se mandan por WhatsApp a quien administra la app. */
+const SUG_TEL='13054523548';
+const SUG_T=[['cambio','Un cambio en la app'],['error','Algo no funciona'],['idea','Una idea nueva']];
+function sugHTML(){
+const g=S&&S.g&&!S.example?S.g:'';
+return `<div class="blk" id="sug" style="margin-top:22px"><h2 style="margin-top:0">Sugerencias</h2><p class="sub">¿Quieres que la app cambie algo? Escríbelo aquí y mándalo por WhatsApp a quien administra la aplicación.</p>
+<label for="sgg">Grupo</label><input id="sgg" value="${esc(g)}" placeholder="Ej. 5">
+<label for="sgn">Tu nombre (opcional)</label><input id="sgn" autocomplete="name">
+<label for="sgt">Tipo</label><select id="sgt">${SUG_T.map(t=>`<option value="${t[0]}">${t[1]}</option>`).join('')}</select>
+<label for="sgx">Tu sugerencia</label><textarea id="sgx" placeholder="Ej. Que se pueda cambiar a una persona de puesto solo por un bloque"></textarea>
+<a class="btn" style="text-decoration:none" href="https://wa.me/" target="_blank" rel="noopener" onclick="sendSug(event,this)">Enviar por WhatsApp</a><button class="btn soft" onclick="copySug()">Copiar el texto</button><p class="sub" id="sgo" role="status"></p></div>`;
+}
+function sugText(){const t=$('#sgx').value.trim();if(!t){const o=$('#sgo');o.textContent='Escribe tu sugerencia antes de enviarla.';o.style.color='var(--bad)';$('#sgx').focus();return null}
+const ty=SUG_T.find(x=>x[0]===$('#sgt').value);const g=$('#sgg').value.trim(),n=$('#sgn').value.trim();
+return ['Sugerencia para la app Rotación de grupos PCI Miami','Tipo: '+ty[1],g?'Grupo: '+g:'',n?'De: '+n:'','',t].filter((x,i)=>x||i===4).join('\n')}
+function sendSug(ev,a){const t=sugText();if(!t){ev.preventDefault();return}a.href='https://wa.me/'+SUG_TEL+'?text='+encodeURIComponent(t);
+const o=$('#sgo');o.style.color='';o.textContent='Se abrió WhatsApp con tu sugerencia. Toca enviar allí. Si no se abrió, usa «Copiar el texto».'}
+async function copySug(){const t=sugText();if(!t)return;const o=$('#sgo');o.style.color='';try{await navigator.clipboard.writeText(t);o.textContent='Texto copiado. Pégalo en un mensaje a quien administra la app.'}catch(e){const x=$('#sgx');x.value=t;x.focus();x.select();o.textContent='No se pudo copiar solo. El texto quedó seleccionado: cópialo a mano.'}}
+
+/* Arranque: abre el último grupo usado en este dispositivo. */
+(function(){
+const last=lsGet(GKEY+'last');let o=last!=null?lsGet(GKEY+'g:'+last):null;
+if(o){let msg=null;if(!o.machines){o=convertSimple(o);msg='El grupo '+o.g+' se pasó a la versión completa. Revisa Máquinas, Personal y Desayuno y almuerzo.'}S=o;prepS();date=nextShift();notice=msg?{t:msg}:null;if(msg)saveNow()}
+else{S=defaults();SHIFT='dia'}
+ready=true;render();
+setInterval(()=>{if(!ready||!S.g||printing||tab!=='hoy'||date!==todayStr()||document.hidden)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;rr()},60000);
+})();
+
+</script>
+
+
+
+
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
+</script>
+</body></html>

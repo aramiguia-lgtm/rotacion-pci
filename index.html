@@ -26,6 +26,7 @@ h2{font-size:22px;margin:0 0 8px;font-weight:700}
 h2.lh{margin-top:22px}
 .sub{color:var(--muted);margin:0 0 12px;font-size:17px}
 .btn{display:block;width:100%;border:0;border-radius:14px;padding:14px;font:inherit;font-weight:700;font-size:19px;background:var(--accent);color:var(--onaccent);cursor:pointer;text-align:center;margin-top:12px}
+.cbox{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:14px;margin:14px 0}
 .btn.soft{background:var(--card);color:var(--ink);border:2px solid var(--line)}
 label{display:block;font-weight:600;margin:14px 0 6px}
 input,select,textarea{width:100%;padding:11px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:18px;min-width:0}
@@ -273,9 +274,9 @@ const GKEY='rotgrupos:';
 const lsGet=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
 const lsDel=k=>{try{localStorage.removeItem(k)}catch(e){}};
-let saveT=null,saveFail=false;
-function save(){if(!S||!S.g||S.example)return;clearTimeout(saveT);saveT=setTimeout(saveNow,250)}
-function saveNow(){clearTimeout(saveT);saveT=null;if(!S||!S.g||S.example)return;S.saved=Date.now();const ok=lsSet(GKEY+'g:'+S.g,S);lsSet(GKEY+'last',S.g);if(!ok&&!saveFail){saveFail=true;notice={t:'No se pudo guardar en este dispositivo. Revisa que el navegador permita guardar datos de sitios.',bad:true};rr()}}
+let saveT=null,saveFail=false,cDirty=false;
+function save(){if(!S||!S.g||S.example)return;cDirty=true;clearTimeout(saveT);saveT=setTimeout(saveNow,250)}
+function saveNow(){clearTimeout(saveT);saveT=null;if(!S||!S.g||S.example)return;S.saved=Date.now();const dirty=cDirty;if(dirty)S.edit=S.saved;const ok=lsSet(GKEY+'g:'+S.g,S);lsSet(GKEY+'last',S.g);if(ok&&dirty){cDirty=false;window.cloud&&cloud.changed(S.g)}if(!ok&&!saveFail){saveFail=true;notice={t:'No se pudo guardar en este dispositivo. Revisa que el navegador permita guardar datos de sitios.',bad:true};rr()}}
 window.addEventListener('pagehide',()=>{if(saveT)saveNow()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&saveT)saveNow()});
 const mainOf=()=>{const o=Object.assign({},S);delete o.days;return clone(o)};
@@ -1443,8 +1444,9 @@ function savedGroups(){const out=[];try{for(let i=0;i<localStorage.length;i++){c
 function grpInfo(g){const P=g.people||[];if(!g.machines)return P.length+' personas · formato anterior, se actualiza al abrir';const ops=P.filter(p=>p.role==='op'&&!p.extra).length,ut=P.filter(p=>(p.role==='util'||p.role==='senior')&&!p.extra).length,ex=P.filter(p=>p.extra).length;return ops+' operarios · '+ut+' Material Handler'+(ex?' · '+ex+' extra':'')}
 function calDef(){return {mode:'ciclo',on:1,off:0,start:todayStr(),wd:[1,2,3,4,5],ov:{},pid:''}}
 function startHTML(){
-let h=`<h1>Rotación de grupos PCI Miami</h1><p class="sub">Cada grupo arma su propia rotación: máquinas, personal, desayuno y almuerzo, vacaciones, mes y reporte. Lo que guardes aquí queda solo en este dispositivo y no cambia nada de otros grupos.</p>`;
+let h=`<h1>Rotación de grupos PCI Miami</h1><p class="sub">Cada grupo arma su propia rotación: máquinas, personal, desayuno y almuerzo, vacaciones, mes y reporte. Lo que guardes aquí queda en este dispositivo (y en tu cuenta, si entras con tu correo) y no cambia nada de otros grupos.</p>`;
 if(notice){h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;notice=null}
+h+=cloudHTML(false);
 const G=savedGroups();
 if(G.length)h+=`<h2 class="lh">Tus grupos en este dispositivo</h2><div class="glist">`+G.map(g=>`<button class="gbtn" onclick="openGroup('${esc(String(g.g)).replace(/'/g,'&#39;')}')"><span>Grupo ${esc(g.g)}<small style="display:block">${g.shift==='noche'?'Noche · 18:00 a 6:00':'Día · 6:00 a 18:00'} · ${esc(grpInfo(g))}</small></span><span aria-hidden="true">›</span></button>`).join('')+`</div>`;
 h+=`<h2 class="lh">${G.length?'Crear otro grupo':'Crear tu grupo'}</h2><label for="ng">Número de grupo</label><input id="ng" inputmode="numeric" placeholder="Ej. 5" autocomplete="off">
@@ -1464,7 +1466,7 @@ const g=String($('#ng').value||'').trim().replace(/^grupo\s*/i,'');
 if(!g){notice={t:'Escribe el número de tu grupo.',bad:true};render();const i=$('#ng');if(i)i.focus();return}
 if(lsGet(GKEY+'g:'+g)){notice={t:'Ya hay un grupo '+g+' en este dispositivo. Ábrelo en la lista de arriba.',bad:true};return render()}
 const o=newFull(g,newShift);o.cal=calDef();
-enterGroup(o,'Grupo '+g+' creado. Primero escribe los números de tus máquinas al final de esta pestaña; luego agrega a tu personal.','maquinas');
+cDirty=true;enterGroup(o,'Grupo '+g+' creado. Primero escribe los números de tus máquinas al final de esta pestaña; luego agrega a tu personal.','maquinas');
 }
 function loadExample(){
 const o=newFull('Ejemplo','dia');o.example=true;o.cal=calDef();
@@ -1499,7 +1501,7 @@ try{const k=v.slice(0,6);if(k!=='ROTG1:'&&k!=='ROTG2:')throw 0;o=JSON.parse(deco
 if(!o||o.g==null||String(o.g)===''||!Array.isArray(o.people)){notice={t:'Ese código no es válido.',bad:true};return render()}
 delete o.example;const had=!!lsGet(GKEY+'g:'+o.g);let msg='Grupo '+o.g+' cargado en este dispositivo.'+(had?' Reemplazó al que ya estaba.':'');
 if(!o.machines){o=convertSimple(o);msg+=' Venía de la versión anterior: revisa Máquinas, Personal y Desayuno y almuerzo.'}
-enterGroup(o,msg,'hoy');
+cDirty=true;enterGroup(o,msg,'hoy');
 }
 async function copyBackup(){if(saveT)saveNow();const c=enc2(S);try{await navigator.clipboard.writeText(c);notice={t:'Código copiado. Guárdalo en un chat contigo mismo o mándalo al otro teléfono.'};rr()}catch(e){const a=$('#bk');a.hidden=false;a.value=c;a.focus();a.select();const o=$('#bko');if(o)o.textContent='No se pudo copiar solo. El código quedó seleccionado: cópialo a mano.'}}
 function setShiftG(v){if(S.shift===v)return;const was=S.shift;S.shift=v;SHIFT=v;
@@ -1507,17 +1509,18 @@ const dB={bS:'07:00',lS:'12:00'},nB={bS:'21:00',lS:'01:00'},from=was==='noche'?n
 if(S.brk.bS===from.bS&&S.brk.lS===from.lS){S.brk.bS=to.bS;S.brk.lS=to.lS}
 const T=todayStr(),st=v==='noche'?'18:00':'06:00';Object.keys(S.days).forEach(k=>{const d=S.days[k];if(k>=T&&!d.blocks.some(Boolean))d.start=st});
 date=nextShift();save();notice={t:'Horario cambiado a '+(v==='noche'?'noche (18:00 a 6:00).':'día (6:00 a 18:00).')+' Revisa las horas de desayuno y almuerzo en Personal.'};rr()}
-function renGroup(){const g=String($('#rg').value||'').trim().replace(/^grupo\s*/i,'');if(!g||g===S.g)return;if(lsGet(GKEY+'g:'+g)){notice={t:'Ya existe un grupo '+g+' en este dispositivo.',bad:true};return rr()}if(!S.example)lsDel(GKEY+'g:'+S.g);S.g=g;if(!S.example)saveNow();notice={t:'Ahora es el grupo '+g+'.'};rr()}
-function delGroup(){if(armed!=='delg'){armed='delg';return rr()}armed=null;clearTimeout(saveT);saveT=null;lsDel(GKEY+'g:'+S.g);const g=S.g;try{if(localStorage.getItem(GKEY+'last')===JSON.stringify(g))lsDel(GKEY+'last')}catch(e){}S=defaults();SHIFT='dia';tab='hoy';notice={t:'Se borró el grupo '+g+' de este dispositivo.'};render();window.scrollTo(0,0)}
+function renGroup(){const g=String($('#rg').value||'').trim().replace(/^grupo\s*/i,'');if(!g||g===S.g)return;if(lsGet(GKEY+'g:'+g)){notice={t:'Ya existe un grupo '+g+' en este dispositivo.',bad:true};return rr()}const og=S.g;if(!S.example)lsDel(GKEY+'g:'+S.g);S.g=g;if(!S.example){cDirty=true;saveNow();window.cloud&&cloud.removed(og)}notice={t:'Ahora es el grupo '+g+'.'};rr()}
+function delGroup(){if(armed!=='delg'){armed='delg';return rr()}armed=null;clearTimeout(saveT);saveT=null;lsDel(GKEY+'g:'+S.g);const g=S.g;const inCloud=!!(window.cloud&&cloud.user);window.cloud&&cloud.removed(g);try{if(localStorage.getItem(GKEY+'last')===JSON.stringify(g))lsDel(GKEY+'last')}catch(e){}S=defaults();SHIFT='dia';tab='hoy';notice={t:'Se borró el grupo '+g+(inCloud?' de este dispositivo y de tu cuenta.':' de este dispositivo.')};render();window.scrollTo(0,0)}
 function grupoHTML(){
 let h=`<h2>Horario del grupo</h2><div class="seg">${[['dia','Día','6:00 a 18:00'],['noche','Noche','18:00 a 6:00']].map(([k,l,s])=>`<button class="${S.shift===k?'on':''}" aria-pressed="${S.shift===k}" onclick="setShiftG('${k}')">${l}<small>${s}</small></button>`).join('')}</div>`;
 h+=`<p class="sub" style="margin-top:8px">En el turno de noche, la rotación de la noche que empezó ayer sigue en pantalla hasta las 6:00.</p>`;
 h+=`<label for="inf">Quién informa en el reporte</label><input id="inf" value="${esc(S.informa||'')}" placeholder="Nombre del supervisor" onchange="S.informa=this.value.trim();save()">`;
 if(S.example)h+=`<div class="ex">Esto es un ejemplo: no se guarda ni tiene respaldo.</div>`;
 else{
+h+=cloudHTML(true);
 h+=`<h2 class="lh">Código de respaldo</h2><p class="sub">Todo tu grupo queda guardado solo en este teléfono o computadora. Copia este código para pasarlo a otro teléfono o para tenerlo guardado: en el otro, pégalo en la primera pantalla, en «Cargar un respaldo».</p><button class="btn" onclick="copyBackup()">Copiar código de respaldo</button><p class="sub" id="bko" role="status"></p><textarea id="bk" class="code" hidden readonly></textarea>`;
 h+=`<h2 class="lh">Número del grupo</h2><div class="pbar"><input id="rg" inputmode="numeric" value="${esc(S.g)}" aria-label="Número del grupo"><button class="btn soft" style="margin-top:0;width:auto;padding:10px 18px" onclick="renGroup()">Cambiar</button></div>`;
-h+=`<h2 class="lh">Borrar el grupo</h2><p class="sub">Borra el grupo ${esc(S.g)} solo de este dispositivo. Copia antes el código de respaldo si lo quieres guardar.</p><button class="btn soft" style="border-color:var(--bad);color:var(--bad)" onclick="delGroup()">${armed==='delg'?'Toca otra vez para borrar':'Borrar grupo '+esc(S.g)}</button>`;
+h+=`<h2 class="lh">Borrar el grupo</h2><p class="sub">Borra el grupo ${esc(S.g)} ${window.cloud&&cloud.user?'de este dispositivo y de tu cuenta, en todos los aparatos donde entres con tu correo':'solo de este dispositivo'}. Copia antes el código de respaldo si lo quieres guardar.</p><button class="btn soft" style="border-color:var(--bad);color:var(--bad)" onclick="delGroup()">${armed==='delg'?'Toca otra vez para borrar':'Borrar grupo '+esc(S.g)}</button>`;
 }
 return h+ACEPTAR;
 }
@@ -1582,6 +1585,23 @@ function sendSug(ev,a){const t=sugText();if(!t){ev.preventDefault();return}a.hre
 const o=$('#sgo');o.style.color='';o.textContent='Se abrió WhatsApp con tu sugerencia. Toca enviar allí. Si no se abrió, usa «Copiar el texto».'}
 async function copySug(){const t=sugText();if(!t)return;const o=$('#sgo');o.style.color='';try{await navigator.clipboard.writeText(t);o.textContent='Texto copiado. Pégalo en un mensaje a quien administra la app.'}catch(e){const x=$('#sgx');x.value=t;x.focus();x.select();o.textContent='No se pudo copiar solo. El texto quedó seleccionado: cópialo a mano.'}}
 
+
+/* Nube: entrar con Google y sincronizar los grupos entre aparatos (cloud.js). */
+function cloudHTML(inGroup){const c=window.cloud;if(!c||!c.on)return '';
+const err=c.err?`<p class="sub" style="color:var(--bad);margin:8px 0 0">${esc(c.err)}</p>`:'';
+if(!c.ready)return `<div class="cbox"><b>☁ Conectando con la nube…</b>${err}</div>`;
+if(!c.user)return `<div class="cbox"><h2 style="margin-top:0">☁ Sincronizar con tu correo</h2><p class="sub">Entra con tu cuenta de Google y tus grupos se guardan en la nube. Lo que cambies en el teléfono aparece solo en la computadora o la tablet donde entres con el mismo correo.</p><button class="btn" style="margin-top:0" onclick="cloud.signIn()">Entrar con Google</button>${err}</div>`;
+return `<div class="cbox"><p style="margin:0"><b>☁ Sincronizado</b> con ${esc(c.user.email)}</p><p class="sub" style="margin:4px 0 0">${c.pending?'Guardando en la nube…':'Al día'+(c.last?' · '+hhmm(c.last):'')}${inGroup?'':'. Tus grupos de la cuenta salen en la lista de abajo.'}</p>${err}<button class="btn soft" style="margin-top:10px" onclick="cloudOut()">${armed==='cout'?'Toca otra vez para salir':'Salir de la cuenta'}</button></div>`}
+function cloudOut(){if(armed!=='cout'){armed='cout';return rr()}armed=null;cloud.signOut()}
+function cloudBusy(){const a=document.activeElement;return a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)}
+function cloudUI(){if(!ready||printing)return;if((!S||!S.g||tab==='grupo')&&!cloudBusy()){const keep={};document.querySelectorAll('#app input[id],#app textarea[id]').forEach(e=>{if(e.value)keep[e.id]=e.value});rr();for(const id in keep){const e=document.getElementById(id);if(e&&!e.value)e.value=keep[id]}}}
+let cloudWait=null;
+function cloudApply(g,o){g=String(g);if(!o||typeof o!=='object')return;o.g=g;
+if(S&&String(S.g)===g&&!S.example){if(saveT||cloudBusy()){clearTimeout(cloudWait);cloudWait=setTimeout(()=>cloudApply(g,o),2000);return}
+const t=tab;lsSet(GKEY+'g:'+g,o);S=o;prepS();tab=t;if(!printing)rr();return}
+lsSet(GKEY+'g:'+g,o);if(!S||!S.g)render()}
+function cloudRemove(g){g=String(g);lsDel(GKEY+'g:'+g);if(S&&String(S.g)===g&&!S.example){clearTimeout(saveT);saveT=null;S=defaults();SHIFT='dia';tab='hoy';notice={t:'El grupo '+g+' se borró desde otro aparato.'};render()}else if(!S||!S.g)render()}
+
 /* Arranque: abre el último grupo usado en este dispositivo. */
 (function(){
 const last=lsGet(GKEY+'last');let o=last!=null?lsGet(GKEY+'g:'+last):null;
@@ -1596,6 +1616,7 @@ setInterval(()=>{if(!ready||!S.g||printing||tab!=='hoy'||date!==todayStr()||docu
 
 
 
+<script type="module" src="cloud.js"></script>
 <script>
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
 </script>

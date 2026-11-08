@@ -1,7 +1,14 @@
 /* Sincronización con la cuenta de Google del supervisor (Firebase).
    Cada grupo se guarda en usuarios/{uid}/grupos/{grupo}. Si no hay internet o no hay
    configuración, la app sigue funcionando igual, solo en este dispositivo. */
-const CFG = null; // datos del proyecto de Firebase (firebaseConfig)
+const CFG = {
+  apiKey: "AIzaSyCOtf9CkkYSZgCQFqvHl5z8EhTeb_13sjE",
+  authDomain: "rotacion-pci.firebaseapp.com",
+  projectId: "rotacion-pci",
+  storageBucket: "rotacion-pci.firebasestorage.app",
+  messagingSenderId: "795506166176",
+  appId: "1:795506166176:web:9abe7d4c74e324b473fcc5"
+}; // proyecto de Firebase «rotacion-pci»
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const LS = 'rotgrupos:';
 const MK = LS + 'cloudmeta';

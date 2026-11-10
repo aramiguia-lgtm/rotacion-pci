@@ -376,8 +376,16 @@ function vacRow(v){
 const T=todayStr();
 const st=v.from<=T&&T<=v.to?'De vacaciones':v.from===addDays(T,1)?'Empieza mañana':v.to<T?'Terminó':'Programada';
 const days=Math.round((new Date(v.to)-new Date(v.from))/864e5)+1;
-return `<div class="prow"><div class="nm"><b>${esc(pname(v.pid))}</b><br><span class="tag">${fmtD(v.from)} – ${fmtD(v.to)} · ${days} día${days>1?'s':''}${v.note?' · '+esc(v.note):''}</span></div><span class="tag">${st}</span><button class="x del" onclick="rm('vac','${v.id}')">${armed==='vac'+v.id?'¿Borrar?':'Quitar'}</button></div>`;
+return `<div class="prow"><div class="nm"><b>${esc(pname(v.pid))}</b><br><span class="tag">${fmtD(v.from)} – ${fmtD(v.to)} · ${days} día${days>1?'s':''}${v.note?' · '+esc(v.note):''}</span></div><span class="tag">${st}</span>${st==='De vacaciones'?`<button class="x" onclick="endVac('${v.id}',0)">Regresó hoy</button><button class="x" onclick="endVac('${v.id}',1)">Hoy no vino por otro motivo</button>`:''}<button class="x del" onclick="rm('vac','${v.id}')">${armed==='vac'+v.id?'¿Borrar?':'Quitar'}</button></div>`;
 }
+/* Las vacaciones terminan ayer: hoy regresó, o hoy falta por otro motivo (enferma, etc.). */
+function endVac(id,absent){const v=S.vac.find(x=>x.id===id);if(!v)return;const T=todayStr(),y=addDays(T,-1);
+if(y<v.from)S.vac=S.vac.filter(x=>x.id!==id);else v.to=y;
+const p=S.people.find(x=>x.id===v.pid);
+Object.keys(S.days).forEach(k=>{if(k>=T&&S.days[k].blocks.some(Boolean))S.days[k].dirty=true});
+if(p&&absent){const keep=p.sub;p.present=false;delete p.why;if(keep)p.sub=keep;markDirty();save();tab='personal';notice={t:'Las vacaciones de '+p.name+' terminaron ayer. Hoy está ausente: elige abajo por qué no vino (por ejemplo «Se reportó enferma») y quién la reemplaza.'};render();window.scrollTo(0,0);return}
+if(p&&!p.present){p.present=true;delete p.why}
+markDirty();save();notice={t:'Las vacaciones de '+(p?p.name:'')+' terminaron ayer. Hoy entra a la rotación.'};rr()}
 function addVac(){
 const pid=$('#vp').value,from=$('#vf').value,to=$('#vt').value,note=$('#vn').value.trim();
 if(!from||!to){notice={t:'Elige la fecha de inicio y la del último día.',bad:true};return rr()}

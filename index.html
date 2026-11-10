@@ -916,6 +916,9 @@ function setZor(v){zor=v;try{localStorage.setItem('rotZor',v)}catch(e){}render()
 const zdim=()=>zor==='v'?[3,4]:[4,3];
 /* Achica la letra de cada etiqueta hasta que todo quepa, para que nada se corte. */
 function fitLabels(){document.querySelectorAll('.lbl').forEach(el=>{let fs=16;el.style.fontSize=fs+'px';while((el.scrollHeight>el.clientHeight+1||el.scrollWidth>el.clientWidth+1)&&fs>8){fs-=.5;el.style.fontSize=fs+'px'}})}
+let pkind='todo';try{pkind=localStorage.getItem('rotPkind')||'todo'}catch(e){}
+function setPkind(v){pkind=v;try{localStorage.setItem('rotPkind',v)}catch(e){}render()}
+const printSlots=()=>breakSlots().filter(s=>pkind==='todo'||s.kind===pkind);
 function setPfmt(v){pfmt=v;try{localStorage.setItem('rotPrint',v)}catch(e){}render()}
 /* Margen de la etiqueta: deja espacio para el margen que agrega la impresora. */
 let zmg='a';try{zmg=localStorage.getItem('rotZmg')||'a'}catch(e){}
@@ -928,7 +931,7 @@ const onZebra=()=>pfmt==='zebra'||(pfmt==='notas'&&nout==='zebra');
 /* Notas por persona: su propio descanso y cada relevo (hora, máquina, a quién cubre). */
 function notesData(d){
 const P={},get=id=>P[id]=P[id]||{id,own:[],cov:[]};
-breakSlots().filter(s=>s.ids.length).forEach(s=>{const rows=cover(d,s);if(!rows)return;
+printSlots().filter(s=>s.ids.length).forEach(s=>{const rows=cover(d,s);if(!rows)return;
 rows.forEach(r=>{if(r.st!=='fuera')get(r.id).own.push(s);if(r.st==='ok'&&r.u)get(r.u).cov.push({s,ms:r.ms,sx:r.sx,who:r.id})})});
 return Object.values(P).filter(x=>x.cov.length).sort((a,b)=>{const ua=isUtil(S.people.find(p=>p.id===a.id))?1:0,ub=isUtil(S.people.find(p=>p.id===b.id))?1:0;return ua-ub||a.cov[0].s.start-b.cov[0].s.start});
 }
@@ -955,8 +958,9 @@ let h=`<div class="noprint"><div class="pbar"><button class="btn" onclick="doPri
 h+=`<div class="tabs">`+[['hoja','Hoja carta'],['zebra','Zebra por turno'],['notas','Notas por persona']].map(([k,l])=>`<button class="tab ${pfmt===k?'on':''}" onclick="setPfmt('${k}')">${l}</button>`).join('')+`</div>`;
 if(pfmt==='notas')h+=`<div class="tabs">`+[['zebra','En la Zebra (una por persona)'],['hoja','En hoja carta para recortar']].map(([k,l])=>`<button class="tab ${nout===k?'on':''}" onclick="setNout('${k}')">${l}</button>`).join('')+`</div>`+(nout==='zebra'?`<div class="tabs">`+[['h','Horizontal 4 × 3'],['v','Vertical 3 × 4']].map(([k,l])=>`<button class="tab ${zor===k?'on':''}" onclick="setZor('${k}')">${l}</button>`).join('')+`</div>`+zmgTabs():'')+`<p class="sub">Una nota para cada operario y Material Handler que cubre a alguien: su descanso y, en cada relevo, la hora, la máquina y a quién cubre.${nout==='zebra'?' En el cuadro de imprimir: la Zebra, papel <b>'+zdim()[0]+' × '+zdim()[1]+' pulg.</b>, márgenes <b>Ninguno</b>.':''}</p>`;
 else h+=pfmt==='zebra'?`<div class="tabs">`+[['h','Horizontal · 4 ancho × 3 alto'],['v','Vertical · 3 ancho × 4 alto']].map(([k,l])=>`<button class="tab ${zor===k?'on':''}" onclick="setZor('${k}')">${l}</button>`).join('')+`</div>`+zmgTabs()+`<p class="sub">Una etiqueta por turno. En el cuadro de imprimir: impresora Zebra, tamaño de papel <b>${zdim()[0]} × ${zdim()[1]} pulg.</b>, márgenes <b>Ninguno</b>, escala <b>Predeterminada</b>. Si sale girada, cambia la orientación aquí arriba.</p>`:`<p class="sub">Todo en una hoja carta. En el cuadro de imprimir deja la escala en <b>Ajustar</b> o 100%.</p>`;
+h+=`<p class="sub" style="margin:8px 0 2px">Qué imprimir:</p><div class="tabs">`+[['todo','Desayuno y almuerzo'],['Desayuno','Solo desayuno'],['Almuerzo','Solo almuerzo']].map(([k,l])=>`<button class="tab ${pkind===k?'on':''}" onclick="setPkind('${k}')">${l}</button>`).join('')+`</div>`;
 h+=`</div>`;
-const sl=breakSlots().filter(s=>s.ids.length);
+const sl=printSlots().filter(s=>s.ids.length);
 if(pfmt==='notas'){
 const N=notesData(d),ph=pad(new Date().getHours())+':'+pad(new Date().getMinutes()),ft=`<div class="ld">${esc(fmtD(date))} · impreso ${ph}</div>`;
 if(!N.length)return h+`<p class="sub">Nadie cubre descansos todavía. Genera la rotación primero.</p>`;
@@ -972,8 +976,8 @@ return t}).join('')+`</div>`;
 return h;
 }
 const pt=new Date(),phh=pad(pt.getHours())+':'+pad(pt.getMinutes());
-h+=`<div class="pr cp"><div class="phd"><b>Desayuno y almuerzo</b><span>${esc(fmtD(date))} · impreso ${phh}</span></div>`;
-['Desayuno','Almuerzo'].forEach(k=>{
+h+=`<div class="pr cp"><div class="phd"><b>${pkind==='todo'?'Desayuno y almuerzo':pkind}</b><span>${esc(fmtD(date))} · impreso ${phh}</span></div>`;
+['Desayuno','Almuerzo'].filter(k=>pkind==='todo'||pkind===k).forEach(k=>{
 h+=`<h2>${k}</h2><table><thead><tr><th>Hora</th><th>Sale</th><th>Máquina</th><th>Lo cubre</th></tr></thead><tbody>`;
 sl.filter(s=>s.kind===k).forEach(s=>{
 const hr=`${hmAbs(s.start)}–${hmAbs(s.start+s.len)} <i>T${s.turn}</i>`,R=brData(d,s);
@@ -1606,7 +1610,7 @@ const T=[['hoy','Hoy'],['maquinas','Máquinas'],['personal','Personal'],['vacaci
 if(window.cloud&&cloud.isAdmin&&cloud.isAdmin()&&!S.example)T.splice(8,0,['equipo','Equipo']);
 return T}
 /* Solo ver: se desactiva todo lo que cambia datos; quedan pestañas, fechas, imprimir y copiar. */
-const RO_OK=new Set(['setTab','setDate','calNav','leave','openGroup','syncBoth','openPrint','doPrint','setPfmt','setNout','setZmg','setZor','printing','window.scrollTo','var','document.getElementById','copyDay','copyGuide','startGuide','cloud.signIn','cloudOut','sendSug','copySug','teamOpen']);
+const RO_OK=new Set(['setTab','setDate','calNav','leave','openGroup','syncBoth','openPrint','doPrint','setPfmt','setNout','setZmg','setZor','setPkind','printing','window.scrollTo','var','document.getElementById','copyDay','copyGuide','startGuide','cloud.signIn','cloudOut','sendSug','copySug','teamOpen']);
 const roName=a=>{const m=String(a||'').trim().match(/^[A-Za-z_$][\w$.]*/);return m?m[0]:''};
 function roAllowed(el){for(const at of ['onclick','onchange','oninput']){const v=el.getAttribute(at);if(v&&!RO_OK.has(roName(v)))return false}return true}
 function roLock(){const app=$('#app');if(!app)return;const ro=isRO();app.classList.toggle('ro',ro);if(!ro)return;

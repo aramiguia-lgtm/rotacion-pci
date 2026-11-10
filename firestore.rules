@@ -1,0 +1,48 @@
+rules_version = '2';
+// Reglas de la app Rotación de grupos PCI Miami.
+// Pégalas completas en Firebase → Firestore Database → Reglas → Publicar.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null && request.auth.token.email_verified == true; }
+    function em() { return request.auth.token.email.lower(); }
+    function memberPath() { return /databases/$(database)/documents/miembros/$(em()); }
+    function isMember() { return signedIn() && exists(memberPath()); }
+    function me() { return get(memberPath()).data; }
+    function isAdmin() { return isMember() && me().rol == 'admin'; }
+    function hasGroup(gid) { return isMember() && gid in me().docs; }
+    function canEdit(gid) { return isAdmin() || (hasGroup(gid) && me().rol == 'supervisor'); }
+    function validRole() { return request.resource.data.rol in ['admin', 'supervisor', 'utility']; }
+
+    // Grupos personales (antes de activar el administrador). Solo el dueño.
+    match /usuarios/{uid}/{rest=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Marca de que el administrador ya se activó. Solo se crea una vez.
+    match /config/inicio {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.admin == em()
+        && getAfter(memberPath()).data.rol == 'admin';
+    }
+
+    // Equipo: quién entra, con qué rol y a qué grupos.
+    match /miembros/{email} {
+      allow get: if signedIn() && (email == em() || isAdmin());
+      allow list: if isAdmin();
+      allow create: if validRole() && (isAdmin() || (signedIn() && email == em()
+        && request.resource.data.rol == 'admin'
+        && !exists(/databases/$(database)/documents/config/inicio)
+        && existsAfter(/databases/$(database)/documents/config/inicio)));
+      allow update: if isAdmin() && validRole() && (email != em() || request.resource.data.rol == 'admin');
+      allow delete: if isAdmin() && email != em();
+    }
+
+    // Datos de cada grupo.
+    match /grupos/{gid} {
+      allow get: if isAdmin() || hasGroup(gid);
+      allow list: if isAdmin();
+      allow create, update: if canEdit(gid) && request.resource.data.keys().hasAll(['g', 'data']);
+      allow delete: if isAdmin();
+    }
+  }
+}

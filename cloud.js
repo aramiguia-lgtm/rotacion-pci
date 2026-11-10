@@ -1,6 +1,8 @@
-/* Sincronización con la cuenta de Google del supervisor (Firebase).
-   Cada grupo se guarda en usuarios/{uid}/grupos/{grupo}. Si no hay internet o no hay
-   configuración, la app sigue funcionando igual, solo en este dispositivo. */
+/* Nube (Firebase) con equipo y roles.
+   Modo «compartido»: los grupos viven en grupos/{id} y el administrador decide quién entra
+   (miembros/{correo}: rol admin, supervisor o utility, y qué grupos tiene).
+   Modo «personal» (antes de activar el administrador): cada cuenta guarda sus grupos en
+   usuarios/{uid}/grupos, como antes. Sin internet la app sigue funcionando en el aparato. */
 const CFG = {
   apiKey: "AIzaSyCOtf9CkkYSZgCQFqvHl5z8EhTeb_13sjE",
   authDomain: "rotacion-pci.firebaseapp.com",
@@ -8,7 +10,7 @@ const CFG = {
   storageBucket: "rotacion-pci.firebasestorage.app",
   messagingSenderId: "795506166176",
   appId: "1:795506166176:web:9abe7d4c74e324b473fcc5"
-}; // proyecto de Firebase «rotacion-pci»
+};
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
 const LS = 'rotgrupos:';
 const MK = LS + 'cloudmeta';
@@ -21,26 +23,51 @@ let dev = lsGet(LS + 'dev'); if (!dev) { dev = Math.random().toString(36).slice(
 
 const localGroups = () => { const out = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf(LS + 'g:') === 0) out.push(k.slice((LS + 'g:').length)) } } catch (e) { } return out };
 const docId = g => 'g_' + encodeURIComponent(String(g)).replace(/\./g, '%2E');
+const normG = g => String(g == null ? '' : g).trim().replace(/^grupo\s*/i, '');
+const normEmail = e => String(e || '').trim().toLowerCase();
 
-const C = { on: !!CFG, ready: false, user: null, pending: 0, last: 0, err: '' };
+/* Estado que lee la pantalla:
+   mode: 'personal' | 'compartido' | 'sinacceso' | null (todavía revisando)
+   role: 'admin' | 'supervisor' | 'utility' | null
+   groups: grupos asignados (en compartido, no admin)
+   canClaim: nadie ha activado el administrador todavía (sale el botón para hacerlo) */
+const C = { on: true, ready: false, user: null, pending: 0, last: 0, err: '', mode: null, role: null, name: '', groups: [], canClaim: false, members: [], allGroups: [] };
 window.cloud = C;
 const ui = () => { try { window.cloudUI && window.cloudUI() } catch (e) { } };
 
-let A, F, auth, db, unsub = null, timers = {};
+let A, F, auth, db, timers = {};
+let subs = [];            // escuchas activas de grupos
+let subMe = null, subTeam = null, subAll = null;
+const stopGroups = () => { subs.forEach(u => { try { u() } catch (e) { } }); subs = [] };
+const stopAll = () => { stopGroups();[subMe, subTeam, subAll].forEach(u => { try { u && u() } catch (e) { } }); subMe = subTeam = subAll = null };
+
+const shared = () => C.mode === 'compartido';
+const gref = g => shared() ? F.doc(db, 'grupos', docId(g)) : F.doc(db, 'usuarios', C.user.uid, 'grupos', docId(g));
+const hasGroup = g => C.role === 'admin' || C.groups.indexOf(normG(g)) >= 0;
+C.canWrite = g => {
+  if (!C.user) return false;
+  if (C.mode === 'personal') return true;
+  if (!shared()) return false;
+  return C.role === 'admin' || (C.role === 'supervisor' && hasGroup(g));
+};
+C.readOnly = () => shared() && C.role === 'utility';
+C.isAdmin = () => shared() && C.role === 'admin';
+C.syncs = g => !!C.user && (C.mode === 'personal' || (shared() && hasGroup(g)));
 
 C.changed = g => {
   g = String(g);
-  if (!C.on) return;
   const m = getMeta(); m.dirty[g] = 1; setMeta(m);
-  if (!C.user) return;
+  if (!C.canWrite(g)) return;
   clearTimeout(timers[g]); timers[g] = setTimeout(() => push(g), 1500);
 };
 C.removed = g => {
   g = String(g);
-  if (!C.on) return;
   const m = getMeta(); delete m.base[g]; delete m.dirty[g]; setMeta(m);
-  if (C.user) F.deleteDoc(F.doc(db, 'usuarios', C.user.uid, 'grupos', docId(g))).catch(() => { });
+  if (!C.user) return;
+  if (C.mode === 'personal' || C.isAdmin()) F.deleteDoc(gref(g)).catch(() => { });
 };
+C.canDeleteCloud = () => C.mode === 'personal' || C.isAdmin();
+
 C.signIn = async () => {
   if (!auth) return; C.err = ''; const p = new A.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' });
   try { await A.signInWithPopup(auth, p) }
@@ -51,88 +78,214 @@ C.signIn = async () => {
     C.err = msg(e); ui();
   }
 };
-C.signOut = async () => { if (!auth) return; if (unsub) { unsub(); unsub = null } const m = getMeta(); m.base = {}; m.uid = null; setMeta(m); await A.signOut(auth).catch(() => { }); };
+C.signOut = async () => { if (!auth) return; stopAll(); const m = getMeta(); m.base = {}; m.uid = null; m.mode = null; setMeta(m); await A.signOut(auth).catch(() => { }); };
 
-/* Botones manuales: traer lo último de la nube o subir lo de este aparato. */
+function msg(e) {
+  const c = e && e.code || '';
+  if (/network|unavailable/.test(c)) return 'No hay conexión con la nube. Revisa el internet o si la red del trabajo la bloquea.';
+  if (/unauthorized-domain/.test(c)) return 'Falta autorizar este sitio en Firebase (Dominios autorizados).';
+  if (/operation-not-allowed/.test(c)) return 'Falta activar «Google» en Firebase (Authentication).';
+  if (/permission-denied/.test(c)) return 'La nube no dio permiso. Si acabas de activar el administrador, revisa que pegaste las reglas nuevas en Firebase.';
+  return 'Algo falló con la nube (' + (c || 'error') + '). Inténtalo otra vez.';
+}
+
+async function push(g) {
+  if (!C.canWrite(g)) return;
+  const o = lsGet(LS + 'g:' + g); if (!o) return;
+  const rev = Date.now() + '-' + dev;
+  const m = getMeta(); m.base[g] = rev; setMeta(m);
+  C.pending++; ui();
+  try {
+    await F.setDoc(gref(g), { g: String(g), data: JSON.stringify(o), edit: o.edit || 0, rev, dev, por: C.user.email || '', at: F.serverTimestamp() });
+    const m2 = getMeta(); if (m2.base[g] === rev) delete m2.dirty[g]; setMeta(m2);
+    C.last = Date.now(); C.err = '';
+  } catch (e) { C.err = 'No se pudo guardar en la nube (' + (e && e.code || 'error') + '). Se reintentará al cambiar algo.'; }
+  C.pending--; ui();
+}
+
+/* Llegó un grupo de la nube: se aplica, salvo que lo de aquí sea un cambio más nuevo sin subir. */
+function incoming(d) {
+  const m = getMeta(); const g = String(d.g);
+  if (d.rev === m.base[g]) return;
+  const local = lsGet(LS + 'g:' + g);
+  const mine = local && m.base[g] !== undefined && m.dirty[g] && C.canWrite(g);
+  if (mine && (local.edit || 0) > (d.edit || 0)) { setTimeout(() => push(g), 0); return }
+  let o; try { o = JSON.parse(d.data) } catch (e) { return }
+  m.base[g] = d.rev; delete m.dirty[g]; setMeta(m);
+  window.cloudApply && window.cloudApply(g, o);
+}
+function gone(g) {
+  g = String(g); const m = getMeta();
+  if (m.base[g] !== undefined) { delete m.base[g]; delete m.dirty[g]; setMeta(m); window.cloudRemove && window.cloudRemove(g) }
+}
+const onErr = e => { C.err = msg(e); ui() };
+
+/* Escucha toda una colección (personal, o el administrador en compartido). */
+function listenCol(ref) {
+  let first = true;
+  const u = F.onSnapshot(ref, snap => {
+    const remote = new Set();
+    snap.forEach(d => remote.add(String(d.data().g)));
+    snap.docChanges().forEach(ch => { const d = ch.doc.data(); if (ch.type === 'removed') gone(d.g); else incoming(d) });
+    if (first) {
+      first = false;
+      localGroups().forEach(g => { if ((!remote.has(g) || getMeta().dirty[g]) && C.canWrite(g)) push(g) });
+    }
+    C.allGroups = Array.from(remote).sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+    C.last = C.last || Date.now(); C.err = ''; ui();
+  }, onErr);
+  subs.push(u);
+}
+/* Escucha solo los grupos asignados (supervisor o utility). */
+function listenMine() {
+  stopGroups();
+  C.groups.forEach(g => {
+    let first = true;
+    const u = F.onSnapshot(F.doc(db, 'grupos', docId(g)), d => {
+      if (d.exists()) incoming(d.data());
+      else if (first && lsGet(LS + 'g:' + g) && C.canWrite(g)) push(g);
+      first = false; C.last = C.last || Date.now(); C.err = ''; ui();
+    }, onErr);
+    subs.push(u);
+  });
+}
+
+function setMode(mode) {
+  const m = getMeta();
+  if (m.mode !== mode) { m.base = {}; m.mode = mode; setMeta(m) }
+  C.mode = mode;
+}
+
+/* Quitaron a esta persona o le quitaron un grupo: se borra de este aparato lo que venía de la nube. */
+function dropLocal(keep) {
+  const m = getMeta();
+  Object.keys(m.base).forEach(g => { if (!keep || keep.indexOf(g) < 0) gone(g) });
+}
+
+async function decide(u) {
+  const email = normEmail(u.email);
+  let cfg;
+  try { cfg = await F.getDoc(F.doc(db, 'config', 'inicio')) }
+  catch (e) {
+    // Reglas viejas (sin equipo): se sigue como antes, cada uno con su cuenta.
+    setMode('personal'); C.role = null; C.canClaim = false;
+    listenCol(F.collection(db, 'usuarios', u.uid, 'grupos')); ui(); return;
+  }
+  if (!cfg.exists()) {
+    setMode('personal'); C.role = null; C.canClaim = true;
+    listenCol(F.collection(db, 'usuarios', u.uid, 'grupos')); ui(); return;
+  }
+  C.canClaim = false;
+  subMe = F.onSnapshot(F.doc(db, 'miembros', email), d => {
+    stopGroups(); if (subTeam) { subTeam(); subTeam = null }
+    if (!d.exists()) {
+      const was = C.mode === 'compartido' || getMeta().mode === 'compartido';
+      C.role = null; C.groups = []; C.name = '';
+      if (was) dropLocal(null);
+      setMode('sinacceso'); ui(); return;
+    }
+    const x = d.data();
+    setMode('compartido');
+    C.role = x.rol; C.name = x.nombre || '';
+    C.groups = (x.grupos || []).map(normG).filter(Boolean);
+    if (C.role === 'admin') {
+      listenCol(F.collection(db, 'grupos'));
+      subTeam = F.onSnapshot(F.collection(db, 'miembros'), s => {
+        C.members = []; s.forEach(m => C.members.push(Object.assign({ email: m.id }, m.data())));
+        C.members.sort((a, b) => (a.rol === 'admin' ? -1 : 0) - (b.rol === 'admin' ? -1 : 0) || String(a.nombre || a.email).localeCompare(String(b.nombre || b.email), 'es'));
+        ui();
+      }, onErr);
+    } else {
+      dropLocal(C.groups);
+      listenMine();
+    }
+    ui();
+  }, onErr);
+}
+
+/* ---------- Administrador ---------- */
+const memberDoc = (email, rol, nombre, grupos) => {
+  const gs = Array.from(new Set((grupos || []).map(normG).filter(Boolean)));
+  return { rol, nombre: String(nombre || '').trim(), grupos: gs, docs: gs.map(docId), por: C.user.email || '', at: F.serverTimestamp() };
+};
+
+/* Activa el modo con equipo: tú quedas de administrador y tus grupos pasan a la nube compartida. */
+C.claimAdmin = async nombre => {
+  if (!C.user) return 'Primero entra con Google.';
+  const email = normEmail(C.user.email);
+  try {
+    const b = F.writeBatch(db);
+    b.set(F.doc(db, 'miembros', email), memberDoc(email, 'admin', nombre, []));
+    b.set(F.doc(db, 'config', 'inicio'), { admin: email, at: F.serverTimestamp() });
+    await b.commit();
+  } catch (e) { return msg(e) }
+  // Copia los grupos que tenías en tu cuenta personal a la nube compartida.
+  try {
+    const old = await F.getDocs(F.collection(db, 'usuarios', C.user.uid, 'grupos'));
+    const jobs = []; old.forEach(d => { const x = d.data(); if (x && x.g != null) jobs.push(F.setDoc(F.doc(db, 'grupos', docId(x.g)), x)) });
+    await Promise.all(jobs);
+  } catch (e) { }
+  stopAll(); setMode('compartido'); await decide(auth.currentUser);
+  return 'ok';
+};
+C.saveMember = async (email, rol, nombre, grupos) => {
+  email = normEmail(email);
+  if (!C.isAdmin()) return 'Solo el administrador puede hacer esto.';
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return 'Escribe un correo válido.';
+  if (['admin', 'supervisor', 'utility'].indexOf(rol) < 0) return 'Elige un rol.';
+  if (email === normEmail(C.user.email) && rol !== 'admin') return 'No puedes quitarte a ti mismo de administrador.';
+  try { await F.setDoc(F.doc(db, 'miembros', email), memberDoc(email, rol, nombre, grupos)); return 'ok' } catch (e) { return msg(e) }
+};
+C.delMember = async email => {
+  email = normEmail(email);
+  if (!C.isAdmin()) return 'Solo el administrador puede hacer esto.';
+  if (email === normEmail(C.user.email)) return 'No puedes quitarte a ti mismo.';
+  try { await F.deleteDoc(F.doc(db, 'miembros', email)); return 'ok' } catch (e) { return msg(e) }
+};
+/* Cambiaron el número de un grupo: se actualiza a quién está asignado. */
+C.renamed = async (og, g) => {
+  if (!C.isAdmin()) return;
+  og = normG(og); g = normG(g);
+  C.members.forEach(m => {
+    const gs = (m.grupos || []).map(normG);
+    if (gs.indexOf(og) >= 0) F.setDoc(F.doc(db, 'miembros', m.email), memberDoc(m.email, m.rol, m.nombre, gs.map(x => x === og ? g : x))).catch(() => { });
+  });
+};
+
+/* ---------- Botones manuales ---------- */
 C.pull = async g => {
   g = String(g);
-  if (!C.user) return 'Primero entra con Google.';
+  if (!C.syncs(g)) return C.user ? 'Este grupo no está en tu cuenta.' : 'Primero entra con Google.';
   try {
-    const d = await F.getDocFromServer(F.doc(db, 'usuarios', C.user.uid, 'grupos', docId(g)));
+    const d = await F.getDocFromServer(gref(g));
     if (!d.exists()) return 'En la nube todavía no hay datos de este grupo. Súbelos desde el aparato que tiene los datos buenos.';
     const x = d.data(); let o; try { o = JSON.parse(x.data) } catch (e) { return 'Los datos de la nube están dañados.' }
     const m = getMeta(); m.base[g] = x.rev; delete m.dirty[g]; setMeta(m);
     window.cloudApply && window.cloudApply(g, o, true);
     C.last = Date.now(); C.err = ''; ui();
     return 'ok';
-  } catch (e) { return 'No se pudo conectar con la nube (' + (e && e.code || 'error') + '). Revisa el internet o si la red del trabajo la bloquea.' }
-};
-C.sync = async g => {
-  g = String(g);
-  if (!C.user) return 'Primero entra con Google en la pestaña Grupo.';
-  try {
-    const d = await F.getDocFromServer(F.doc(db, 'usuarios', C.user.uid, 'grupos', docId(g)));
-    const local = lsGet(LS + 'g:' + g);
-    const r = d.exists() ? d.data() : null;
-    if (!r || (local && (local.edit || 0) > (r.edit || 0))) { const x = await C.pushNow(g); return x === 'ok' ? 'up' : x }
-    return (await C.pull(g)) === 'ok' ? 'down' : 'No se pudo traer de la nube.';
-  } catch (e) { return 'No se pudo conectar con la nube (' + (e && e.code || 'error') + '). Revisa el internet o si la red del trabajo la bloquea.' }
+  } catch (e) { return msg(e) }
 };
 C.pushNow = async g => {
   g = String(g);
-  if (!C.user) return 'Primero entra con Google.';
-  clearTimeout(timers[g]);
-  const before = C.err; C.err = '';
+  if (!C.canWrite(g)) return C.readOnly() ? 'Tu acceso es solo para ver.' : 'No tienes permiso para cambiar este grupo en la nube.';
+  clearTimeout(timers[g]); C.err = '';
   await push(g);
   return C.err ? C.err : 'ok';
 };
-
-function msg(e) {
-  const c = e && e.code || '';
-  if (/network/.test(c)) return 'No hay internet. Inténtalo cuando tengas conexión.';
-  if (/unauthorized-domain/.test(c)) return 'Falta autorizar este sitio en Firebase (Dominios autorizados).';
-  if (/operation-not-allowed/.test(c)) return 'Falta activar «Google» en Firebase (Authentication).';
-  return 'No se pudo entrar (' + (c || 'error') + '). Inténtalo otra vez.';
-}
-
-async function push(g) {
-  if (!C.user) return;
-  const o = lsGet(LS + 'g:' + g); if (!o) return;
-  const rev = Date.now() + '-' + dev;
-  const m = getMeta(); m.base[g] = rev; setMeta(m);
-  C.pending++; ui();
+C.sync = async g => {
+  g = String(g);
+  if (!C.syncs(g)) return C.user ? 'Este grupo no está en tu cuenta.' : 'Primero entra con Google.';
   try {
-    await F.setDoc(F.doc(db, 'usuarios', C.user.uid, 'grupos', docId(g)), { g: String(g), data: JSON.stringify(o), edit: o.edit || 0, rev, dev, at: F.serverTimestamp() });
-    const m2 = getMeta(); if (m2.base[g] === rev) delete m2.dirty[g]; setMeta(m2);
-    C.last = Date.now(); C.err = '';
-  } catch (e) { C.err = 'No se pudo guardar en la nube. Se reintentará al cambiar algo.'; }
-  C.pending--; ui();
-}
-
-function listen(uid) {
-  let first = true;
-  unsub = F.onSnapshot(F.collection(db, 'usuarios', uid, 'grupos'), snap => {
-    const m = getMeta(); const remote = new Set();
-    snap.forEach(d => remote.add(d.data().g));
-    snap.docChanges().forEach(ch => {
-      const d = ch.doc.data(); const g = d.g;
-      if (ch.type === 'removed') { if (m.base[g] !== undefined) { delete m.base[g]; delete m.dirty[g]; setMeta(m); window.cloudRemove && window.cloudRemove(g) } return }
-      if (d.rev === m.base[g]) return; // ya lo tenemos (o es nuestro propio cambio)
-      const local = lsGet(LS + 'g:' + g);
-      // Primera vez que este aparato se sincroniza con este grupo: manda lo de la nube.
-      const mine = local && m.base[g] !== undefined && m.dirty[g];
-      if (mine && (local.edit || 0) > (d.edit || 0)) { setTimeout(() => push(g), 0); return } // lo de aquí es más nuevo
-      let o; try { o = JSON.parse(d.data) } catch (e) { return }
-      m.base[g] = d.rev; delete m.dirty[g]; setMeta(m);
-      window.cloudApply && window.cloudApply(g, o);
-    });
-    if (first) {
-      first = false;
-      localGroups().forEach(g => { if (!remote.has(g) || getMeta().dirty[g]) push(g) });
-    }
-    C.last = C.last || Date.now(); ui();
-  }, e => { C.err = 'Sin conexión con la nube. Tus cambios se guardan aquí y se suben al volver.'; ui() });
-}
+    const d = await F.getDocFromServer(gref(g));
+    const local = lsGet(LS + 'g:' + g);
+    const r = d.exists() ? d.data() : null;
+    const dirty = !!getMeta().dirty[g];
+    if (C.canWrite(g) && (!r || (local && dirty && (local.edit || 0) > (r.edit || 0)))) { const x = await C.pushNow(g); return x === 'ok' ? 'up' : x }
+    if (!r) return 'En la nube todavía no hay datos de este grupo.';
+    return (await C.pull(g)) === 'ok' ? 'down' : 'No se pudo traer de la nube.';
+  } catch (e) { return msg(e) }
+};
 
 async function init() {
   try {
@@ -140,14 +293,16 @@ async function init() {
     A = Au; F = Fs;
     const app = App.initializeApp(CFG);
     auth = A.getAuth(app);
+    // Las redes del trabajo con proxy cortan la conexión en vivo: se usa «long polling».
     try { db = F.initializeFirestore(app, { localCache: F.persistentLocalCache(), experimentalForceLongPolling: true }) } catch (e) { db = F.getFirestore(app) }
     A.getRedirectResult(auth).catch(e => { C.err = msg(e); ui() });
     A.onAuthStateChanged(auth, u => {
-      if (unsub) { unsub(); unsub = null }
+      stopAll();
       C.user = u ? { uid: u.uid, email: u.email || '' } : null; C.ready = true;
-      if (u) { const m = getMeta(); if (m.uid !== u.uid) { m.uid = u.uid; m.base = {}; setMeta(m) } listen(u.uid) }
+      C.mode = null; C.role = null; C.groups = []; C.members = []; C.canClaim = false;
+      if (u) { const m = getMeta(); if (m.uid !== u.uid) { m.uid = u.uid; m.base = {}; m.mode = null; setMeta(m) } decide(u).catch(onErr) }
       ui();
     });
   } catch (e) { C.ready = true; C.err = 'No se pudo conectar con la nube (¿sin internet?). La app funciona igual en este dispositivo.'; ui() }
 }
-if (CFG) init();
+init();

@@ -26,6 +26,7 @@ h2{font-size:22px;margin:0 0 8px;font-weight:700}
 h2.lh{margin-top:22px}
 .sub{color:var(--muted);margin:0 0 12px;font-size:17px}
 .btn{display:block;width:100%;border:0;border-radius:14px;padding:14px;font:inherit;font-weight:700;font-size:19px;background:var(--accent);color:var(--onaccent);cursor:pointer;text-align:center;margin-top:12px}
+#app.ro .rolk{opacity:.55;cursor:not-allowed}
 .cbox{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:14px;margin:14px 0}
 .btn.soft{background:var(--card);color:var(--ink);border:2px solid var(--line)}
 label{display:block;font-weight:600;margin:14px 0 6px}
@@ -887,20 +888,25 @@ setInterval(remTick,5000);
 function setTab(t){if(t!=='personal')evLock();printing=false;tab=t;armed=null;render();window.scrollTo(0,0)}
 function rr(){const y=window.scrollY;render();window.scrollTo(0,y)}
 function render(){
+if(teamOpen&&window.cloud&&cloud.isAdmin()){$('#app').innerHTML=`<button class="link" onclick="teamOpen=false;render();window.scrollTo(0,0)">‹ Volver</button><h1>Equipo</h1>`+(notice?`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`:'')+equipoHTML();notice=null;return}
+teamOpen=false;
 if(!S||!S.g){$('#app').innerHTML=startHTML();return}
 const d=day();
 if(printing){$('#app').innerHTML=printHTML(d);if(onZebra())fitLabels();return}
 if(tab==='hoy'&&!d.blocks.some(Boolean)&&canGen()&&isWork(date)){autoGen=true;try{gen(0)}finally{autoGen=false}}
 else if(tab==='hoy'&&date>todayStr()&&stale(d)&&canGen()){autoGen=true;try{gen(0)}finally{autoGen=false}notice=notice||{t:'La rotación de '+fmtD(date)+' se rehízo con los puestos actuales.'}}
 else if(stale(d))d.dirty=true;
-let h=`<div class="gtop"><div><h1>Grupo ${esc(S.g)}</h1><span class="shiftchip ${S.shift==='noche'?'n':''}">${S.shift==='noche'?'Noche · 18:00 a 6:00':'Día · 6:00 a 18:00'}</span></div><div class="hbtns">${window.cloud&&cloud.user&&!S.example?'<button class="pill" onclick="syncBoth()">🔄 Sincronizar</button>':''}<button class="pill new" onclick="leave(true)">+ Nuevo grupo</button><button class="link" onclick="leave()">Cambiar de grupo</button></div></div>`;
+let h=`<div class="gtop"><div><h1>Grupo ${esc(S.g)}</h1><span class="shiftchip ${S.shift==='noche'?'n':''}">${S.shift==='noche'?'Noche · 18:00 a 6:00':'Día · 6:00 a 18:00'}</span></div><div class="hbtns">${window.cloud&&!S.example&&cloud.syncs(S.g)?'<button class="pill" onclick="syncBoth()">🔄 Sincronizar</button>':''}${isRO()?'':'<button class="pill new" onclick="leave(true)">+ Nuevo grupo</button>'}<button class="link" onclick="leave()">Cambiar de grupo</button></div></div>`;
 if(S.example)h+=`<div class="ex">Estás viendo un ejemplo con nombres inventados. No se guarda. Para tu grupo, toca «+ Nuevo grupo».</div>`;
-h+=`<div class="tabs mt">`+[['hoy','Hoy'],['maquinas','Máquinas'],['personal','Personal'],['vacaciones','Vacaciones'],['calendario','Mes'],['reporte','Reporte'],['avisos','Avisos'],['grupo','Grupo'],['ayuda','Cómo usar']].map(t=>`<button class="tab ${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`).join('')+`</div>`;
+const TABS=myTabs();if(!TABS.some(t=>t[0]===tab))tab='hoy';
+if(isRO())h+=`<div class="ex">👁 Solo ver: tu acceso al grupo ${esc(S.g)} es de consulta. Los cambios los hace el supervisor.</div>`;
+else if(window.cloud&&cloud.user&&cloud.mode==='compartido'&&!S.example&&!cloud.syncs(S.g))h+=`<div class="ex">Este grupo está solo en este aparato: no está asignado a tu cuenta, así que no se sincroniza.</div>`;
+h+=`<div class="tabs mt">`+TABS.map(t=>`<button class="tab ${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`).join('')+`</div>`;
 h+=alertsHTML();if(tab==='hoy')h+=remNextHTML();
 if(notice)h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;
-h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML():tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='ayuda'?guideHTML():personalHTML();
+h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML():tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='ayuda'?guideHTML():tab==='equipo'?equipoHTML():personalHTML();
 notice=null;
-$('#app').innerHTML=h;
+$('#app').innerHTML=h;roLock();
 if(tab==='reporte'&&repShow===date)repFill();
 }
 
@@ -1448,8 +1454,10 @@ function startHTML(){
 let h=`<h1>Rotación de grupos PCI Miami</h1><p class="sub">Cada grupo arma su propia rotación: máquinas, personal, desayuno y almuerzo, vacaciones, mes y reporte. Lo que guardes aquí queda en este dispositivo (y en tu cuenta, si entras con tu correo) y no cambia nada de otros grupos.</p>`;
 if(notice){h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;notice=null}
 h+=cloudHTML(false);
+if(window.cloud&&cloud.isAdmin&&cloud.isAdmin())h+=`<button class="btn soft" onclick="openTeam()">👥 Administrar equipo</button>`;
 const G=savedGroups();
 if(G.length)h+=`<h2 class="lh">Tus grupos en este dispositivo</h2><div class="glist">`+G.map(g=>`<button class="gbtn" onclick="openGroup('${esc(String(g.g)).replace(/'/g,'&#39;')}')"><span>Grupo ${esc(g.g)}<small style="display:block">${g.shift==='noche'?'Noche · 18:00 a 6:00':'Día · 6:00 a 18:00'} · ${esc(grpInfo(g))}</small></span><span aria-hidden="true">›</span></button>`).join('')+`</div>`;
+if(window.cloud&&cloud.readOnly&&cloud.readOnly()){return h}
 h+=`<h2 class="lh">${G.length?'Crear otro grupo':'Crear tu grupo'}</h2><label for="ng">Número de grupo</label><input id="ng" inputmode="numeric" placeholder="Ej. 5" autocomplete="off">
 <label>Horario del grupo</label><div class="seg">${[['dia','Día','6:00 a 18:00'],['noche','Noche','18:00 a 6:00']].map(([k,l,s])=>`<button class="${newShift===k?'on':''}" aria-pressed="${newShift===k}" onclick="pickShift('${k}')">${l}<small>${s}</small></button>`).join('')}</div>
 <button class="btn" onclick="createGroup()">Crear grupo</button>`;
@@ -1510,8 +1518,8 @@ const dB={bS:'07:00',lS:'12:00'},nB={bS:'21:00',lS:'01:00'},from=was==='noche'?n
 if(S.brk.bS===from.bS&&S.brk.lS===from.lS){S.brk.bS=to.bS;S.brk.lS=to.lS}
 const T=todayStr(),st=v==='noche'?'18:00':'06:00';Object.keys(S.days).forEach(k=>{const d=S.days[k];if(k>=T&&!d.blocks.some(Boolean))d.start=st});
 date=nextShift();save();notice={t:'Horario cambiado a '+(v==='noche'?'noche (18:00 a 6:00).':'día (6:00 a 18:00).')+' Revisa las horas de desayuno y almuerzo en Personal.'};rr()}
-function renGroup(){const g=String($('#rg').value||'').trim().replace(/^grupo\s*/i,'');if(!g||g===S.g)return;if(lsGet(GKEY+'g:'+g)){notice={t:'Ya existe un grupo '+g+' en este dispositivo.',bad:true};return rr()}const og=S.g;if(!S.example)lsDel(GKEY+'g:'+S.g);S.g=g;if(!S.example){cDirty=true;saveNow();window.cloud&&cloud.removed(og)}notice={t:'Ahora es el grupo '+g+'.'};rr()}
-function delGroup(){if(armed!=='delg'){armed='delg';return rr()}armed=null;clearTimeout(saveT);saveT=null;lsDel(GKEY+'g:'+S.g);const g=S.g;const inCloud=!!(window.cloud&&cloud.user);window.cloud&&cloud.removed(g);try{if(localStorage.getItem(GKEY+'last')===JSON.stringify(g))lsDel(GKEY+'last')}catch(e){}S=defaults();SHIFT='dia';tab='hoy';notice={t:'Se borró el grupo '+g+(inCloud?' de este dispositivo y de tu cuenta.':' de este dispositivo.')};render();window.scrollTo(0,0)}
+function renGroup(){const g=String($('#rg').value||'').trim().replace(/^grupo\s*/i,'');if(!g||g===S.g)return;if(lsGet(GKEY+'g:'+g)){notice={t:'Ya existe un grupo '+g+' en este dispositivo.',bad:true};return rr()}const og=S.g;if(!S.example)lsDel(GKEY+'g:'+S.g);S.g=g;if(!S.example){cDirty=true;saveNow();if(window.cloud){cloud.removed(og);cloud.renamed&&cloud.renamed(og,g)}}notice={t:'Ahora es el grupo '+g+'.'};rr()}
+function delGroup(){if(armed!=='delg'){armed='delg';return rr()}armed=null;clearTimeout(saveT);saveT=null;lsDel(GKEY+'g:'+S.g);const g=S.g;const inCloud=!!(window.cloud&&cloud.user&&cloud.canDeleteCloud()&&cloud.syncs(g));window.cloud&&cloud.removed(g);try{if(localStorage.getItem(GKEY+'last')===JSON.stringify(g))lsDel(GKEY+'last')}catch(e){}S=defaults();SHIFT='dia';tab='hoy';notice={t:'Se borró el grupo '+g+(inCloud?' de este dispositivo y de tu cuenta.':' de este dispositivo.')};render();window.scrollTo(0,0)}
 function grupoHTML(){
 let h=`<h2>Horario del grupo</h2><div class="seg">${[['dia','Día','6:00 a 18:00'],['noche','Noche','18:00 a 6:00']].map(([k,l,s])=>`<button class="${S.shift===k?'on':''}" aria-pressed="${S.shift===k}" onclick="setShiftG('${k}')">${l}<small>${s}</small></button>`).join('')}</div>`;
 h+=`<p class="sub" style="margin-top:8px">En el turno de noche, la rotación de la noche que empezó ayer sigue en pantalla hasta las 6:00.</p>`;
@@ -1520,9 +1528,10 @@ if(S.example)h+=`<div class="ex">Esto es un ejemplo: no se guarda ni tiene respa
 else{
 h+=cloudHTML(true);
 h+=`<h2 class="lh">Código de respaldo</h2><p class="sub">Todo tu grupo queda guardado solo en este teléfono o computadora. Copia este código para pasarlo a otro teléfono o para tenerlo guardado: en el otro, pégalo en la primera pantalla, en «Cargar un respaldo».</p><button class="btn" onclick="copyBackup()">Copiar código de respaldo</button><p class="sub" id="bko" role="status"></p><textarea id="bk" class="code" hidden readonly></textarea>`;
+if(window.cloud&&cloud.mode==='compartido'&&cloud.syncs(S.g)&&!cloud.isAdmin())h+=`<p class="sub" style="margin-top:18px">El número del grupo y borrarlo los maneja el administrador.</p>`;else{
 h+=`<h2 class="lh">Número del grupo</h2><div class="pbar"><input id="rg" inputmode="numeric" value="${esc(S.g)}" aria-label="Número del grupo"><button class="btn soft" style="margin-top:0;width:auto;padding:10px 18px" onclick="renGroup()">Cambiar</button></div>`;
-h+=`<h2 class="lh">Borrar el grupo</h2><p class="sub">Borra el grupo ${esc(S.g)} ${window.cloud&&cloud.user?'de este dispositivo y de tu cuenta, en todos los aparatos donde entres con tu correo':'solo de este dispositivo'}. Copia antes el código de respaldo si lo quieres guardar.</p><button class="btn soft" style="border-color:var(--bad);color:var(--bad)" onclick="delGroup()">${armed==='delg'?'Toca otra vez para borrar':'Borrar grupo '+esc(S.g)}</button>`;
-}
+h+=`<h2 class="lh">Borrar el grupo</h2><p class="sub">Borra el grupo ${esc(S.g)} ${window.cloud&&cloud.user?(cloud.mode==='compartido'?'de este dispositivo y de la nube, para todo el equipo':'de este dispositivo y de tu cuenta, en todos los aparatos donde entres con tu correo'):'solo de este dispositivo'}. Copia antes el código de respaldo si lo quieres guardar.</p><button class="btn soft" style="border-color:var(--bad);color:var(--bad)" onclick="delGroup()">${armed==='delg'?'Toca otra vez para borrar':'Borrar grupo '+esc(S.g)}</button>`;
+}}
 return h+ACEPTAR;
 }
 /* Máquinas del grupo: números de cada línea. */
@@ -1587,19 +1596,72 @@ const o=$('#sgo');o.style.color='';o.textContent='Se abrió WhatsApp con tu suge
 async function copySug(){const t=sugText();if(!t)return;const o=$('#sgo');o.style.color='';try{await navigator.clipboard.writeText(t);o.textContent='Texto copiado. Pégalo en un mensaje a quien administra la app.'}catch(e){const x=$('#sgx');x.value=t;x.focus();x.select();o.textContent='No se pudo copiar solo. El texto quedó seleccionado: cópialo a mano.'}}
 
 
+
+/* ---------- Equipo y roles ---------- */
+let teamOpen=false,teamEdit=null;
+const isRO=()=>!!(window.cloud&&cloud.readOnly&&cloud.readOnly()&&S&&S.g&&!S.example);
+function myTabs(){
+if(isRO())return [['hoy','Hoy'],['vacaciones','Vacaciones'],['calendario','Mes'],['ayuda','Cómo usar']];
+const T=[['hoy','Hoy'],['maquinas','Máquinas'],['personal','Personal'],['vacaciones','Vacaciones'],['calendario','Mes'],['reporte','Reporte'],['avisos','Avisos'],['grupo','Grupo'],['ayuda','Cómo usar']];
+if(window.cloud&&cloud.isAdmin&&cloud.isAdmin()&&!S.example)T.splice(8,0,['equipo','Equipo']);
+return T}
+/* Solo ver: se desactiva todo lo que cambia datos; quedan pestañas, fechas, imprimir y copiar. */
+const RO_OK=new Set(['setTab','setDate','calNav','leave','openGroup','syncBoth','openPrint','doPrint','setPfmt','setNout','setZmg','setZor','printing','window.scrollTo','var','document.getElementById','copyDay','copyGuide','startGuide','cloud.signIn','cloudOut','sendSug','copySug','teamOpen']);
+const roName=a=>{const m=String(a||'').trim().match(/^[A-Za-z_$][\w$.]*/);return m?m[0]:''};
+function roAllowed(el){for(const at of ['onclick','onchange','oninput']){const v=el.getAttribute(at);if(v&&!RO_OK.has(roName(v)))return false}return true}
+function roLock(){const app=$('#app');if(!app)return;const ro=isRO();app.classList.toggle('ro',ro);if(!ro)return;
+app.querySelectorAll('[onclick],[onchange],[oninput]').forEach(el=>{if(roAllowed(el))return;if('disabled' in el)el.disabled=true;el.classList.add('rolk');el.setAttribute('aria-disabled','true')});
+app.querySelectorAll('input:not([type=date]):not([type=month]),textarea,select').forEach(el=>{if(roAllowed(el)&&(el.getAttribute('onchange')||el.getAttribute('oninput')))return;el.disabled=true;el.classList.add('rolk')})}
+['click','change','input'].forEach(ev=>document.addEventListener(ev,e=>{if(!isRO())return;const el=e.target.closest&&e.target.closest('[onclick],[onchange],[oninput]');if(el&&el.closest('#app')&&!roAllowed(el)){e.stopPropagation();e.preventDefault()}},true));
+
+function openTeam(){teamOpen=true;teamEdit=null;armed=null;render();window.scrollTo(0,0)}
+async function claimAdmin(){if(armed!=='claim'){armed='claim';return rr()}armed=null;const n=($('#adn')&&$('#adn').value||'').trim();notice={t:'Activando el equipo…'};rr();const r=await cloud.claimAdmin(n);notice=r==='ok'?{t:'Listo: eres el administrador. Ahora agrega a tu equipo en «👥 Administrar equipo».'}:{t:r,bad:true};rr()}
+const ROLES=[['supervisor','Supervisor','Edita la rotación de su grupo'],['utility','Solo ver','Ve la rotación y los descansos, no cambia nada'],['admin','Administrador','Maneja el equipo y todos los grupos']];
+const parseGs=v=>String(v||'').split(/[,;\s]+/).map(x=>x.trim().replace(/^grupo/i,'')).filter(Boolean);
+function memberForm(m){const isMe=m&&m.email===String(cloud.user.email||'').toLowerCase();const r=m?m.rol:'supervisor';
+return `<div class="cbox"><h2 style="margin-top:0">${m?'Cambiar a '+esc(m.nombre||m.email):'Agregar a una persona'}</h2>
+${m?`<p class="sub" style="margin:0">${esc(m.email)}</p>`:`<label for="tm_e">Correo de Google</label><input id="tm_e" type="email" inputmode="email" autocomplete="off" placeholder="nombre@gmail.com">`}
+<label for="tm_n">Nombre</label><input id="tm_n" value="${esc(m&&m.nombre||'')}" placeholder="Ej. Diana Pozo" autocomplete="off">
+${isMe?'':`<label for="tm_r">Rol</label><select id="tm_r">${ROLES.map(([k,l,d])=>`<option value="${k}" ${r===k?'selected':''}>${l} — ${d}</option>`).join('')}</select>`}
+${isMe?'':`<label for="tm_g">Grupos (números, separados por coma)</label><input id="tm_g" inputmode="numeric" value="${esc((m&&m.grupos||[]).join(', '))}" placeholder="Ej. 3"><p class="sub" style="margin:4px 0 0">Grupos en la nube: ${cloud.allGroups.length?cloud.allGroups.map(esc).join(', '):'ninguno todavía'}. El administrador ve todos sin asignarlos.</p>`}
+<div class="pbar" style="margin-top:12px"><button class="btn" style="margin-top:0" onclick="saveMember(${m?`'${esc(m.email)}'`:'null'})">Guardar</button><button class="btn soft" style="margin-top:0" onclick="teamEdit=null;rr()">Cancelar</button></div></div>`}
+function equipoHTML(){const c=window.cloud;if(!c||!c.isAdmin())return `<p class="sub">Solo el administrador ve esta parte.</p>`;
+let h=`<p class="sub">Cada persona entra con su correo de Google. Supervisor: edita su grupo. Solo ver: ve la rotación de su grupo sin poder cambiarla. Si alguien se va, quítalo y su grupo se borra de sus aparatos; luego asigna el grupo a otra persona.</p>`;
+if(teamEdit==='new')h+=memberForm(null);else h+=`<button class="btn" onclick="teamEdit='new';rr()">+ Agregar persona</button>`;
+const me=String(c.user.email||'').toLowerCase();
+h+=`<h2 class="lh">Personas (${c.members.length})</h2>`;
+c.members.forEach(m=>{if(teamEdit===m.email){h+=memberForm(m);return}
+const rl=(ROLES.find(x=>x[0]===m.rol)||[0,m.rol])[1];const k='dm:'+m.email;
+h+=`<div class="cbox" style="margin:8px 0"><p style="margin:0"><b>${esc(m.nombre||m.email)}</b>${m.email===me?' (tú)':''}</p><p class="sub" style="margin:2px 0 0">${esc(m.email)}<br>${esc(rl)}${m.rol==='admin'?' · todos los grupos':' · '+((m.grupos||[]).length?'Grupo '+m.grupos.map(esc).join(', '):'sin grupo')}</p>
+<div class="pbar" style="margin-top:8px"><button class="btn soft" style="margin-top:0" onclick="teamEdit='${esc(m.email)}';armed=null;rr()">Cambiar</button>${m.email===me?'':`<button class="btn soft" style="margin-top:0;border-color:var(--bad);color:var(--bad)" onclick="delMember('${esc(m.email)}')">${armed===k?'Toca otra vez para quitar':'Quitar'}</button>`}</div></div>`});
+const asg={};c.members.forEach(m=>{if(m.rol!=='admin')(m.grupos||[]).forEach(g=>{(asg[g]=asg[g]||[]).push(m.nombre||m.email)})});
+h+=`<h2 class="lh">Grupos</h2>`+(c.allGroups.length?c.allGroups.map(g=>`<p style="margin:6px 0"><b>Grupo ${esc(g)}</b>: <span class="sub">${asg[g]?asg[g].map(esc).join(', '):'nadie asignado'}</span></p>`).join(''):`<p class="sub">Todavía no hay grupos en la nube.</p>`);
+return h}
+async function saveMember(email){const isNew=!email;email=email||($('#tm_e')&&$('#tm_e').value)||'';const n=$('#tm_n')?$('#tm_n').value:'';const me=String(cloud.user.email||'').toLowerCase();const self=email.toLowerCase()===me;
+const r=self?'admin':($('#tm_r')?$('#tm_r').value:'supervisor');const gs=self?[]:parseGs($('#tm_g')?$('#tm_g').value:'');
+if(isNew&&cloud.members.some(m=>m.email===email.trim().toLowerCase())){notice={t:'Esa persona ya está en el equipo. Toca «Cambiar» en su tarjeta.',bad:true};return rr()}
+if(r!=='admin'&&!gs.length){notice={t:'Escribe al menos un grupo para esa persona.',bad:true};return rr()}
+const res=await cloud.saveMember(email,r,n,gs);if(res==='ok'){teamEdit=null;notice={t:'Guardado. La persona entra a la app con ese correo y verá su grupo.'}}else notice={t:res,bad:true};rr()}
+async function delMember(email){const k='dm:'+email;if(armed!==k){armed=k;return rr()}armed=null;const res=await cloud.delMember(email);notice=res==='ok'?{t:'Quitada del equipo. Su grupo se borra de sus aparatos la próxima vez que abran la app.'}:{t:res,bad:true};rr()}
 /* Nube: entrar con Google y sincronizar los grupos entre aparatos (cloud.js). */
 function cloudHTML(inGroup){const c=window.cloud;if(!c||!c.on)return '';
 const err=c.err?`<p class="sub" style="color:var(--bad);margin:8px 0 0">${esc(c.err)}</p>`:'';
 if(!c.ready)return `<div class="cbox"><b>☁ Conectando con la nube…</b>${err}</div>`;
 if(!c.user)return `<div class="cbox"><h2 style="margin-top:0">☁ Sincronizar con tu correo</h2><p class="sub">Entra con tu cuenta de Google y tus grupos se guardan en la nube. Lo que cambies en el teléfono aparece solo en la computadora o la tablet donde entres con el mismo correo.</p><button class="btn" style="margin-top:0" onclick="cloud.signIn()">Entrar con Google</button>${err}</div>`;
-return `<div class="cbox"><p style="margin:0"><b>☁ Sincronizado</b> con ${esc(c.user.email)}</p><p class="sub" style="margin:4px 0 0">${c.pending?'Guardando en la nube…':'Al día'+(c.last?' · '+hhmm(c.last):'')}${inGroup?'':'. Tus grupos de la cuenta salen en la lista de abajo.'}</p>${err}${inGroup&&S&&S.g&&!S.example?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn" style="margin-top:0" onclick="syncPull()">⬇ Traer lo último</button><button class="btn soft" style="margin-top:0" onclick="syncPush()">${armed==='spush'?'Toca otra vez: reemplaza la nube':'⬆ Subir lo de aquí'}</button></div><p class="sub" style="margin:6px 0 0">Traer: pone aquí lo que guardaste en el otro aparato. Subir: manda lo de este aparato a la nube y al otro aparato.</p>`:''}<button class="btn soft" style="margin-top:10px" onclick="cloudOut()">${armed==='cout'?'Toca otra vez para salir':'Salir de la cuenta'}</button></div>`}
+if(!c.mode)return `<div class="cbox"><b>☁ Revisando tu acceso…</b> ${esc(c.user.email)}${err}</div>`;
+const outB=`<button class="btn soft" style="margin-top:10px" onclick="cloudOut()">${armed==='cout'?'Toca otra vez para salir':'Salir de la cuenta'}</button>`;
+if(c.mode==='sinacceso')return `<div class="cbox"><p style="margin:0"><b>🔒 Sin acceso</b></p><p class="sub" style="margin:4px 0 0">Tu correo ${esc(c.user.email)} no está en el equipo. Pide al administrador que te agregue con este correo. Mientras tanto, lo que hagas queda solo en este aparato.</p>${err}${outB}</div>`;
+const roleTxt=c.mode==='compartido'?` · ${({admin:'Administrador',supervisor:'Supervisor',utility:'Solo ver'})[c.role]||''}${c.role!=='admin'?' · '+(c.groups.length?'Grupo '+c.groups.map(esc).join(', '):'sin grupo asignado'):''}`:'';
+const claim=c.canClaim?`<div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--line)"><b>👥 Activar el equipo</b><p class="sub" style="margin:4px 0 8px">Te vuelves administrador: agregas a los supervisores y utilities con su correo, les das su rol y su grupo, y los quitas cuando se vayan. Tus grupos pasan a la nube del equipo. Antes tienen que estar pegadas las reglas nuevas en Firebase.</p><label for="adn" style="margin-top:0">Tu nombre</label><input id="adn" placeholder="Ej. Aramis" autocomplete="off"><button class="btn" onclick="claimAdmin()">${armed==='claim'?'Toca otra vez para activar':'Hacerme administrador'}</button></div>`:'';
+return `<div class="cbox"><p style="margin:0"><b>☁ Sincronizado</b> con ${esc(c.user.email)}${roleTxt}</p><p class="sub" style="margin:4px 0 0">${c.pending?'Guardando en la nube…':'Al día'+(c.last?' · '+hhmm(c.last):'')}${inGroup?'':'. Tus grupos de la cuenta salen en la lista de abajo.'}</p>${err}${claim}${inGroup&&S&&S.g&&!S.example&&c.syncs(S.g)&&!c.readOnly()?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn" style="margin-top:0" onclick="syncPull()">⬇ Traer lo último</button><button class="btn soft" style="margin-top:0" onclick="syncPush()">${armed==='spush'?'Toca otra vez: reemplaza la nube':'⬆ Subir lo de aquí'}</button></div><p class="sub" style="margin:6px 0 0">Traer: pone aquí lo que guardaste en el otro aparato. Subir: manda lo de este aparato a la nube y al otro aparato.</p>`:''}<button class="btn soft" style="margin-top:10px" onclick="cloudOut()">${armed==='cout'?'Toca otra vez para salir':'Salir de la cuenta'}</button></div>`}
 async function syncBoth(){if(!S||!S.g)return;if(saveT)saveNow();notice={t:'Sincronizando…'};rr();const r=await cloud.sync(S.g);notice=r==='up'?{t:'Sincronizado ('+hhmm(Date.now())+'): lo de este aparato era lo más nuevo y se subió a la nube.'}:r==='down'?{t:'Sincronizado ('+hhmm(Date.now())+'): ya tienes lo último de la nube.'}:{t:r,bad:true};rr()}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&window.cloud&&cloud.user&&S&&S.g&&!S.example&&!saveT)cloud.sync(S.g).catch(()=>{})});
 async function syncPull(){if(!S||!S.g)return;clearTimeout(saveT);saveT=null;cDirty=false;notice={t:'Trayendo de la nube…'};rr();const r=await cloud.pull(S.g);notice=r==='ok'?{t:'Listo: ya tienes lo último de la nube ('+hhmm(Date.now())+').'}:{t:r,bad:true};rr()}
 async function syncPush(){if(!S||!S.g)return;if(armed!=='spush'){armed='spush';return rr()}armed=null;cDirty=true;saveNow();notice={t:'Subiendo a la nube…'};rr();const r=await cloud.pushNow(S.g);notice=r==='ok'?{t:'Listo: lo de este aparato ya está en la nube. El otro aparato lo recibe solo; si no, toca «Traer lo último» allá.'}:{t:r,bad:true};rr()}
 function cloudOut(){if(armed!=='cout'){armed='cout';return rr()}armed=null;cloud.signOut()}
 function cloudBusy(){const a=document.activeElement;return a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)}
-function cloudUI(){if(!ready||printing)return;if((!S||!S.g||tab==='grupo')&&!cloudBusy()){const keep={};document.querySelectorAll('#app input[id],#app textarea[id]').forEach(e=>{if(e.value)keep[e.id]=e.value});rr();for(const id in keep){const e=document.getElementById(id);if(e&&!e.value)e.value=keep[id]}}}
+let cloudKey='';
+function cloudUI(){if(!ready||printing)return;const c=window.cloud||{};const k=[c.mode,c.role,(c.groups||[]).join(','),c.user&&c.user.uid].join('|');const roleChanged=k!==cloudKey;cloudKey=k;if((roleChanged||teamOpen||!S||!S.g||tab==='grupo'||tab==='equipo')&&!cloudBusy()){const keep={};document.querySelectorAll('#app input[id],#app textarea[id]').forEach(e=>{if(e.value)keep[e.id]=e.value});rr();for(const id in keep){const e=document.getElementById(id);if(e&&!e.value)e.value=keep[id]}}}
 let cloudWait=null;
 function cloudApply(g,o,force){g=String(g);if(!o||typeof o!=='object')return;o.g=g;
 if(S&&String(S.g)===g&&!S.example){if(!force&&(saveT||cloudBusy())){clearTimeout(cloudWait);cloudWait=setTimeout(()=>cloudApply(g,o),2000);return}

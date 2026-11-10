@@ -7,3 +7,8 @@ App para que cada grupo arme su rotación de personal: máquinas, personal, desa
 - Los datos se guardan solo en el aparato. Para pasarlos a otro, usa el código de respaldo de la pestaña Grupo.
 
 Publicada en: https://aramiguia-lgtm.github.io/rotacion-pci/
+
+## Equipo y roles
+- `firestore.rules`: reglas de Firebase. Pégalas en Firebase → Firestore Database → Reglas → Publicar.
+- Después, el dueño entra con Google y toca «Hacerme administrador» (solo funciona la primera vez).
+- Roles: Administrador (todo el equipo y todos los grupos), Supervisor (edita sus grupos), Solo ver (consulta sus grupos).

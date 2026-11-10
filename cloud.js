@@ -53,6 +53,29 @@ C.signIn = async () => {
 };
 C.signOut = async () => { if (!auth) return; if (unsub) { unsub(); unsub = null } const m = getMeta(); m.base = {}; m.uid = null; setMeta(m); await A.signOut(auth).catch(() => { }); };
 
+/* Botones manuales: traer lo último de la nube o subir lo de este aparato. */
+C.pull = async g => {
+  g = String(g);
+  if (!C.user) return 'Primero entra con Google.';
+  try {
+    const d = await F.getDocFromServer(F.doc(db, 'usuarios', C.user.uid, 'grupos', docId(g)));
+    if (!d.exists()) return 'En la nube todavía no hay datos de este grupo. Súbelos desde el aparato que tiene los datos buenos.';
+    const x = d.data(); let o; try { o = JSON.parse(x.data) } catch (e) { return 'Los datos de la nube están dañados.' }
+    const m = getMeta(); m.base[g] = x.rev; delete m.dirty[g]; setMeta(m);
+    window.cloudApply && window.cloudApply(g, o, true);
+    C.last = Date.now(); C.err = ''; ui();
+    return 'ok';
+  } catch (e) { return 'No se pudo conectar con la nube (' + (e && e.code || 'error') + '). Revisa el internet o si la red del trabajo la bloquea.' }
+};
+C.pushNow = async g => {
+  g = String(g);
+  if (!C.user) return 'Primero entra con Google.';
+  clearTimeout(timers[g]);
+  const before = C.err; C.err = '';
+  await push(g);
+  return C.err ? C.err : 'ok';
+};
+
 function msg(e) {
   const c = e && e.code || '';
   if (/network/.test(c)) return 'No hay internet. Inténtalo cuando tengas conexión.';

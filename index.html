@@ -890,7 +890,7 @@ if(ch){save();remPaint();if(tab==='avisos'&&!printing){const a=document.activeEl
 function remPaint(){let o=document.getElementById('remov');if(!remQ.length){if(o)o.remove();remSound(false);return}
 if(!o){o=document.createElement('div');o.id='remov';o.setAttribute('role','alertdialog');o.setAttribute('aria-live','assertive');document.body.appendChild(o)}
 o.innerHTML=`<div class="rembox"><div class="remh">🔔 Recordatorio</div>`+remQ.map(q=>`<div class="remi"><b>${esc(q.text)}</b><small>${q.late?'Se pasó: era a las '+hhmm(q.at):'Ahora · '+hhmm(q.at)}</small><div class="pbar"><button class="btn" onclick="remAck('${q.id}')">Hecho</button><button class="btn soft" onclick="remSnooze('${q.id}')">En 5 min</button></div></div>`).join('')+`</div>`;
-remSound(true);try{if(navigator.vibrate)navigator.vibrate([500,250,500,250,500])}catch(e){}}
+nightDom(o);remSound(true);try{if(navigator.vibrate)navigator.vibrate([500,250,500,250,500])}catch(e){}}
 function remAck(id){const q=remQ.find(x=>x.id===id);remQ=remQ.filter(x=>x.id!==id);remPaint();if(q&&q.plk&&q.plds===date){const C0=plChecks();if(!C0[q.plk])planChk(q.plk)}}
 function remSnooze(id){const q=remQ.find(x=>x.id===id);remQ=remQ.filter(x=>x.id!==id);if(q){const s={id:'s'+uid(),text:q.text,k:'en',min:5,on:true,next:Date.now()+300000,snooze:1};RL().push(s);save()}remPaint();if(tab==='avisos')rr()}
 function remTest(){remUnlock();remQ.push({id:'test'+uid(),text:'Prueba de alarma',at:Date.now(),late:false});remPaint()}
@@ -912,7 +912,7 @@ if(teamOpen&&window.cloud&&cloud.isAdmin()){$('#app').innerHTML=`<button class="
 teamOpen=false;
 if(!S||!S.g){$('#app').innerHTML=startHTML();return}
 const d=day();
-if(printing){$('#app').innerHTML=printHTML(d);if(onZebra())fitLabels();return}
+if(printing){$('#app').innerHTML=printHTML(d);nightDom($('#app'));if(onZebra())fitLabels();return}
 if(tab==='hoy'&&!d.blocks.some(Boolean)&&canGen()&&isWork(date)){autoGen=true;try{gen(0)}finally{autoGen=false}}
 else if(tab==='hoy'&&date>todayStr()&&stale(d)&&canGen()){autoGen=true;try{gen(0)}finally{autoGen=false}notice=notice||{t:'La rotación de '+fmtD(date)+' se rehízo con los puestos actuales.'}}
 else if(stale(d))d.dirty=true;
@@ -926,7 +926,7 @@ h+=alertsHTML();if(tab==='hoy')h+=remNextHTML();
 if(notice)h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;
 h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML():tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='ayuda'?guideHTML():tab==='equipo'?equipoHTML():tab==='plan'?planHTML()+(isRO()?'':'<button id="plfab" aria-label="Agregar tarea" onclick="plGoAdd()">+</button>'):personalHTML();
 notice=null;
-$('#app').innerHTML=h;roLock();
+$('#app').innerHTML=h;nightDom($('#app'));roLock();
 if(tab==='reporte'&&repShow===date)repFill();
 }
 
@@ -1622,6 +1622,14 @@ async function copySug(){const t=sugText();if(!t)return;const o=$('#sgo');o.styl
 
 
 
+
+/* Turno de noche: los descansos se llaman cena y merienda (en lugar de desayuno y almuerzo). Solo cambia lo que se ve. */
+const NIGHT_W=[[/\bel desayuno\b/g,'la cena'],[/\bel almuerzo\b/g,'la merienda'],[/\bdel desayuno\b/g,'de la cena'],[/\bdel almuerzo\b/g,'de la merienda'],[/\bal desayuno\b/g,'a la cena'],[/\bal almuerzo\b/g,'a la merienda'],[/DESAYUNO/g,'CENA'],[/ALMUERZO/g,'MERIENDA'],[/Desayuno/g,'Cena'],[/Almuerzo/g,'Merienda'],[/desayuno/g,'cena'],[/almuerzo/g,'merienda']];
+const isNight=()=>!!(S&&S.g&&S.shift==='noche');
+function nightTxt(t){if(!isNight()||typeof t!=='string')return t;NIGHT_W.forEach(([r,v])=>{t=t.replace(r,v)});return t}
+function nightDom(root){if(!isNight()||!root)return;try{const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){if(n.parentNode&&/^(TEXTAREA|SCRIPT|STYLE)$/.test(n.parentNode.nodeName))continue;const v=nightTxt(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v}
+root.querySelectorAll('[aria-label],[placeholder],[title]').forEach(e=>{['aria-label','placeholder','title'].forEach(a=>{const v=e.getAttribute(a);if(v){const x=nightTxt(v);if(x!==v)e.setAttribute(a,x)}})})}catch(e){}}
+try{if(navigator.clipboard&&navigator.clipboard.writeText){const _wt=navigator.clipboard.writeText.bind(navigator.clipboard);navigator.clipboard.writeText=t=>_wt(nightTxt(t))}}catch(e){}
 /* ---------- Plan de trabajo de los utilities senior ---------- */
 /* S.plan: tareas del grupo que se repiten cada día ({id,txt,every(horas, 0 = horas fijas),from,times[],who,day}). */
 const plShift=()=>S.shift==='noche'?['18:00','06:00']:['06:00','18:00'];

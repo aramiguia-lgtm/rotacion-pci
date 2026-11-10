@@ -337,6 +337,8 @@ const held=n=>{const m=S.machines.find(x=>x.n===n);return !!(m&&m.on&&m.hold)};
 const postHeld=p=>{const a=p.ms.filter(machOn);return a.length>0&&a.every(held)};
 /* Retrabajo: quien pasa por esa máquina detenida va a retrabajo y no cubre descansos. */
 const postRT=p=>postHeld(p)&&p.ms.some(n=>{const m=S.machines.find(x=>x.n===n);return m&&m.on&&m.hold&&m.task==='rt'});
+/* Cubre como utility: quien pasa por esa máquina detenida cubre descansos como un utility (Material Handler), en cualquier línea. */
+const postUT=p=>postHeld(p)&&heldOf(p).some(m=>m.task==='ut');
 function setRT(pid,on){const p=S.posts.find(x=>x.id===pid);if(!p)return;S.machines.forEach(m=>{if(p.ms.indexOf(m.n)>=0&&m.on&&m.hold)m.task=on?'rt':''});save();notice={t:on?'Máq. '+postLabel(p)+': quien pasa por ahí va a retrabajo.':'Máq. '+postLabel(p)+': el operario vuelve a cubrir descansos.'};rr()}
 const pname=id=>{const p=S.people.find(x=>x.id===id);return p?p.name:'?'};
 const mk=p=>p&&p.role==='util'?' (MH)':p&&p.role==='senior'?' (US)':p&&p.role==='sup'?' (Sup.)':'';
@@ -507,14 +509,14 @@ if(b)b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid),id=b.arr[j];c
 return Z.map(m=>{const a=by[m.n];if(a)return {n:m.n,line:m.line,pid:a.pid,src:'det',from:a.from};const u=lineUtil(m.line);return {n:m.n,line:m.line,pid:u?u.id:null,src:'util'}});
 }
 function heldOf(p){return S.machines.filter(m=>p.ms.indexOf(m.n)>=0&&m.on&&m.hold)}
-function setPostTask(pid,v){const p=S.posts.find(x=>x.id===pid);if(!p)return;heldOf(p).forEach(m=>{m.task=v;if(v==='zc'&&!Array.isArray(m.zc))m.zc=[]});save();notice={t:'Máq. '+postLabel(p)+': '+(v==='rt'?'su operario va a retrabajo.':v==='zc'?'toca las máquinas sin puesto que cubre su operario.':'su operario cubre descansos.')};rr()}
+function setPostTask(pid,v){const p=S.posts.find(x=>x.id===pid);if(!p)return;heldOf(p).forEach(m=>{m.task=v;if(v==='zc'&&!Array.isArray(m.zc))m.zc=[]});save();notice={t:'Máq. '+postLabel(p)+': '+(v==='rt'?'su operario va a retrabajo.':v==='ut'?'su operario cubre como utility.':v==='zc'?'toca las máquinas sin puesto que cubre su operario.':'su operario cubre descansos.')};rr()}
 function togglePostZC(pid,n){const p=S.posts.find(x=>x.id===pid);if(!p)return;const H=heldOf(p);if(!H.length)return;const on=!(H[0].zc||[]).includes(n);
 S.machines.forEach(m=>{if(Array.isArray(m.zc))m.zc=m.zc.filter(x=>x!==n)});
 if(on){H[0].task='zc';H[0].zc=(H[0].zc||[]).concat([n])}
 save();rr()}
 function heldCtl(p){
 const H=heldOf(p),tk=H.length?(H[0].task||''):'',zc=postZC(p);
-let h=`<select class="tk" aria-label="Qué hace el operario de la máquina ${esc(postLabel(p))}" onchange="setPostTask('${p.id}',this.value)">`+[['','Cubre descansos'],['rt','Retrabajo'],['zc','Cubre máq. sin puesto']].map(([k,l])=>`<option value="${k}" ${tk===k?'selected':''}>${l}</option>`).join('')+`</select>`;
+let h=`<select class="tk" aria-label="Qué hace el operario de la máquina ${esc(postLabel(p))}" onchange="setPostTask('${p.id}',this.value)">`+[['','Cubre descansos'],['rt','Retrabajo'],['zc','Cubre máq. sin puesto'],['ut','Cubre como utility']].map(([k,l])=>`<option value="${k}" ${tk===k?'selected':''}>${l}</option>`).join('')+`</select>`;
 if(tk==='zc'){const Z=zeroM(),taken={};S.posts.forEach(q=>{if(q.id!==p.id)postZC(q).forEach(n=>taken[n]=postLabel(q))});
 h+=`<div class="zcp">`+(Z.length?Z.map(m=>`<button class="pill ${zc.includes(m.n)?'zero':'ghost'}" aria-pressed="${zc.includes(m.n)}" onclick="togglePostZC('${p.id}',${m.n})">${m.n}${taken[m.n]?' <small>(de la '+esc(taken[m.n])+')</small>':''}</button>`).join(''):'<span class="tag">No hay máquinas encendidas sin puesto.</span>')+`</div>`}
 return h;
@@ -526,8 +528,8 @@ const i=curBlock(d),b=i>=0?d.blocks[i]:null;if(!b)return '';
 const slot=breakSlots().find(slotNow),rows=slot?cover(d,slot)||[]:[];
 const brk=new Set(rows.filter(r=>r.st!=='fuera').map(r=>r.id)),cov={};rows.forEach(r=>{if(r.st==='ok'&&r.u)cov[r.u]=r});
 const R=rtIds(d,i,b),UT=utIds(d,i),Z=zeroAssign(d,i,b),zOf={},RTH=new Set();
-b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(p&&postRT(p)&&b.arr[j])RTH.add(b.arr[j])});Z.forEach(z=>{if(z.src==='det')(zOf[z.pid]=zOf[z.pid]||[]).push(z.n)});
-const where=id=>brk.has(id)?'en '+slot.kind.toLowerCase():cov[id]?'cubriendo '+mql(cov[id]):R.has(id)||RTH.has(id)?'en retrabajo':UT.has(id)?'cubriendo como Material Handler':zOf[id]?'cubriendo '+zOf[id].join(', ')+' (sin puesto)':'libre';
+const UTH=new Set();b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(p&&postRT(p)&&b.arr[j])RTH.add(b.arr[j]);if(p&&postUT(p)&&b.arr[j])UTH.add(b.arr[j])});Z.forEach(z=>{if(z.src==='det')(zOf[z.pid]=zOf[z.pid]||[]).push(z.n)});
+const where=id=>brk.has(id)?'en '+slot.kind.toLowerCase():cov[id]?'cubriendo '+mql(cov[id]):R.has(id)||RTH.has(id)?'en retrabajo':UTH.has(id)?'cubriendo como utility':UT.has(id)?'cubriendo como Material Handler':zOf[id]?'cubriendo '+zOf[id].join(', ')+' (sin puesto)':'libre';
 const A=[];
 b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(!p)return;const id=b.arr[j],ms=p.ms.filter(machOn),n0=ms[0]||p.ms[0];
 if(postHeld(p)){A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:'h',pp:'Detenida',sm:esc(heldReason(p))+(id?' · '+esc(pname(id))+' está '+where(id):'')});return}
@@ -624,7 +626,7 @@ b.arr.slice(0,n).forEach((id,j)=>{const p=S.posts.find(x=>x.id===b.posts[j]);if(
 const key=r.orig||r.id,cur=((d.cov&&d.cov[s.kind+s.turn])||{})[key]||'';
 const C=S.people.filter(p=>here(p)&&s.ids.indexOf(p.id)<0&&p.id!==r.id&&(isUtil(p)?!busy.has(p.id):!busy.has(p.id)));
 const UT=utIds(d,i),ops=C.filter(p=>!isUtil(p)&&!isSup(p)&&!UT.has(p.id)),uts=C.filter(p=>isUtil(p)||UT.has(p.id)),sps=C.filter(isSup);
-const lab=p=>{const j=b.arr.slice(0,n).indexOf(p.id);const q=j>=0?S.posts.find(x=>x.id===b.posts[j]):null;return esc(p.name)+(isUtil(p)?' (MH)':UT.has(p.id)?' (cubriendo como Material Handler)':q?' · máq. '+esc(postLabel(q))+(postRT(q)?' (retrabajo)':' (detenida)'):' · libre')};
+const lab=p=>{const j=b.arr.slice(0,n).indexOf(p.id);const q=j>=0?S.posts.find(x=>x.id===b.posts[j]):null;return esc(p.name)+(isUtil(p)?' (MH)':UT.has(p.id)?' (cubriendo como Material Handler)':q?' · máq. '+esc(postLabel(q))+(postRT(q)?' (retrabajo)':postUT(q)?' (utility)':' (detenida)'):' · libre')};
 return `<select class="mv" aria-label="Quién cubre a ${esc(pname(key))}" onchange="setCov('${s.kind}',${s.turn},'${key}',this.value)"><option value="">${cur?'Volver a automático':'Quién cubre: automático'}</option>`+(ops.length?`<optgroup label="Operarios">`+ops.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${lab(p)}</option>`).join('')+`</optgroup>`:'')+(uts.length?`<optgroup label="Material Handler">`+uts.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${lab(p)}</option>`).join('')+`</optgroup>`:'')+(sps.length?`<optgroup label="Supervisor">`+sps.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${esc(p.name)} (supervisor)</option>`).join('')+`</optgroup>`:'')+`</select>`;
 }
 function setCov(kind,turn,key,v){const d=day();d.cov=d.cov||{};const k=kind+turn,o=d.cov[k]=d.cov[k]||{};if(v){Object.keys(o).forEach(x=>{if(o[x]===v)delete o[x]});o[key]=v}else delete o[key];save();notice={t:v?kind+' turno '+turn+': '+pname(v)+' cubre a '+pname(key)+'. Solo para hoy.':'Quién cubre a '+pname(key)+' vuelve a automático.'};rr()}
@@ -649,12 +651,13 @@ const qid=subs[id]||(p&&p.sub),q=qid&&S.people.find(x=>x.id===qid);
 return q&&here(q)?{id:q.id,orig:id}:{id,orig:null,abs:true};
 });
 const effIds=eff.map(e=>e.id);
-const UT=utIds(d,i),U=S.people.filter(p=>(isUtil(p)||UT.has(p.id))&&here(p)&&onPost.indexOf(p.id)<0&&effIds.indexOf(p.id)<0);
-const uL=p=>UT.has(p.id)?utLine(d,i,p.id):uLine(p);
+const UTP=new Set();const UT=utIds(d,i),U=S.people.filter(p=>(isUtil(p)||UT.has(p.id))&&here(p)&&onPost.indexOf(p.id)<0&&effIds.indexOf(p.id)<0);
+const uL=p=>UTP.has(p.id)?0:UT.has(p.id)?utLine(d,i,p.id):uLine(p);
 /* Operarios libres (su máquina está parada o sobran): cubren primero, menos los que están en su propio descanso. */
 const R=rtIds(d,i,b);
 const F=S.people.filter(p=>!isUtil(p)&&!isSup(p)&&!UT.has(p.id)&&here(p)&&!R.has(p.id)&&onPost.indexOf(p.id)<0&&effIds.indexOf(p.id)<0);
-const H=onPost.map((id,j)=>{const p=S.posts.find(x=>x.id===b.posts[j]);return id&&p&&postHeld(p)&&!postRT(p)&&!postZC(p).length&&effIds.indexOf(id)<0?S.people.find(x=>x.id===id&&here(x)):null}).filter(Boolean);
+const H=onPost.map((id,j)=>{const p=S.posts.find(x=>x.id===b.posts[j]);return id&&p&&postHeld(p)&&!postRT(p)&&!postUT(p)&&!postZC(p).length&&effIds.indexOf(id)<0?S.people.find(x=>x.id===id&&here(x)):null}).filter(Boolean);
+onPost.forEach((id,j)=>{const p=S.posts.find(x=>x.id===b.posts[j]);if(id&&p&&postUT(p)&&effIds.indexOf(id)<0){const q=S.people.find(x=>x.id===id&&here(x));if(q){UTP.add(id);U.push(q)}}});
 const used=new Set();
 const rows=eff.map(e=>{
 const id=e.id,orig=e.orig;
@@ -664,7 +667,7 @@ if(j<0)return {id,orig,st:R.has(id)?'rtp':UT.has(id)?'utp':'libre'};
 const post=S.posts.find(x=>x.id===b.posts[j]);
 const ms=post?post.ms.filter(machOn):[];
 const m=S.machines.find(x=>x.n===(ms[0]||(post&&post.ms[0])));
-if(post&&postHeld(post)){const zc=postZC(post);if(zc.length)return {id,orig,st:'ok',zc:true,ms:zc,line:lineN(zc[0]),u:null,off:false};return {id,orig,st:'det',rt:postRT(post),ms:post.ms.filter(machOn),sx:post.sfx||''}}
+if(post&&postHeld(post)){const zc=postZC(post);if(zc.length)return {id,orig,st:'ok',zc:true,ms:zc,line:lineN(zc[0]),u:null,off:false};return {id,orig,st:'det',rt:postRT(post),utk:postUT(post),ms:post.ms.filter(machOn),sx:post.sfx||''}}
 return {id,orig,st:'ok',ms:ms.length?ms:(post?post.ms:[]),sx:post?post.sfx||'':'',line:m?m.line:0,u:null,off:false};
 });
 const pick=(r,f)=>{const u=U.find(x=>!used.has(x.id)&&f(x));if(u){used.add(u.id);r.u=u.id}return !!u};
@@ -674,7 +677,7 @@ const HR=onPost.map((id,j)=>{const p=S.posts.find(x=>x.id===b.posts[j]);return i
 const RTp=S.people.filter(p=>R.has(p.id)&&here(p)&&onPost.indexOf(p.id)<0&&effIds.indexOf(p.id)<0);
 /* Elección a mano de quién cubre (solo ese día): se respeta primero, lo demás se reparte solo. */
 const ov=(d.cov&&d.cov[slot.kind+slot.turn])||{},kindOf=v=>H.some(x=>x.id===v)?'det':F.some(x=>x.id===v)?'libre':(HR.some(x=>x.id===v)||RTp.some(x=>x.id===v))?'rt':null;
-need.forEach(r=>{const v=ov[r.orig||r.id];if(!v||used.has(v)||effIds.indexOf(v)>=0)return;const q=S.people.find(x=>x.id===v);if(!q||!here(q))return;/* Si ahora está trabajando en una máquina encendida, no puede cubrir: se ignora la elección a mano. */if(isUtil(q)||isSup(q)||UT.has(v)?onPost.indexOf(v)>=0:!kindOf(v))return;used.add(v);r.u=v;r.man=true;r.free=kindOf(v);if(isSup(q))r.sup=1});
+need.forEach(r=>{const v=ov[r.orig||r.id];if(!v||used.has(v)||effIds.indexOf(v)>=0)return;const q=S.people.find(x=>x.id===v);if(!q||!here(q))return;/* Si ahora está trabajando en una máquina encendida, no puede cubrir: se ignora la elección a mano. */if(UTP.has(v)?false:(isUtil(q)||isSup(q)||UT.has(v))?onPost.indexOf(v)>=0:!kindOf(v))return;used.add(v);r.u=v;r.man=true;r.free=kindOf(v);if(isSup(q))r.sup=1});
 const need2=need.filter(r=>!r.u);
 const cand=H.map(p=>[p,'det']).concat(F.map(p=>[p,'libre']),HR.map(p=>[p,'rt']),RTp.map(p=>[p,'rt'])).filter(c=>!used.has(c[0].id)).slice(0,need2.length);
 const homeOf=id=>{const j=onPost.indexOf(id);if(j<0)return null;const p=S.posts.find(x=>x.id===b.posts[j]);return p?p.ms[0]:null};
@@ -685,7 +688,7 @@ const cu=new Set(),ru=new Set();
 pairs.forEach(([_,ci,ri])=>{if(cu.has(ci)||ru.has(ri))return;cu.add(ci);ru.add(ri);const r=need2[ri],c=cand[ci];used.add(c[0].id);r.u=c[0].id;r.free=c[1]});
 need.filter(r=>!r.u).forEach(r=>pick(r,u=>uL(u)===r.line&&r.line>0));
 need.filter(r=>!r.u).forEach(r=>pick(r,u=>uL(u)===0));
-need.forEach(r=>{if(r.u&&UT.has(r.u))r.ut=1});
+need.forEach(r=>{if(r.u&&(UT.has(r.u)||UTP.has(r.u)))r.ut=1});
 need.filter(r=>!r.u).forEach(r=>{if(pick(r,()=>true))r.off=true});
 /* Si los Material Handler no dan abasto (ej. salen 4), el supervisor cubre una máquina. */
 const SV=S.people.filter(p=>isSup(p)&&here(p)&&!used.has(p.id)&&effIds.indexOf(p.id)<0&&onPost.indexOf(p.id)<0);
@@ -697,7 +700,7 @@ if(r.st==='fuera')return `<span class="chip cn">No está hoy · elige quién vie
 if(r.st==='libre')return `<span class="chip cm">Libre, no hace falta cubrir</span>`;
 if(r.st==='rtp')return `<span class="chip ch">En retrabajo, no hace falta cubrir</span>`;
 if(r.st==='utp')return `<span class="chip cm">Cubriendo como Material Handler, no hace falta cubrir</span>`;
-if(r.st==='det')return `<span class="chip ch">${r.rt?'En retrabajo':'Máquina detenida'}, no hace falta cubrir</span>`;
+if(r.st==='det')return `<span class="chip ch">${r.rt?'En retrabajo':r.utk?'Cubriendo como utility':'Máquina detenida'}, no hace falta cubrir</span>`;
 if(!r.u)return `<span class="chip cn">Sin Material Handler</span>`;
 const u=S.people.find(x=>x.id===r.u);
 if(r.sup)return `<span class="chip cs">${esc(u.name)} (supervisor)</span>`;
@@ -710,7 +713,7 @@ let h=`<div class="brk ${on?'on':''}"><div class="bh"><b class="tn tn${(s.turn-1
 if(!s.ids.length)return h+`<p class="free">No hay operarios en este turno. Ajústalo en Personal.</p>`+xtAdd(s)+`</div>`;
 if(!rows)return h+`<p class="free">Genera la rotación de este bloque para ver la cobertura.</p></div>`;
 h+=rows.map(r=>{
-const info=[r.orig?'por '+esc(pname(r.orig)):'',r.st==='ok'?'Máq. '+esc(mql(r))+' · línea '+r.line+(r.zc?' · sin puesto':''):r.st==='det'?'Máq. '+esc(mql(r))+(r.rt?' · retrabajo':' · detenida'):''].filter(Boolean).join(' · ')||'&nbsp;';
+const info=[r.orig?'por '+esc(pname(r.orig)):'',r.st==='ok'?'Máq. '+esc(mql(r))+' · línea '+r.line+(r.zc?' · sin puesto':''):r.st==='det'?'Máq. '+esc(mql(r))+(r.rt?' · retrabajo':r.utk?' · cubre como utility':' · detenida'):''].filter(Boolean).join(' · ')||'&nbsp;';
 const o=r.orig||(r.st==='fuera'?r.id:null),key=r.orig||r.id,bt=baseTurn(key),mv=bt>=0&&bt!==s.turn-1?'<b class="mvd">cambiado del turno '+(bt+1)+'</b>':'';
 return `<div class="brow"><span class="op">${esc(pname(r.id))}${mv}<small>${info}</small></span>${chip(r)}${r.man?'<b class="mvd" style="flex-basis:100%">elegido a mano</b>':''}${o?subSel(d,o,r.orig?r.id:''):''}${r.st==='ok'?covSel(d,s,r):''}${moveSel(s,key)}</div>`;
 }).join('');
@@ -948,7 +951,7 @@ function brData(d,s){
 const rows=cover(d,s);if(!rows)return null;
 return rows.map(r=>{let cv,cl='cv',tp='';
 if(r.st==='ok'){if(r.u){cv=pname(r.u);tp=r.sup?'supervisor':r.free==='det'?'máq. det.':r.free==='rt'?'retrabajo':r.free==='libre'?'libre':'Material Handler'}else{cv='SIN CUBRIR';cl='bad'}}
-else{cl='nc';cv=r.st==='det'?(r.rt?'No hace falta · retrabajo':'No hace falta · máq. det.'):r.st==='rtp'?'No hace falta · retrabajo':r.st==='libre'?'No hace falta · libre':'No está hoy'}
+else{cl='nc';cv=r.st==='det'?(r.rt?'No hace falta · retrabajo':r.utk?'No hace falta · utility':'No hace falta · máq. det.'):r.st==='rtp'?'No hace falta · retrabajo':r.st==='libre'?'No hace falta · libre':'No está hoy'}
 const mq=r.ms&&r.ms.length?mql(r):'—',ml=r.st==='det'?'det.':r.line?'L'+r.line:'';
 return {sale:pname(r.id),por:r.orig?pname(r.orig):'',mq,ml,cv,cl,tp}});
 }
@@ -1022,9 +1025,9 @@ const g={};off.forEach(m=>{const k=m.reason||'Sin motivo';(g[k]=g[k]||[]).push(m
 h+=`<p class="stops">Paradas: `+Object.keys(g).map(k=>`<b>${esc(k)}</b> (${g[k].join(', ')})`).join(' · ')+`</p>`;
 }
 const hl=S.machines.filter(m=>m.on&&m.hold);
-const hc=hl.filter(m=>m.task!=='rt'),hr=hl.filter(m=>m.task==='rt'),ml=a=>a.map(m=>m.n+(m.reason?' ('+esc(m.reason)+')':'')).join(', ');
+const hc=hl.filter(m=>m.task!=='rt'&&m.task!=='ut'),hr=hl.filter(m=>m.task==='rt'),hu=hl.filter(m=>m.task==='ut'),ml=a=>a.map(m=>m.n+(m.reason?' ('+esc(m.reason)+')':'')).join(', ');
 if(hc.length)h+=`<p class="stops">Detenidas, su operario cubre descansos: <b>${ml(hc)}</b></p>`;
-if(hr.length)h+=`<p class="stops">Detenidas, su operario va a retrabajo: <b>${ml(hr)}</b></p>`;
+if(hr.length)h+=`<p class="stops">Detenidas, su operario va a retrabajo: <b>${ml(hr)}</b></p>`;if(hu.length)h+=`<p class="stops">Detenidas, su operario cubre como utility: <b>${ml(hu)}</b></p>`;
 const zm=zeroM();if(zm.length)h+=`<p class="stops">Sin puesto (cero operario, las atiende el Material Handler): <b>${zm.map(m=>m.n).join(', ')}</b></p>`;
 const orphan=S.machines.filter(m=>machOn(m.n)&&!S.posts.some(p=>p.ms.indexOf(m.n)>=0)).map(m=>m.n);
 /* Las máquinas encendidas sin puesto son de cero operario: no hace falta aviso. */
@@ -1054,8 +1057,8 @@ function blockRows(b,i){
 return b.posts.map((pid,j)=>{
 const p=S.posts.find(x=>x.id===pid);if(!p)return '';
 const sel=b.arr[j]||'';
-const hd=postHeld(p),rt=hd&&postRT(p),zc=hd?postZC(p):[],cls=hd?'mrow held':'mrow',lab=esc(postLabel(p))+(hd?'<small>Detenida · '+esc(heldReason(p))+'</small>':'');
-const task=rt?'Retrabajo':zc.length?'Cubre '+zc.join(', ')+' (sin puesto)':hd?'Cubre descansos':'';
+const hd=postHeld(p),rt=hd&&postRT(p),utk=hd&&postUT(p),zc=hd?postZC(p):[],cls=hd?'mrow held':'mrow',lab=esc(postLabel(p))+(hd?'<small>Detenida · '+esc(heldReason(p))+'</small>':'');
+const task=rt?'Retrabajo':utk?'Cubre como utility':zc.length?'Cubre '+zc.join(', ')+' (sin puesto)':hd?'Cubre descansos':'';
 if(i<0)return `<div class="${cls}"><span>${lab}</span><span class="who">${sel?esc(pname(sel))+pmark(sel):'Sin cubrir'}${hd?'<b>'+task+'</b>':''}</span></div>`;
 if(hd)return `<div class="${cls}"><span>${lab}</span><span class="rtname">${sel?esc(pname(sel))+pmark(sel):'Sin cubrir'}<small>${task}</small></span><div class="hctl">${heldCtl(p)}</div></div>`;
 return `<div class="${cls}"><span>${lab}</span><select class="${sel?'':'miss'}" aria-label="Persona en ${esc(postLabel(p))}" onchange="setCell(${i},${j},this.value)"><option value="">Sin cubrir</option>`+S.people.filter(q=>here(q)||q.id===sel).map(q=>`<option value="${q.id}" ${q.id===sel?'selected':''}>${esc(q.name)}${mk(q)}</option>`).join('')+`</select></div>`;
@@ -1172,7 +1175,7 @@ try{const a=document.createElement('textarea');a.value=t;document.body.appendChi
 function maquinasHTML(){
 let h=`<p class="sub"><b>Encendida</b>: trabaja normal. <b>Detenida</b>: parada por un motivo pero sigue en la rotación con su operario; en desayuno y almuerzo ese operario cubre primero a los que salen, o lo mandas a retrabajo. <b>Cero operario</b>: encendida pero no es puesto; la atiende el Material Handler. Las encendidas que no están en ningún puesto ya cuentan como cero operario. Si una detenida tiene «Cubre máq. sin puesto», su operario cubre las que elijas. <b>Parada</b>: fuera todo el turno y sale de la rotación.</p>`;
 [1,2].forEach(l=>{
-h+=`<h2 class="lh">Línea ${l}</h2>`+S.machines.filter(m=>m.line===l).map(m=>`<div class="prow"><b class="num">${m.n}</b>${mState(m)}${m.on&&m.hold?`<select class="nm" aria-label="Operario de la máquina ${m.n}" onchange="setTask(${m.n},this.value)"><option value="" ${m.task!=='rt'?'selected':''}>Operario cubre descansos</option><option value="rt" ${m.task==='rt'?'selected':''}>Operario va a retrabajo</option><option value="zc" ${m.task==='zc'?'selected':''}>Operario cubre máq. sin puesto (se eligen en Hoy)</option></select>`:''}${m.on&&!m.hold?'':`<select class="nm ${m.reason?'':'miss'}" aria-label="Motivo máquina ${m.n}" onchange="setReason(${m.n},this.value)"><option value="">Elige el motivo</option>${reasonOpts(m.reason)}</select><input class="nm" style="flex-basis:100%" maxlength="140" value="${esc(m.note||'')}" placeholder="Describe el problema" aria-label="Descripción del problema de la máquina ${m.n}" onchange="setNote(${m.n},this.value)">`}</div>`).join('');
+h+=`<h2 class="lh">Línea ${l}</h2>`+S.machines.filter(m=>m.line===l).map(m=>`<div class="prow"><b class="num">${m.n}</b>${mState(m)}${m.on&&m.hold?`<select class="nm" aria-label="Operario de la máquina ${m.n}" onchange="setTask(${m.n},this.value)"><option value="" ${!m.task?'selected':''}>Operario cubre descansos</option><option value="rt" ${m.task==='rt'?'selected':''}>Operario va a retrabajo</option><option value="zc" ${m.task==='zc'?'selected':''}>Operario cubre máq. sin puesto (se eligen en Hoy)</option><option value="ut" ${m.task==='ut'?'selected':''}>Operario cubre como utility</option></select>`:''}${m.on&&!m.hold?'':`<select class="nm ${m.reason?'':'miss'}" aria-label="Motivo máquina ${m.n}" onchange="setReason(${m.n},this.value)"><option value="">Elige el motivo</option>${reasonOpts(m.reason)}</select><input class="nm" style="flex-basis:100%" maxlength="140" value="${esc(m.note||'')}" placeholder="Describe el problema" aria-label="Descripción del problema de la máquina ${m.n}" onchange="setNote(${m.n},this.value)">`}</div>`).join('');
 });
 h+=`<h2 class="lh">Puestos de rotación</h2><p class="sub">Cada puesto es una máquina, o varias, que cubre una sola persona. Separa los números con coma, punto o espacio (ej. 1, 2 ó 1.2). Para poner dos operarios en la misma máquina, agrega otro puesto con una letra al final: <b>21</b> y <b>21A</b> (adelante y atrás) son dos puestos distintos; puedes usar A, B, C… El orden de la lista es el orden de la rotación, y la rotación de hoy se actualiza sola al cambiar un puesto.</p>`;
 h+=`<label for="np">Agregar puesto (números de máquina)</label><input id="np" inputmode="text" autocapitalize="characters" placeholder="Ej. 6, 8  ó  21A"><button class="btn soft" onclick="addPost()">Agregar puesto</button>`;
@@ -1291,7 +1294,7 @@ function repD(){const d=day();if(!d.rep)d.rep={};return d.rep}
 const numD=k=>{const[y,m,dd]=k.split('-');return dd+'/'+m+'/'+y};
 const whyTxt=p=>onVac(p.id,date)||p.why==='vac'?'está de vacaciones':p.why==='enferma'?'se reportó enferma':p.why==='enfermo'?'se reportó enfermo':p.why==='baja'?'pidió la baja':'no vino';
 function prodAuto(){return S.machines.filter(m=>m.on&&!m.hold).map(m=>m.n).join(', ')}
-function paradasAuto(){return S.machines.filter(m=>!m.on||m.hold).map(m=>'Máquina '+m.n+(m.reason?': '+m.reason:'')+(m.note?' – '+m.note:'')+(m.hold?(m.task==='rt'?' (detenida, operario en retrabajo)':' (detenida)'):'')).join('\n')}
+function paradasAuto(){return S.machines.filter(m=>!m.on||m.hold).map(m=>'Máquina '+m.n+(m.reason?': '+m.reason:'')+(m.note?' – '+m.note:'')+(m.hold?(m.task==='rt'?' (detenida, operario en retrabajo)':m.task==='ut'?' (detenida, operario cubre como utility)':' (detenida)'):'')).join('\n')}
 function asisAuto(){
 const ext=S.people.filter(p=>p.extra&&!absentOn(p,date)),abs=S.people.filter(p=>!p.extra&&absentOn(p,date));
 const used=new Set(),L=[];

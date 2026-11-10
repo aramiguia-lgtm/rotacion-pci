@@ -348,7 +348,8 @@ const addDays=(s,n)=>{const p=s.split('-').map(Number),t=new Date(p[0],p[1]-1,p[
 const fmtD=s=>{const p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short'})};
 const onVac=(id,d)=>(S.vac||[]).some(v=>v.pid===id&&v.from<=d&&d<=v.to);
 /* Tipo de ausencia registrada: vacaciones o enfermedad (las viejas con «enfermedad» en la nota cuentan como enfermedad). */
-const vKind=v=>v.kind||(/enferm/i.test(v.note||'')?'enf':'vac');
+const vKind=v=>v.kind?(v.kind==='vac'?'vac':'enf'):(/enferm/i.test(v.note||'')?'enf':'vac');
+const vSick=v=>v.kind==='enfermo'?'se reportó enfermo':'se reportó enferma';
 const vacOf=(id,d)=>(S.vac||[]).find(v=>v.pid===id&&v.from<=d&&d<=v.to);
 const vWord=v=>vKind(v)==='enf'?'enfermedad':'vacaciones';
 const leftOn=(id,ds)=>{const d=S.days[ds];return d&&d.left&&d.left[id]||null};
@@ -368,7 +369,7 @@ let h=`<p class="sub">Registra las vacaciones aprobadas. Esos días la persona s
 if(!S.people.length)return h+`<div class="warn">Agrega personal primero en la pestaña Personal.</div>`;
 h+=`<label for="vp">Persona</label><select id="vp">${S.people.map(p=>`<option value="${p.id}">${esc(p.name)}${mk(p)}</option>`).join('')}</select>`;
 h+=`<div class="row2"><div><label for="vf">Desde</label><input type="date" id="vf" value="${addDays(T,1)}"></div><div><label for="vt">Hasta (último día)</label><input type="date" id="vt" value="${addDays(T,7)}"></div></div>`;
-h+=`<label for="vk">Motivo</label><select id="vk"><option value="vac">Vacaciones</option><option value="enf">Enfermedad</option></select>`;
+h+=`<label for="vk">Motivo</label><select id="vk"><option value="vac">Vacaciones</option><option value="enferma">Se reportó enferma</option><option value="enfermo">Se reportó enfermo</option></select>`;
 h+=`<label for="vn">Nota (opcional)</label><input id="vn" placeholder="Ej. papel aprobado por RRHH">`;
 h+=`<button class="btn" onclick="addVac()">Registrar vacaciones</button>`;
 const list=S.vac.slice().sort((a,b)=>a.from<b.from?-1:a.from>b.from?1:0);
@@ -381,10 +382,10 @@ function vacRow(v){
 const T=todayStr();
 const cur=v.from<=T&&T<=v.to;const st=cur?(vKind(v)==='enf'?'Ausente por enfermedad':'De vacaciones'):v.from===addDays(T,1)?'Empieza mañana':v.to<T?'Terminó':'Programada';
 const days=Math.round((new Date(v.to)-new Date(v.from))/864e5)+1;
-return `<div class="prow"><div class="nm"><b>${esc(pname(v.pid))}</b><br><span class="tag">${vKind(v)==='enf'?'🤒 Enfermedad · ':'🌴 Vacaciones · '}${fmtD(v.from)} – ${fmtD(v.to)} · ${days} día${days>1?'s':''}${v.note?' · '+esc(v.note):''}</span></div><span class="tag">${st}</span>${cur?`<button class="x" onclick="toggleVKind('${v.id}')">Cambiar a ${vKind(v)==='enf'?'vacaciones':'enfermedad'}</button>`:''}${cur?`<button class="x" onclick="endVac('${v.id}',0)">Regresó hoy</button><button class="x" onclick="endVac('${v.id}',1)">Hoy no vino por otro motivo</button>`:''}<button class="x del" onclick="rm('vac','${v.id}')">${armed==='vac'+v.id?'¿Borrar?':'Quitar'}</button></div>`;
+return `<div class="prow"><div class="nm"><b>${esc(pname(v.pid))}</b><br><span class="tag">${vKind(v)==='enf'?'🤒 '+(v.kind==='enfermo'?'Se reportó enfermo':'Se reportó enferma')+' · ':'🌴 Vacaciones · '}${fmtD(v.from)} – ${fmtD(v.to)} · ${days} día${days>1?'s':''}${v.note?' · '+esc(v.note):''}</span></div><span class="tag">${st}</span>${cur?`<button class="x" onclick="toggleVKind('${v.id}')">Cambiar motivo</button>`:''}${cur?`<button class="x" onclick="endVac('${v.id}',0)">Regresó hoy</button><button class="x" onclick="endVac('${v.id}',1)">Hoy no vino por otro motivo</button>`:''}<button class="x del" onclick="rm('vac','${v.id}')">${armed==='vac'+v.id?'¿Borrar?':'Quitar'}</button></div>`;
 }
 /* Las vacaciones terminan ayer: hoy regresó, o hoy falta por otro motivo (enferma, etc.). */
-function toggleVKind(id){const v=S.vac.find(x=>x.id===id);if(!v)return;v.kind=vKind(v)==='enf'?'vac':'enf';save();notice={t:pname(v.pid)+': ahora cuenta como '+vWord(v)+'.'};rr()}
+function toggleVKind(id){const v=S.vac.find(x=>x.id===id);if(!v)return;const o=['vac','enferma','enfermo'],c=vKind(v)==='vac'?'vac':(v.kind==='enfermo'?'enfermo':'enferma');v.kind=o[(o.indexOf(c)+1)%3];save();notice={t:pname(v.pid)+': '+(v.kind==='vac'?'vacaciones':vSick(v))+'.'};rr()}
 function endVac(id,absent){const v=S.vac.find(x=>x.id===id);if(!v)return;const T=todayStr(),y=addDays(T,-1);
 if(y<v.from)S.vac=S.vac.filter(x=>x.id!==id);else v.to=y;
 const p=S.people.find(x=>x.id===v.pid);
@@ -399,7 +400,7 @@ if(to<from){notice={t:'El último día debe ser igual o posterior al primero.',b
 if(S.vac.some(v=>v.pid===pid&&v.from<=to&&from<=v.to)){notice={t:pname(pid)+' ya tiene vacaciones registradas en esas fechas.',bad:true};return rr()}
 S.vac.push({id:uid(),pid,from,to,note,kind});
 Object.keys(S.days).forEach(k=>{if(k>=from&&k<=to&&S.days[k].blocks.some(Boolean))S.days[k].dirty=true});
-save();notice={t:(kind==='enf'?'Ausencia por enfermedad registrada: ':'Vacaciones registradas: ')+pname(pid)+', del '+fmtD(from)+' al '+fmtD(to)+'.'};rr();
+save();notice={t:(kind!=='vac'?'Ausencia por enfermedad registrada: ':'Vacaciones registradas: ')+pname(pid)+', del '+fmtD(from)+' al '+fmtD(to)+'.'};rr();
 }
 
 /* Motor de rotación: todos suben un puesto cada bloque y el primero pasa al último. */
@@ -1306,7 +1307,7 @@ function toggleExtra(id){const p=S.people.find(x=>x.id===id);p.extra=!p.extra;if
 let repShow=null;
 function repD(){const d=day();if(!d.rep)d.rep={};return d.rep}
 const numD=k=>{const[y,m,dd]=k.split('-');return dd+'/'+m+'/'+y};
-const whyTxt=p=>{const v=vacOf(p.id,date);if(v)return vKind(v)==='enf'?'está ausente por enfermedad':'está de vacaciones';return p.why==='vac'?'está de vacaciones':p.why==='enferma'?'se reportó enferma':p.why==='enfermo'?'se reportó enfermo':p.why==='baja'?'pidió la baja':'no vino'};
+const whyTxt=p=>{const v=vacOf(p.id,date);if(v)return vKind(v)==='enf'?vSick(v):'está de vacaciones';return p.why==='vac'?'está de vacaciones':p.why==='enferma'?'se reportó enferma':p.why==='enfermo'?'se reportó enfermo':p.why==='baja'?'pidió la baja':'no vino'};
 function prodAuto(){return S.machines.filter(m=>m.on&&!m.hold).map(m=>m.n).join(', ')}
 function paradasAuto(){return S.machines.filter(m=>!m.on||m.hold).map(m=>'Máquina '+m.n+(m.reason?': '+m.reason:'')+(m.note?' – '+m.note:'')+(m.hold?(m.task==='rt'?' (detenida, operario en retrabajo)':m.task==='ut'?' (detenida, operario cubre como utility)':' (detenida)'):'')).join('\n')}
 function asisAuto(){

@@ -275,7 +275,8 @@ const lsGet=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
 const lsDel=k=>{try{localStorage.removeItem(k)}catch(e){}};
 let saveT=null,saveFail=false,cDirty=false;
-function save(){if(!S||!S.g||S.example)return;cDirty=true;clearTimeout(saveT);saveT=setTimeout(saveNow,250)}
+let autoGen=false;
+function save(){if(!S||!S.g||S.example)return;if(!autoGen)cDirty=true;clearTimeout(saveT);saveT=setTimeout(saveNow,250)}
 function saveNow(){clearTimeout(saveT);saveT=null;if(!S||!S.g||S.example)return;S.saved=Date.now();const dirty=cDirty;if(dirty)S.edit=S.saved;const ok=lsSet(GKEY+'g:'+S.g,S);lsSet(GKEY+'last',S.g);if(ok&&dirty){cDirty=false;window.cloud&&cloud.changed(S.g)}if(!ok&&!saveFail){saveFail=true;notice={t:'No se pudo guardar en este dispositivo. Revisa que el navegador permita guardar datos de sitios.',bad:true};rr()}}
 window.addEventListener('pagehide',()=>{if(saveT)saveNow()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&saveT)saveNow()});
@@ -889,8 +890,8 @@ function render(){
 if(!S||!S.g){$('#app').innerHTML=startHTML();return}
 const d=day();
 if(printing){$('#app').innerHTML=printHTML(d);if(onZebra())fitLabels();return}
-if(tab==='hoy'&&!d.blocks.some(Boolean)&&canGen()&&isWork(date))gen(0);
-else if(tab==='hoy'&&date>todayStr()&&stale(d)&&canGen()){gen(0);notice=notice||{t:'La rotación de '+fmtD(date)+' se rehízo con los puestos actuales.'}}
+if(tab==='hoy'&&!d.blocks.some(Boolean)&&canGen()&&isWork(date)){autoGen=true;try{gen(0)}finally{autoGen=false}}
+else if(tab==='hoy'&&date>todayStr()&&stale(d)&&canGen()){autoGen=true;try{gen(0)}finally{autoGen=false}notice=notice||{t:'La rotación de '+fmtD(date)+' se rehízo con los puestos actuales.'}}
 else if(stale(d))d.dirty=true;
 let h=`<div class="gtop"><div><h1>Grupo ${esc(S.g)}</h1><span class="shiftchip ${S.shift==='noche'?'n':''}">${S.shift==='noche'?'Noche · 18:00 a 6:00':'Día · 6:00 a 18:00'}</span></div><div class="hbtns"><button class="pill new" onclick="leave(true)">+ Nuevo grupo</button><button class="link" onclick="leave()">Cambiar de grupo</button></div></div>`;
 if(S.example)h+=`<div class="ex">Estás viendo un ejemplo con nombres inventados. No se guarda. Para tu grupo, toca «+ Nuevo grupo».</div>`;

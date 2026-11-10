@@ -85,7 +85,8 @@ function listen(uid) {
       if (ch.type === 'removed') { if (m.base[g] !== undefined) { delete m.base[g]; delete m.dirty[g]; setMeta(m); window.cloudRemove && window.cloudRemove(g) } return }
       if (d.rev === m.base[g]) return; // ya lo tenemos (o es nuestro propio cambio)
       const local = lsGet(LS + 'g:' + g);
-      const mine = local && (m.dirty[g] || m.base[g] === undefined);
+      // Primera vez que este aparato se sincroniza con este grupo: manda lo de la nube.
+      const mine = local && m.base[g] !== undefined && m.dirty[g];
       if (mine && (local.edit || 0) > (d.edit || 0)) { setTimeout(() => push(g), 0); return } // lo de aquí es más nuevo
       let o; try { o = JSON.parse(d.data) } catch (e) { return }
       m.base[g] = d.rev; delete m.dirty[g]; setMeta(m);

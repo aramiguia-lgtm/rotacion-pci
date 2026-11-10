@@ -37,6 +37,11 @@ service cloud.firestore {
       allow delete: if isAdmin() && email != em();
     }
 
+    // Plan de trabajo: cualquiera del grupo (también solo ver) marca las tareas hechas.
+    match /checks/{gid}/dias/{dia} {
+      allow read, write: if isAdmin() || hasGroup(gid);
+    }
+
     // Datos de cada grupo.
     match /grupos/{gid} {
       allow get: if isAdmin() || hasGroup(gid);

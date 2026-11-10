@@ -922,7 +922,7 @@ else if(window.cloud&&cloud.user&&cloud.mode==='compartido'&&!S.example&&!cloud.
 h+=`<div class="tabs mt">`+TABS.map(t=>`<button class="tab ${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`).join('')+`</div>`;
 h+=alertsHTML();if(tab==='hoy')h+=remNextHTML();
 if(notice)h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;
-h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML():tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='ayuda'?guideHTML():tab==='equipo'?equipoHTML():personalHTML();
+h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML():tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='ayuda'?guideHTML():tab==='equipo'?equipoHTML():tab==='plan'?planHTML():personalHTML();
 notice=null;
 $('#app').innerHTML=h;roLock();
 if(tab==='reporte'&&repShow===date)repFill();
@@ -1619,16 +1619,61 @@ async function copySug(){const t=sugText();if(!t)return;const o=$('#sgo');o.styl
 
 
 
+
+/* ---------- Plan de trabajo de los utilities senior ---------- */
+/* S.plan: tareas del grupo que se repiten cada día ({id,txt,every(horas, 0 = horas fijas),from,times[],who,day}). */
+const plShift=()=>S.shift==='noche'?['18:00','06:00']:['06:00','18:00'];
+const plAbs=hhmm=>{const st=toMin(plShift()[0]),m=toMin(hhmm);return (m-st+1440)%1440};
+function plItems(ds){const out=[];(S.plan||[]).forEach(t=>{if(t.day&&t.day!==ds)return;let ts=[];
+if(t.every>0){const st=plAbs(t.from||plShift()[0]),step=Math.round(t.every*60);for(let a=st;a<720;a+=step)ts.push(a)}else ts=(t.times||[]).map(plAbs).filter(a=>a<720);
+ts.forEach(a=>{const hh=hm(plShift()[0],a);out.push({key:t.id+'@'+hh,t,hh,a})})});return out.sort((x,y)=>x.a-y.a||String(x.t.txt).localeCompare(String(y.t.txt)))}
+function plChecks(){if(window.cloud&&cloud.watchChecks&&cloud.watchChecks(S.g,date))return cloud.checks||{};const d=S.days[date];return (d&&d.chk)||{}}
+function plWhen(t){return t.every>0?'Cada '+(t.every<1?Math.round(t.every*60)+' min':t.every+' h')+' desde las '+(t.from||plShift()[0]):'A las '+(t.times||[]).join(', ')}
+const plWho=t=>t.who?pname(t.who):'Cualquier utility senior';
+function plStatus(it,c){if(c)return 'ok';if(date!==todayStr())return date<todayStr()?'late':'';const st=new Date(date+'T'+plShift()[0]+':00').getTime()+it.a*60000,now=Date.now();if(now>st+15*60000)return 'late';if(now>=st-5*60000)return 'now';return ''}
+async function planChk(k){if(!S||!S.g)return;const C0=plChecks(),had=!!C0[k];const who=window.cloud&&cloud.user?(cloud.name||cloud.user.email):'';const val=had?null:{t:Date.now(),por:who};
+if(window.cloud&&cloud.checksOn){rr();const r=await cloud.setCheck(S.g,date,k,val);if(r!=='ok'){notice={t:r,bad:true}}rr();return}
+const d=day();d.chk=d.chk||{};if(val)d.chk[k]=val;else delete d.chk[k];save();rr()}
+function planHTML(){
+const its=plItems(date),C0=plChecks(),done=its.filter(i=>C0[i.key]).length,late=its.filter(i=>plStatus(i,C0[i.key])==='late').length;
+let h=`<h2>Plan de trabajo · ${esc(fmtD(date))}</h2>`;
+if(!its.length)h+=`<p class="sub">${(S.plan||[]).length?'No hay tareas para este día.':'Todavía no hay tareas. '+(isRO()?'El supervisor las agrega.':'Agrégalas abajo.')}</p>`;
+else h+=`<p class="sub" style="margin-top:0"><b>${done} de ${its.length}</b> hechas${late?` · <b style="color:var(--bad)">${late} atrasada${late>1?'s':''}</b>`:''}. Toca ✓ cuando la hagas.</p>`;
+h+=its.map(i=>{const c=C0[i.key],st=plStatus(i,c);const tm=c?new Date(c.t):null;
+const sub=[plWho(i.t),c?'Hecha '+pad(tm.getHours())+':'+pad(tm.getMinutes())+(c.por?' · '+esc(c.por):''):st==='late'?'Atrasada':st==='now'?'Toca ahora':'Pendiente'].join(' · ');
+const col=c?'var(--accent)':st==='late'?'var(--bad)':st==='now'?'var(--warnink)':'var(--line)';
+return `<div class="cbox" style="display:flex;gap:12px;align-items:center;margin:8px 0;padding:10px 12px;border-color:${col}"><button aria-label="${c?'Desmarcar':'Marcar hecha'}: ${esc(i.t.txt)} ${i.hh}" onclick="planChk('${i.key}')" style="flex:0 0 52px;height:52px;border-radius:12px;border:3px solid ${col};background:${c?'var(--accent)':'transparent'};color:var(--onaccent);font-size:28px;font-weight:700;cursor:pointer">${c?'✓':''}</button><div style="flex:1;min-width:0"><b style="font-size:20px">${i.hh}</b> ${esc(i.t.txt)}<br><span class="sub" style="color:${c?'var(--muted)':st==='late'?'var(--bad)':'var(--muted)'}">${sub}</span></div></div>`}).join('');
+if(isRO())return h;
+h+=`<h2 class="lh">Tareas del plan</h2><p class="sub">Se repiten cada día del grupo. Las de «solo hoy» desaparecen mañana.</p>`;
+const T=(S.plan||[]);
+h+=T.length?T.map(t=>`<div class="prow"><div class="nm"><b>${esc(t.txt)}</b><br><span class="tag">${esc(plWhen(t))} · ${esc(plWho(t))}${t.day?' · solo '+esc(fmtD(t.day)):''}</span></div><button class="x del" onclick="rmPlan('${t.id}')">${armed==='pl'+t.id?'¿Borrar?':'Quitar'}</button></div>`).join(''):`<p class="sub">Ninguna todavía.</p>`;
+const W=S.people.filter(p=>p.role==='senior'),W2=S.people.filter(p=>p.role==='util');
+h+=`<div class="cbox"><h2 style="margin-top:0">Agregar tarea</h2><label for="pl_t">Tarea</label><input id="pl_t" placeholder="Ej. Revisar aditivo y colorante en las máquinas" autocomplete="off">
+<label for="pl_m">Cuándo</label><select id="pl_m" onchange="$('#pl_c').hidden=this.value!=='cada';$('#pl_x').hidden=this.value==='cada'"><option value="cada">Cada cierto tiempo</option><option value="horas">A horas fijas</option></select>
+<div id="pl_c"><div class="row2"><div><label for="pl_e">Cada</label><select id="pl_e"><option value="0.5">30 min</option><option value="1">1 hora</option><option value="2" selected>2 horas</option><option value="3">3 horas</option><option value="4">4 horas</option></select></div><div><label for="pl_f">Desde</label><input id="pl_f" type="time" value="${plShift()[0]}"></div></div></div>
+<div id="pl_x" hidden><label for="pl_h">Horas (separadas por coma)</label><input id="pl_h" placeholder="Ej. 9:00, 15:00" autocomplete="off"></div>
+<label for="pl_w">Para</label><select id="pl_w"><option value="">Cualquier utility senior</option>${W.concat(W2).map(p=>`<option value="${p.id}">${esc(p.name)}${p.role==='senior'?' (US)':''}</option>`).join('')}</select>
+<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="pl_d" style="width:auto"> Solo para ${esc(fmtD(date))}</label>
+<button class="btn" onclick="addPlan()">Agregar tarea</button></div>`;
+return h}
+function addPlan(){const txt=$('#pl_t').value.trim();if(!txt){notice={t:'Escribe la tarea.',bad:true};return rr()}
+const mode=$('#pl_m').value,t={id:uid(),txt,who:$('#pl_w').value||''};
+if(mode==='cada'){t.every=Number($('#pl_e').value)||2;t.from=$('#pl_f').value||plShift()[0]}
+else{const hs=String($('#pl_h').value||'').split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).map(x=>{const m=x.match(/^(\d{1,2})(?::(\d{2}))?$/);if(!m)return null;const H=Number(m[1]),M=Number(m[2]||0);return H<24&&M<60?pad(H)+':'+pad(M):null});
+if(!hs.length||hs.some(x=>!x)){notice={t:'Escribe las horas así: 9:00, 15:00',bad:true};return rr()}t.every=0;t.times=Array.from(new Set(hs))}
+if($('#pl_d').checked)t.day=date;
+S.plan=(S.plan||[]).concat([t]);save();notice={t:'Tarea agregada: '+txt+'.'};rr()}
+function rmPlan(id){if(armed!=='pl'+id){armed='pl'+id;return rr()}armed=null;S.plan=(S.plan||[]).filter(t=>t.id!==id);save();rr()}
 /* ---------- Equipo y roles ---------- */
 let teamOpen=false,teamEdit=null;
 const isRO=()=>!!(window.cloud&&cloud.readOnly&&cloud.readOnly()&&S&&S.g&&!S.example);
 function myTabs(){
-if(isRO())return [['hoy','Hoy'],['vacaciones','Vacaciones'],['calendario','Mes'],['ayuda','Cómo usar']];
-const T=[['hoy','Hoy'],['maquinas','Máquinas'],['personal','Personal'],['vacaciones','Vacaciones'],['calendario','Mes'],['reporte','Reporte'],['avisos','Avisos'],['grupo','Grupo'],['ayuda','Cómo usar']];
-if(window.cloud&&cloud.isAdmin&&cloud.isAdmin()&&!S.example)T.splice(8,0,['equipo','Equipo']);
+if(isRO())return [['hoy','Hoy'],['plan','Plan'],['vacaciones','Vacaciones'],['calendario','Mes'],['ayuda','Cómo usar']];
+const T=[['hoy','Hoy'],['maquinas','Máquinas'],['personal','Personal'],['vacaciones','Vacaciones'],['calendario','Mes'],['reporte','Reporte'],['avisos','Avisos'],['plan','Plan'],['grupo','Grupo'],['ayuda','Cómo usar']];
+if(window.cloud&&cloud.isAdmin&&cloud.isAdmin()&&!S.example)T.splice(9,0,['equipo','Equipo']);
 return T}
 /* Solo ver: se desactiva todo lo que cambia datos; quedan pestañas, fechas, imprimir y copiar. */
-const RO_OK=new Set(['setTab','setDate','calNav','leave','openGroup','syncBoth','openPrint','doPrint','setPfmt','setNout','setZmg','setZor','setPkind','printing','window.scrollTo','var','document.getElementById','copyDay','copyGuide','startGuide','cloud.signIn','cloudOut','sendSug','copySug','teamOpen']);
+const RO_OK=new Set(['planChk','setTab','setDate','calNav','leave','openGroup','syncBoth','openPrint','doPrint','setPfmt','setNout','setZmg','setZor','setPkind','printing','window.scrollTo','var','document.getElementById','copyDay','copyGuide','startGuide','cloud.signIn','cloudOut','sendSug','copySug','teamOpen']);
 const roName=a=>{const m=String(a||'').trim().match(/^[A-Za-z_$][\w$.]*/);return m?m[0]:''};
 function roAllowed(el){for(const at of ['onclick','onchange','oninput']){const v=el.getAttribute(at);if(v&&!RO_OK.has(roName(v)))return false}return true}
 function roLock(){const app=$('#app');if(!app)return;const ro=isRO();app.classList.toggle('ro',ro);if(!ro)return;
@@ -1683,7 +1728,7 @@ async function syncPush(){if(!S||!S.g)return;if(armed!=='spush'){armed='spush';r
 function cloudOut(){if(armed!=='cout'){armed='cout';return rr()}armed=null;cloud.signOut()}
 function cloudBusy(){const a=document.activeElement;return a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)}
 let cloudKey='';
-function cloudUI(){if(!ready||printing)return;const c=window.cloud||{};const k=[c.mode,c.role,(c.groups||[]).join(','),c.user&&c.user.uid].join('|');const roleChanged=k!==cloudKey;cloudKey=k;if((roleChanged||teamOpen||!S||!S.g||tab==='grupo'||tab==='equipo')&&!cloudBusy()){const keep={};document.querySelectorAll('#app input[id],#app textarea[id]').forEach(e=>{if(e.value)keep[e.id]=e.value});rr();for(const id in keep){const e=document.getElementById(id);if(e&&!e.value)e.value=keep[id]}}}
+function cloudUI(){if(!ready||printing)return;const c=window.cloud||{};const k=[c.mode,c.role,(c.groups||[]).join(','),c.user&&c.user.uid].join('|');const roleChanged=k!==cloudKey;cloudKey=k;if((roleChanged||teamOpen||!S||!S.g||tab==='grupo'||tab==='equipo'||tab==='plan')&&!cloudBusy()){const keep={};document.querySelectorAll('#app input[id],#app textarea[id]').forEach(e=>{if(e.value)keep[e.id]=e.value});rr();for(const id in keep){const e=document.getElementById(id);if(e&&!e.value)e.value=keep[id]}}}
 let cloudWait=null;
 function cloudApply(g,o,force){g=String(g);if(!o||typeof o!=='object')return;o.g=g;
 if(S&&String(S.g)===g&&!S.example){if(!force&&(saveT||cloudBusy())){clearTimeout(cloudWait);cloudWait=setTimeout(()=>cloudApply(g,o),2000);return}

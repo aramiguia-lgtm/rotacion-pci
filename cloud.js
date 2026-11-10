@@ -39,7 +39,7 @@ let A, F, auth, db, timers = {};
 let subs = [];            // escuchas activas de grupos
 let subMe = null, subTeam = null, subAll = null;
 const stopGroups = () => { subs.forEach(u => { try { u() } catch (e) { } }); subs = [] };
-const stopAll = () => { stopGroups();[subMe, subTeam, subAll].forEach(u => { try { u && u() } catch (e) { } }); subMe = subTeam = subAll = null };
+const stopAll = () => { stopGroups(); if (chkSub) { try { chkSub() } catch (e) { } chkSub = null; chkKey = '' }[subMe, subTeam, subAll].forEach(u => { try { u && u() } catch (e) { } }); subMe = subTeam = subAll = null };
 
 const shared = () => C.mode === 'compartido';
 const gref = g => shared() ? F.doc(db, 'grupos', docId(g)) : F.doc(db, 'usuarios', C.user.uid, 'grupos', docId(g));
@@ -250,6 +250,27 @@ C.renamed = async (og, g) => {
     const gs = (m.grupos || []).map(normG);
     if (gs.indexOf(og) >= 0) F.setDoc(F.doc(db, 'miembros', m.email), memberDoc(m.email, m.rol, m.nombre, gs.map(x => x === og ? g : x))).catch(() => { });
   });
+};
+
+/* ---------- Plan de trabajo: los checks viven aparte para que los de solo ver puedan marcarlos ---------- */
+let chkSub = null, chkKey = '';
+C.checks = {}; C.checksOn = false;
+C.watchChecks = (g, dia) => {
+  g = String(g);
+  const ok = shared() && hasGroup(g);
+  const key = ok ? g + '|' + dia : '';
+  if (key === chkKey) return ok;
+  if (chkSub) { try { chkSub() } catch (e) { } chkSub = null }
+  chkKey = key; C.checks = {}; C.checksOn = ok;
+  if (!ok) return false;
+  chkSub = F.onSnapshot(F.doc(db, 'checks', docId(g), 'dias', dia), d => { C.checks = d.exists() ? (d.data().c || {}) : {}; ui() }, onErr);
+  return true;
+};
+C.setCheck = async (g, dia, k, val) => {
+  if (!(shared() && hasGroup(g))) return 'Sin acceso a este grupo.';
+  if (val) C.checks[k] = val; else delete C.checks[k];
+  try { await F.setDoc(F.doc(db, 'checks', docId(g), 'dias', dia), { c: { [k]: val ? val : F.deleteField() } }, { merge: true }); return 'ok' }
+  catch (e) { return msg(e) }
 };
 
 /* ---------- Botones manuales ---------- */

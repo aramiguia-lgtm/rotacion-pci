@@ -240,7 +240,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 </head><body>
 <div id="app"></div>
 <button id="totop" hidden onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Volver arriba de la página">↑ Arriba</button>
-<style>#totop{position:fixed;left:max(14px,env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:15;background:var(--ink);color:var(--bg);border:0;font-family:'Barlow Semi Condensed',system-ui,sans-serif;font-weight:700;font-size:20px;line-height:1;padding:14px 20px;border-radius:999px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.28)}#totop[hidden]{display:none}#totop:focus-visible{outline:3px solid var(--accent);outline-offset:3px}body{padding-bottom:96px}@media print{#totop{display:none!important}}</style>
+<style>#totop{position:fixed;left:max(14px,env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:15;background:var(--ink);color:var(--bg);border:0;font-family:'Barlow Semi Condensed',system-ui,sans-serif;font-weight:700;font-size:20px;line-height:1;padding:14px 20px;border-radius:999px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.28)}#totop[hidden]{display:none}
+#plfab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:16;width:64px;height:64px;border-radius:50%;border:0;background:var(--accent);color:var(--onaccent);font-size:40px;font-weight:700;line-height:1;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+@media print{#plfab{display:none}}#totop:focus-visible{outline:3px solid var(--accent);outline-offset:3px}body{padding-bottom:96px}@media print{#totop{display:none!important}}</style>
 <script>(function(){const b=document.getElementById('totop'),f=()=>{b.hidden=window.scrollY<400};window.addEventListener('scroll',f,{passive:true});f()})();</script>
 <script>
 const $=s=>document.querySelector(s);
@@ -889,7 +891,7 @@ function remPaint(){let o=document.getElementById('remov');if(!remQ.length){if(o
 if(!o){o=document.createElement('div');o.id='remov';o.setAttribute('role','alertdialog');o.setAttribute('aria-live','assertive');document.body.appendChild(o)}
 o.innerHTML=`<div class="rembox"><div class="remh">🔔 Recordatorio</div>`+remQ.map(q=>`<div class="remi"><b>${esc(q.text)}</b><small>${q.late?'Se pasó: era a las '+hhmm(q.at):'Ahora · '+hhmm(q.at)}</small><div class="pbar"><button class="btn" onclick="remAck('${q.id}')">Hecho</button><button class="btn soft" onclick="remSnooze('${q.id}')">En 5 min</button></div></div>`).join('')+`</div>`;
 remSound(true);try{if(navigator.vibrate)navigator.vibrate([500,250,500,250,500])}catch(e){}}
-function remAck(id){remQ=remQ.filter(x=>x.id!==id);remPaint()}
+function remAck(id){const q=remQ.find(x=>x.id===id);remQ=remQ.filter(x=>x.id!==id);remPaint();if(q&&q.plk&&q.plds===date){const C0=plChecks();if(!C0[q.plk])planChk(q.plk)}}
 function remSnooze(id){const q=remQ.find(x=>x.id===id);remQ=remQ.filter(x=>x.id!==id);if(q){const s={id:'s'+uid(),text:q.text,k:'en',min:5,on:true,next:Date.now()+300000,snooze:1};RL().push(s);save()}remPaint();if(tab==='avisos')rr()}
 function remTest(){remUnlock();remQ.push({id:'test'+uid(),text:'Prueba de alarma',at:Date.now(),late:false});remPaint()}
 /* Sonido: el navegador solo deja sonar después de que tocaste la pantalla alguna vez. */
@@ -898,10 +900,10 @@ document.addEventListener('pointerdown',remUnlock,{passive:true});
 function remBeep(){if(!remAC)return;try{const t=remAC.currentTime;[0,0.35,0.7].forEach(d=>{const o=remAC.createOscillator(),g=remAC.createGain();o.type='square';o.frequency.value=880;g.gain.setValueAtTime(0.0001,t+d);g.gain.exponentialRampToValueAtTime(0.25,t+d+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+d+0.25);o.connect(g);g.connect(remAC.destination);o.start(t+d);o.stop(t+d+0.3)})}catch(e){}}
 function remSound(on){clearInterval(remBeepT);remBeepT=null;if(!on)return;remBeep();let n=0;remBeepT=setInterval(()=>{if(++n>40||!remQ.length){clearInterval(remBeepT);remBeepT=null;return}remBeep();try{if(n%3===0&&navigator.vibrate)navigator.vibrate([500,250,500])}catch(e){}},2000)}
 /* Pide que la pantalla no se apague mientras haya recordatorios activos (si el navegador lo permite). */
-async function remWake(){try{if(remWL||!navigator.wakeLock||document.hidden||!S||!RL().some(r=>r.on))return;remWL=await navigator.wakeLock.request('screen');remWL.addEventListener('release',()=>{remWL=null})}catch(e){remWL=null}}
+async function remWake(){try{if(remWL||!navigator.wakeLock||document.hidden||!S||!(RL().some(r=>r.on)||(S.g&&!S.example&&(S.plan||[]).length)))return;remWL=await navigator.wakeLock.request('screen');remWL.addEventListener('release',()=>{remWL=null})}catch(e){remWL=null}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){remTick();remWake()}});
 function remNextHTML(){if(!S||!Array.isArray(S.rem))return '';const A=S.rem.filter(r=>r.on).sort((a,b)=>a.next-b.next);if(!A.length)return '';const r=A[0];return `<button class="remnext" onclick="setTab('avisos')">🔔 Próximo: <b>${esc(r.text)}</b> a las ${hhmm(r.next)}${A.length>1?` · ${A.length} activos`:''}</button>`}
-setInterval(remTick,5000);
+setInterval(remTick,5000);setInterval(()=>{try{planTick()}catch(e){}},15000);
 
 function setTab(t){if(t!=='personal')evLock();printing=false;tab=t;armed=null;render();window.scrollTo(0,0)}
 function rr(){const y=window.scrollY;render();window.scrollTo(0,y)}
@@ -922,7 +924,7 @@ else if(window.cloud&&cloud.user&&cloud.mode==='compartido'&&!S.example&&!cloud.
 h+=`<div class="tabs mt">`+TABS.map(t=>`<button class="tab ${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`).join('')+`</div>`;
 h+=alertsHTML();if(tab==='hoy')h+=remNextHTML();
 if(notice)h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;
-h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML():tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='ayuda'?guideHTML():tab==='equipo'?equipoHTML():tab==='plan'?planHTML():personalHTML();
+h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML():tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='ayuda'?guideHTML():tab==='equipo'?equipoHTML():tab==='plan'?planHTML()+(isRO()?'':'<button id="plfab" aria-label="Agregar tarea" onclick="plGoAdd()">+</button>'):personalHTML();
 notice=null;
 $('#app').innerHTML=h;roLock();
 if(tab==='reporte'&&repShow===date)repFill();
@@ -1648,7 +1650,7 @@ h+=`<h2 class="lh">Tareas del plan</h2><p class="sub">Se repiten cada día del g
 const T=(S.plan||[]);
 h+=T.length?T.map(t=>`<div class="prow"><div class="nm"><b>${esc(t.txt)}</b><br><span class="tag">${esc(plWhen(t))} · ${esc(plWho(t))}${t.day?' · solo '+esc(fmtD(t.day)):''}</span></div><button class="x del" onclick="rmPlan('${t.id}')">${armed==='pl'+t.id?'¿Borrar?':'Quitar'}</button></div>`).join(''):`<p class="sub">Ninguna todavía.</p>`;
 const W=S.people.filter(p=>p.role==='senior'),W2=S.people.filter(p=>p.role==='util');
-h+=`<div class="cbox"><h2 style="margin-top:0">Agregar tarea</h2><label for="pl_t">Tarea</label><input id="pl_t" placeholder="Ej. Revisar aditivo y colorante en las máquinas" autocomplete="off">
+h+=`<div class="cbox" id="pl_add"><h2 style="margin-top:0">Agregar tarea</h2><label for="pl_t">Tarea</label><input id="pl_t" placeholder="Ej. Revisar aditivo y colorante en las máquinas" autocomplete="off">
 <label for="pl_m">Cuándo</label><select id="pl_m" onchange="$('#pl_c').hidden=this.value!=='cada';$('#pl_x').hidden=this.value==='cada'"><option value="cada">Cada cierto tiempo</option><option value="horas">A horas fijas</option></select>
 <div id="pl_c"><div class="row2"><div><label for="pl_e">Cada</label><select id="pl_e"><option value="0.5">30 min</option><option value="1">1 hora</option><option value="2" selected>2 horas</option><option value="3">3 horas</option><option value="4">4 horas</option></select></div><div><label for="pl_f">Desde</label><input id="pl_f" type="time" value="${plShift()[0]}"></div></div></div>
 <div id="pl_x" hidden><label for="pl_h">Horas (separadas por coma)</label><input id="pl_h" placeholder="Ej. 9:00, 15:00" autocomplete="off"></div>
@@ -1656,13 +1658,29 @@ h+=`<div class="cbox"><h2 style="margin-top:0">Agregar tarea</h2><label for="pl_
 <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="pl_d" style="width:auto"> Solo para ${esc(fmtD(date))}</label>
 <button class="btn" onclick="addPlan()">Agregar tarea</button></div>`;
 return h}
+
+function plGoAdd(){const f=$('#pl_add');if(f){f.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{const i=$('#pl_t');if(i)i.focus({preventScroll:true})},400)}}
+/* Avisos del plan (con la app abierta): tarea nueva, llegó la hora (utility senior) y atrasada (supervisor). */
+const plMine=new Set();
+function plShiftDate(){const T=todayStr();if(S.shift==='noche'&&new Date().getHours()<6)return addDays(T,-1);return T}
+function planTick(){if(!ready||!S||!S.g||S.example)return;if(!Array.isArray(S.plan))S.plan=[];
+const now=Date.now(),sk=GKEY+'plseen:'+S.g,seen=lsGet(sk),ids=S.plan.map(t=>t.id);
+if(!seen)lsSet(sk,ids);else{const nw=S.plan.filter(t=>seen.indexOf(t.id)<0);if(nw.length){nw.forEach(t=>{if(!plMine.has(t.id))remQ.push({id:'pn:'+t.id,text:'Nueva tarea: '+t.txt+' · '+plWhen(t)+(t.who?' · '+pname(t.who):''),at:now,late:false})});lsSet(sk,ids);if(nw.some(t=>!plMine.has(t.id))){remUnlock();remPaint();if(tab==='plan')rr()}}}
+const ds=plShiftDate();if(ds!==date&&window.cloud&&cloud.checksOn)return;
+const C0=ds===date?plChecks():((S.days[ds]&&S.days[ds].chk)||{});
+const fk=GKEY+'plfired:'+S.g+':'+ds,fired=lsGet(fk)||{};let ch=false;
+const ro=isRO(),base=new Date(ds+'T'+plShift()[0]+':00').getTime();
+plItems(ds).forEach(it=>{if(C0[it.key])return;const at=base+it.a*60000;
+if(ro){if(now>=at&&now-at<20*60000&&!fired['t'+it.key]){fired['t'+it.key]=1;ch=true;remQ.push({id:'pt:'+it.key,text:it.t.txt+(it.t.who?' · '+pname(it.t.who):''),at,late:false,plk:it.key,plds:ds})}}
+else if(now>=at+15*60000&&now-at<60*60000&&!fired['l'+it.key]){fired['l'+it.key]=1;ch=true;remQ.push({id:'pl:'+it.key,text:'Atrasada: '+it.t.txt+' ('+it.hh+')'+(it.t.who?' · '+pname(it.t.who):''),at,late:true})}});
+if(ch){lsSet(fk,fired);remUnlock();remPaint()}}
 function addPlan(){const txt=$('#pl_t').value.trim();if(!txt){notice={t:'Escribe la tarea.',bad:true};return rr()}
 const mode=$('#pl_m').value,t={id:uid(),txt,who:$('#pl_w').value||''};
 if(mode==='cada'){t.every=Number($('#pl_e').value)||2;t.from=$('#pl_f').value||plShift()[0]}
 else{const hs=String($('#pl_h').value||'').split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).map(x=>{const m=x.match(/^(\d{1,2})(?::(\d{2}))?$/);if(!m)return null;const H=Number(m[1]),M=Number(m[2]||0);return H<24&&M<60?pad(H)+':'+pad(M):null});
 if(!hs.length||hs.some(x=>!x)){notice={t:'Escribe las horas así: 9:00, 15:00',bad:true};return rr()}t.every=0;t.times=Array.from(new Set(hs))}
 if($('#pl_d').checked)t.day=date;
-S.plan=(S.plan||[]).concat([t]);save();notice={t:'Tarea agregada: '+txt+'.'};rr()}
+plMine.add(t.id);S.plan=(S.plan||[]).concat([t]);save();notice={t:'Tarea agregada: '+txt+'.'};rr()}
 function rmPlan(id){if(armed!=='pl'+id){armed='pl'+id;return rr()}armed=null;S.plan=(S.plan||[]).filter(t=>t.id!==id);save();rr()}
 /* ---------- Equipo y roles ---------- */
 let teamOpen=false,teamEdit=null;

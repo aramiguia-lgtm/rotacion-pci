@@ -347,15 +347,19 @@ const postLabel=p=>p.ms.join(', ')+(p.sfx||''); const mql=r=>(r.ms||[]).join(', 
 const addDays=(s,n)=>{const p=s.split('-').map(Number),t=new Date(p[0],p[1]-1,p[2]+n);return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())};
 const fmtD=s=>{const p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short'})};
 const onVac=(id,d)=>(S.vac||[]).some(v=>v.pid===id&&v.from<=d&&d<=v.to);
+/* Tipo de ausencia registrada: vacaciones o enfermedad (las viejas con «enfermedad» en la nota cuentan como enfermedad). */
+const vKind=v=>v.kind||(/enferm/i.test(v.note||'')?'enf':'vac');
+const vacOf=(id,d)=>(S.vac||[]).find(v=>v.pid===id&&v.from<=d&&d<=v.to);
+const vWord=v=>vKind(v)==='enf'?'enfermedad':'vacaciones';
 const leftOn=(id,ds)=>{const d=S.days[ds];return d&&d.left&&d.left[id]||null};
 const here=p=>p.present&&!onVac(p.id,date)&&!leftOn(p.id,date);
 function alertsHTML(){
 const T=todayStr(),tm=addDays(T,1),nm=id=>esc(pname(id));
 const start=S.vac.filter(v=>v.from===tm),back=S.vac.filter(v=>addDays(v.to,1)===tm),now=S.vac.filter(v=>v.from<=T&&T<=v.to);
 let h='';
-if(start.length)h+=`<div class="alert"><b>Mañana empieza${start.length>1?'n':''} vacaciones:</b> ${start.map(v=>nm(v.pid)+' (hasta el '+fmtD(v.to)+')').join(', ')}</div>`;
-if(back.length)h+=`<div class="alert soft"><b>Mañana regresa${back.length>1?'n':''} de vacaciones:</b> ${back.map(v=>nm(v.pid)).join(', ')}</div>`;
-if(now.length)h+=`<p class="stops">De vacaciones hoy: ${now.map(v=>'<b>'+nm(v.pid)+'</b> hasta el '+fmtD(v.to)).join(' · ')}</p>`;
+if(start.length)h+=`<div class="alert"><b>Mañana empieza${start.length>1?'n':''} ${start.every(v=>vKind(v)==='enf')?'ausencia por enfermedad':'vacaciones'}:</b> ${start.map(v=>nm(v.pid)+(vKind(v)==='enf'?' · enfermedad':'')+' (hasta el '+fmtD(v.to)+')').join(', ')}</div>`;
+if(back.length)h+=`<div class="alert soft"><b>Mañana regresa${back.length>1?'n':''}:</b> ${back.map(v=>nm(v.pid)+' (de '+vWord(v)+')').join(', ')}</div>`;
+if(now.length)h+=`<p class="stops">Ausentes hoy: ${now.map(v=>'<b>'+nm(v.pid)+'</b> ('+vWord(v)+') hasta el '+fmtD(v.to)).join(' · ')}</p>`;
 return h;
 }
 function vacHTML(){
@@ -364,6 +368,7 @@ let h=`<p class="sub">Registra las vacaciones aprobadas. Esos días la persona s
 if(!S.people.length)return h+`<div class="warn">Agrega personal primero en la pestaña Personal.</div>`;
 h+=`<label for="vp">Persona</label><select id="vp">${S.people.map(p=>`<option value="${p.id}">${esc(p.name)}${mk(p)}</option>`).join('')}</select>`;
 h+=`<div class="row2"><div><label for="vf">Desde</label><input type="date" id="vf" value="${addDays(T,1)}"></div><div><label for="vt">Hasta (último día)</label><input type="date" id="vt" value="${addDays(T,7)}"></div></div>`;
+h+=`<label for="vk">Motivo</label><select id="vk"><option value="vac">Vacaciones</option><option value="enf">Enfermedad</option></select>`;
 h+=`<label for="vn">Nota (opcional)</label><input id="vn" placeholder="Ej. papel aprobado por RRHH">`;
 h+=`<button class="btn" onclick="addVac()">Registrar vacaciones</button>`;
 const list=S.vac.slice().sort((a,b)=>a.from<b.from?-1:a.from>b.from?1:0);
@@ -374,11 +379,12 @@ return h;
 }
 function vacRow(v){
 const T=todayStr();
-const st=v.from<=T&&T<=v.to?'De vacaciones':v.from===addDays(T,1)?'Empieza mañana':v.to<T?'Terminó':'Programada';
+const cur=v.from<=T&&T<=v.to;const st=cur?(vKind(v)==='enf'?'Ausente por enfermedad':'De vacaciones'):v.from===addDays(T,1)?'Empieza mañana':v.to<T?'Terminó':'Programada';
 const days=Math.round((new Date(v.to)-new Date(v.from))/864e5)+1;
-return `<div class="prow"><div class="nm"><b>${esc(pname(v.pid))}</b><br><span class="tag">${fmtD(v.from)} – ${fmtD(v.to)} · ${days} día${days>1?'s':''}${v.note?' · '+esc(v.note):''}</span></div><span class="tag">${st}</span>${st==='De vacaciones'?`<button class="x" onclick="endVac('${v.id}',0)">Regresó hoy</button><button class="x" onclick="endVac('${v.id}',1)">Hoy no vino por otro motivo</button>`:''}<button class="x del" onclick="rm('vac','${v.id}')">${armed==='vac'+v.id?'¿Borrar?':'Quitar'}</button></div>`;
+return `<div class="prow"><div class="nm"><b>${esc(pname(v.pid))}</b><br><span class="tag">${vKind(v)==='enf'?'🤒 Enfermedad · ':'🌴 Vacaciones · '}${fmtD(v.from)} – ${fmtD(v.to)} · ${days} día${days>1?'s':''}${v.note?' · '+esc(v.note):''}</span></div><span class="tag">${st}</span>${cur?`<button class="x" onclick="toggleVKind('${v.id}')">Cambiar a ${vKind(v)==='enf'?'vacaciones':'enfermedad'}</button>`:''}${cur?`<button class="x" onclick="endVac('${v.id}',0)">Regresó hoy</button><button class="x" onclick="endVac('${v.id}',1)">Hoy no vino por otro motivo</button>`:''}<button class="x del" onclick="rm('vac','${v.id}')">${armed==='vac'+v.id?'¿Borrar?':'Quitar'}</button></div>`;
 }
 /* Las vacaciones terminan ayer: hoy regresó, o hoy falta por otro motivo (enferma, etc.). */
+function toggleVKind(id){const v=S.vac.find(x=>x.id===id);if(!v)return;v.kind=vKind(v)==='enf'?'vac':'enf';save();notice={t:pname(v.pid)+': ahora cuenta como '+vWord(v)+'.'};rr()}
 function endVac(id,absent){const v=S.vac.find(x=>x.id===id);if(!v)return;const T=todayStr(),y=addDays(T,-1);
 if(y<v.from)S.vac=S.vac.filter(x=>x.id!==id);else v.to=y;
 const p=S.people.find(x=>x.id===v.pid);
@@ -387,13 +393,13 @@ if(p&&absent){const keep=p.sub;p.present=false;delete p.why;if(keep)p.sub=keep;m
 if(p&&!p.present){p.present=true;delete p.why}
 markDirty();save();notice={t:'Las vacaciones de '+(p?p.name:'')+' terminaron ayer. Hoy entra a la rotación.'};rr()}
 function addVac(){
-const pid=$('#vp').value,from=$('#vf').value,to=$('#vt').value,note=$('#vn').value.trim();
+const pid=$('#vp').value,from=$('#vf').value,to=$('#vt').value,note=$('#vn').value.trim(),kind=$('#vk')?$('#vk').value:'vac';
 if(!from||!to){notice={t:'Elige la fecha de inicio y la del último día.',bad:true};return rr()}
 if(to<from){notice={t:'El último día debe ser igual o posterior al primero.',bad:true};return rr()}
 if(S.vac.some(v=>v.pid===pid&&v.from<=to&&from<=v.to)){notice={t:pname(pid)+' ya tiene vacaciones registradas en esas fechas.',bad:true};return rr()}
-S.vac.push({id:uid(),pid,from,to,note});
+S.vac.push({id:uid(),pid,from,to,note,kind});
 Object.keys(S.days).forEach(k=>{if(k>=from&&k<=to&&S.days[k].blocks.some(Boolean))S.days[k].dirty=true});
-save();notice={t:'Vacaciones registradas: '+pname(pid)+', del '+fmtD(from)+' al '+fmtD(to)+'.'};rr();
+save();notice={t:(kind==='enf'?'Ausencia por enfermedad registrada: ':'Vacaciones registradas: ')+pname(pid)+', del '+fmtD(from)+' al '+fmtD(to)+'.'};rr();
 }
 
 /* Motor de rotación: todos suben un puesto cada bloque y el primero pasa al último. */
@@ -1218,7 +1224,7 @@ function personalHTML(){
 let h=`<p class="sub">Marca quién está hoy. Los Material Handler y Utility senior cubren puestos cuando faltan operarios. El <b>Supervisor</b> no entra en la rotación; en desayuno y almuerzo cubre una máquina solo si los Material Handler no dan abasto. A quien no vino le eliges el motivo y quién lo reemplaza. Marca como <b>Extra</b> a los operarios y Material Handler que vienen de fuera del grupo y elige por quién viene cada uno (un Material Handler extra viene por el Material Handler que falta); los que no reemplazan a nadie salen en el reporte como extras necesitados.</p>`;
 h+=`<label for="addp">Agregar personal (uno por línea)</label><textarea id="addp" placeholder="Nombre y apellido"></textarea><label for="addr">Función</label><select id="addr"><option value="op">Operario</option><option value="util">Material Handler</option><option value="senior">Utility senior</option><option value="sup">Supervisor</option></select><button class="btn" onclick="addPeople()">Agregar</button><h2 class="lh">Tu personal</h2>`+evBarHTML();
 h+=`<p class="tag" style="margin:0 0 4px">Usa las flechas ↑ ↓ para ponerlos en el orden en que caen: cada uno va detrás del de arriba.</p>`;
-h+=S.people.map((p,pi)=>`<div class="prow"><span class="num" aria-label="Orden">${pi+1}</span><input class="nm" value="${esc(p.name)}" aria-label="Nombre" onchange="ren('${p.id}',this.value)"><select aria-label="Función" onchange="setRole('${p.id}',this.value)"><option value="op" ${p.role==='op'?'selected':''}>Operario</option><option value="util" ${p.role==='util'?'selected':''}>Material Handler</option><option value="senior" ${p.role==='senior'?'selected':''}>Utility senior</option><option value="sup" ${p.role==='sup'?'selected':''}>Supervisor</option></select>${isUtil(p)?`<select aria-label="Línea que cubre" onchange="setULine('${p.id}',this.value)">${[1,2,0].map(l=>`<option value="${l}" ${uLine(p)===l?'selected':''}>${LN[l]}</option>`).join('')}</select>`:''}${onVac(p.id,todayStr())?'<span class="tag">De vacaciones</span>':leftOn(p.id,todayStr())?`<button class="pill hold" aria-label="Deshacer la salida de ${esc(p.name)}" onclick="undoLeft('${p.id}')">${armed==='left'+p.id?'¿Deshacer salida?':'Se fue '+esc(hm12(leftOn(p.id,todayStr()).t))+' ✕'}</button>`:`<button class="pill ${p.present?'on':''}" onclick="togglePresent('${p.id}')">${p.present?'Hoy sí':'Hoy no'}</button>`}${lateOn(p.id,todayStr())?`<span class="chip ch">Llegó ${esc(hm12(lateOn(p.id,todayStr()).t))}</span>`:''}${p.role==='op'||isUtil(p)?`<button class="pill ${p.extra?'on':'ghost'}" aria-pressed="${!!p.extra}" onclick="toggleExtra('${p.id}')">Extra</button>`:''}<button class="x" aria-label="Subir a ${esc(p.name)}" ${pi===0?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',-1)">↑</button><button class="x" aria-label="Bajar a ${esc(p.name)}" ${pi===S.people.length-1?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',1)">↓</button><button class="x del" onclick="rm('people','${p.id}')">${armed==='people'+p.id?'¿Borrar?':'Quitar'}</button>${absentCtl(p)}${isSup(p)||p.extra?'':scoreHTML(p)}</div>`).join('');
+h+=S.people.map((p,pi)=>`<div class="prow"><span class="num" aria-label="Orden">${pi+1}</span><input class="nm" value="${esc(p.name)}" aria-label="Nombre" onchange="ren('${p.id}',this.value)"><select aria-label="Función" onchange="setRole('${p.id}',this.value)"><option value="op" ${p.role==='op'?'selected':''}>Operario</option><option value="util" ${p.role==='util'?'selected':''}>Material Handler</option><option value="senior" ${p.role==='senior'?'selected':''}>Utility senior</option><option value="sup" ${p.role==='sup'?'selected':''}>Supervisor</option></select>${isUtil(p)?`<select aria-label="Línea que cubre" onchange="setULine('${p.id}',this.value)">${[1,2,0].map(l=>`<option value="${l}" ${uLine(p)===l?'selected':''}>${LN[l]}</option>`).join('')}</select>`:''}${onVac(p.id,todayStr())?'<span class="tag">'+(vKind(vacOf(p.id,todayStr()))==='enf'?'Ausente por enfermedad':'De vacaciones')+'</span>':leftOn(p.id,todayStr())?`<button class="pill hold" aria-label="Deshacer la salida de ${esc(p.name)}" onclick="undoLeft('${p.id}')">${armed==='left'+p.id?'¿Deshacer salida?':'Se fue '+esc(hm12(leftOn(p.id,todayStr()).t))+' ✕'}</button>`:`<button class="pill ${p.present?'on':''}" onclick="togglePresent('${p.id}')">${p.present?'Hoy sí':'Hoy no'}</button>`}${lateOn(p.id,todayStr())?`<span class="chip ch">Llegó ${esc(hm12(lateOn(p.id,todayStr()).t))}</span>`:''}${p.role==='op'||isUtil(p)?`<button class="pill ${p.extra?'on':'ghost'}" aria-pressed="${!!p.extra}" onclick="toggleExtra('${p.id}')">Extra</button>`:''}<button class="x" aria-label="Subir a ${esc(p.name)}" ${pi===0?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',-1)">↑</button><button class="x" aria-label="Bajar a ${esc(p.name)}" ${pi===S.people.length-1?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',1)">↓</button><button class="x del" onclick="rm('people','${p.id}')">${armed==='people'+p.id?'¿Borrar?':'Quitar'}</button>${absentCtl(p)}${isSup(p)||p.extra?'':scoreHTML(p)}</div>`).join('');
 h+=brkCfgHTML()+ACEPTAR;
 return h;
 }
@@ -1300,7 +1306,7 @@ function toggleExtra(id){const p=S.people.find(x=>x.id===id);p.extra=!p.extra;if
 let repShow=null;
 function repD(){const d=day();if(!d.rep)d.rep={};return d.rep}
 const numD=k=>{const[y,m,dd]=k.split('-');return dd+'/'+m+'/'+y};
-const whyTxt=p=>onVac(p.id,date)||p.why==='vac'?'está de vacaciones':p.why==='enferma'?'se reportó enferma':p.why==='enfermo'?'se reportó enfermo':p.why==='baja'?'pidió la baja':'no vino';
+const whyTxt=p=>{const v=vacOf(p.id,date);if(v)return vKind(v)==='enf'?'está ausente por enfermedad':'está de vacaciones';return p.why==='vac'?'está de vacaciones':p.why==='enferma'?'se reportó enferma':p.why==='enfermo'?'se reportó enfermo':p.why==='baja'?'pidió la baja':'no vino'};
 function prodAuto(){return S.machines.filter(m=>m.on&&!m.hold).map(m=>m.n).join(', ')}
 function paradasAuto(){return S.machines.filter(m=>!m.on||m.hold).map(m=>'Máquina '+m.n+(m.reason?': '+m.reason:'')+(m.note?' – '+m.note:'')+(m.hold?(m.task==='rt'?' (detenida, operario en retrabajo)':m.task==='ut'?' (detenida, operario cubre como utility)':' (detenida)'):'')).join('\n')}
 function asisAuto(){

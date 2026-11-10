@@ -67,6 +67,17 @@ C.pull = async g => {
     return 'ok';
   } catch (e) { return 'No se pudo conectar con la nube (' + (e && e.code || 'error') + '). Revisa el internet o si la red del trabajo la bloquea.' }
 };
+C.sync = async g => {
+  g = String(g);
+  if (!C.user) return 'Primero entra con Google en la pestaña Grupo.';
+  try {
+    const d = await F.getDocFromServer(F.doc(db, 'usuarios', C.user.uid, 'grupos', docId(g)));
+    const local = lsGet(LS + 'g:' + g);
+    const r = d.exists() ? d.data() : null;
+    if (!r || (local && (local.edit || 0) > (r.edit || 0))) { const x = await C.pushNow(g); return x === 'ok' ? 'up' : x }
+    return (await C.pull(g)) === 'ok' ? 'down' : 'No se pudo traer de la nube.';
+  } catch (e) { return 'No se pudo conectar con la nube (' + (e && e.code || 'error') + '). Revisa el internet o si la red del trabajo la bloquea.' }
+};
 C.pushNow = async g => {
   g = String(g);
   if (!C.user) return 'Primero entra con Google.';
@@ -129,7 +140,7 @@ async function init() {
     A = Au; F = Fs;
     const app = App.initializeApp(CFG);
     auth = A.getAuth(app);
-    try { db = F.initializeFirestore(app, { localCache: F.persistentLocalCache() }) } catch (e) { db = F.getFirestore(app) }
+    try { db = F.initializeFirestore(app, { localCache: F.persistentLocalCache(), experimentalForceLongPolling: true }) } catch (e) { db = F.getFirestore(app) }
     A.getRedirectResult(auth).catch(e => { C.err = msg(e); ui() });
     A.onAuthStateChanged(auth, u => {
       if (unsub) { unsub(); unsub = null }

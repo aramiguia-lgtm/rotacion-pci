@@ -905,7 +905,9 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden){remTick()
 function remNextHTML(){if(!S||!Array.isArray(S.rem))return '';const A=S.rem.filter(r=>r.on).sort((a,b)=>a.next-b.next);if(!A.length)return '';const r=A[0];return `<button class="remnext" onclick="setTab('avisos')">🔔 Próximo: <b>${esc(r.text)}</b> a las ${hhmm(r.next)}${A.length>1?` · ${A.length} activos`:''}</button>`}
 setInterval(remTick,5000);setInterval(()=>{try{planTick()}catch(e){}},15000);
 
-function setTab(t){if(t!=='personal')evLock();printing=false;tab=t;armed=null;render();window.scrollTo(0,0)}
+let cfgOpen=false;
+function toggleCfg(){const CFG=['vacaciones','calendario','grupo','equipo','ayuda'];if(CFG.includes(tab)){cfgOpen=false;tab='hoy'}else cfgOpen=!cfgOpen;rr()}
+function setTab(t){if(!['vacaciones','calendario','grupo','equipo','ayuda'].includes(t))cfgOpen=false;if(t!=='personal')evLock();printing=false;tab=t;armed=null;render();window.scrollTo(0,0)}
 function rr(){const y=window.scrollY;render();window.scrollTo(0,y)}
 function render(){
 if(teamOpen&&window.cloud&&cloud.isAdmin()){$('#app').innerHTML=`<button class="link" onclick="teamOpen=false;render();window.scrollTo(0,0)">‹ Volver</button><h1>Equipo</h1>`+(notice?`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`:'')+equipoHTML();notice=null;return}
@@ -921,7 +923,10 @@ if(S.example)h+=`<div class="ex">Estás viendo un ejemplo con nombres inventados
 const TABS=myTabs();if(!TABS.some(t=>t[0]===tab))tab='hoy';
 if(isRO())h+=`<div class="ex">👁 Solo ver: tu acceso al grupo ${esc(S.g)} es de consulta. Los cambios los hace el supervisor.</div>`;
 else if(window.cloud&&cloud.user&&cloud.mode==='compartido'&&!S.example&&!cloud.syncs(S.g))h+=`<div class="ex">Este grupo está solo en este aparato: no está asignado a tu cuenta, así que no se sincroniza.</div>`;
-h+=`<div class="tabs mt">`+TABS.map(t=>`<button class="tab ${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`).join('')+`</div>`;
+{const CFG=new Set(['vacaciones','calendario','grupo','equipo','ayuda']),T1=TABS.filter(t=>!CFG.has(t[0])),T2=TABS.filter(t=>CFG.has(t[0])),inCfg=CFG.has(tab),open=cfgOpen||inCfg;
+const tb=t=>`<button class="tab ${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`;
+h+=`<div class="tabs mt">`+T1.map(tb).join('')+(T2.length?`<button class="tab ${inCfg?'on':''}" aria-label="Configuración" aria-expanded="${open}" onclick="toggleCfg()" style="font-size:22px">⚙️</button>`:'')+`</div>`;
+if(open&&T2.length)h+=`<div class="tabs" style="margin-top:-6px;padding:8px;border:2px dashed var(--line);border-radius:14px">`+T2.map(tb).join('')+`</div>`;}
 h+=alertsHTML();if(tab==='hoy')h+=remNextHTML();
 if(notice)h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;
 h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML():tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='ayuda'?guideHTML():tab==='equipo'?equipoHTML():tab==='plan'?planHTML()+(isRO()?'':'<button id="plfab" aria-label="Agregar tarea" onclick="plGoAdd()">+</button>'):personalHTML();
@@ -1720,7 +1725,7 @@ const T=[['hoy','Hoy'],['maquinas','Máquinas'],['personal','Personal'],['vacaci
 if(window.cloud&&cloud.isAdmin&&cloud.isAdmin()&&!S.example)T.splice(9,0,['equipo','Equipo']);
 return T}
 /* Solo ver: se desactiva todo lo que cambia datos; quedan pestañas, fechas, imprimir y copiar. */
-const RO_OK=new Set(['planChk','setTab','setDate','calNav','leave','openGroup','syncBoth','openPrint','doPrint','setPfmt','setNout','setZmg','setZor','setPkind','printing','window.scrollTo','var','document.getElementById','copyDay','copyGuide','startGuide','cloud.signIn','cloudOut','sendSug','copySug','teamOpen']);
+const RO_OK=new Set(['toggleCfg','planChk','setTab','setDate','calNav','leave','openGroup','syncBoth','openPrint','doPrint','setPfmt','setNout','setZmg','setZor','setPkind','printing','window.scrollTo','var','document.getElementById','copyDay','copyGuide','startGuide','cloud.signIn','cloudOut','sendSug','copySug','teamOpen']);
 const roName=a=>{const m=String(a||'').trim().match(/^[A-Za-z_$][\w$.]*/);return m?m[0]:''};
 function roAllowed(el){for(const at of ['onclick','onchange','oninput']){const v=el.getAttribute(at);if(v&&!RO_OK.has(roName(v)))return false}return true}
 function roLock(){const app=$('#app');if(!app)return;const ro=isRO();app.classList.toggle('ro',ro);if(!ro)return;

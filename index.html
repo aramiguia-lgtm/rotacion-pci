@@ -343,7 +343,7 @@ const postRT=p=>postHeld(p)&&p.ms.some(n=>{const m=S.machines.find(x=>x.n===n);r
 const postUT=p=>postHeld(p)&&heldOf(p).some(m=>m.task==='ut');
 function setRT(pid,on){const p=S.posts.find(x=>x.id===pid);if(!p)return;S.machines.forEach(m=>{if(p.ms.indexOf(m.n)>=0&&m.on&&m.hold)m.task=on?'rt':''});save();notice={t:on?'Máq. '+postLabel(p)+': quien pasa por ahí va a retrabajo.':'Máq. '+postLabel(p)+': el operario vuelve a cubrir descansos.'};rr()}
 const pname=id=>{const p=S.people.find(x=>x.id===id);return p?p.name:'?'};
-const mk=p=>p&&p.role==='util'?' (MH)':p&&p.role==='senior'?' (US)':p&&p.role==='sup'?' (Sup.)':'';
+const mk=p=>p&&p.role==='util'?' (MH)':p&&p.role==='senior'?' (US)':p&&p.role==='utl'?' (U)':p&&p.role==='sup'?' (Sup.)':'';
 const pmark=id=>mk(S.people.find(x=>x.id===id));
 const postLabel=p=>p.ms.join(', ')+(p.sfx||''); const mql=r=>(r.ms||[]).join(', ')+(r.sx||'');
 const addDays=(s,n)=>{const p=s.split('-').map(Number),t=new Date(p[0],p[1]-1,p[2]+n);return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())};
@@ -410,8 +410,8 @@ function ctx(){
 const posts=S.posts.filter(postActive);
 const dd=S.days[date],full=new Set(((dd&&dd.rt)||[]).filter(e=>e.from<=0&&e.to>=dd.n-1).map(e=>e.pid));
 const P=S.people.filter(p=>here(p)&&!full.has(p.id));
-const ops=P.filter(p=>p.role!=='util'&&p.role!=='senior'&&p.role!=='sup');
-const uts=P.filter(p=>p.role==='util').concat(P.filter(p=>p.role==='senior'));
+const ops=P.filter(p=>p.role!=='util'&&p.role!=='senior'&&p.role!=='utl'&&p.role!=='sup');
+const uts=P.filter(p=>p.role==='util').concat(P.filter(p=>p.role==='utl'),P.filter(p=>p.role==='senior'));
 const need=Math.max(0,Math.min(uts.length,posts.length-ops.length));
 const E=ops.concat(uts.slice(0,need));
 return {posts,ids:E.map(p=>p.id)};
@@ -596,7 +596,7 @@ const n=norm(q),f=n.split(' ')[0];
 return S.people.find(p=>norm(p.name)===n)||S.people.find(p=>norm(p.name).indexOf(n)===0)||S.people.find(p=>norm(p.name).split(' ')[0]===f)||null;
 }
 function ensureBreaks(){if(!S.brk||!Array.isArray(S.brk.g)){S.brk=S.shift==='noche'?{bS:'21:00',bM:15,lS:'01:00',lM:30,g:[[],[],[]]}:{bS:'07:00',bM:15,lS:'12:00',lM:30,g:[[],[],[]]}}S.brkInit=1;S.brkOrd=2}
-const isUtil=p=>p&&(p.role==='util'||p.role==='senior');
+const isUtil=p=>p&&(p.role==='util'||p.role==='senior'||p.role==='utl');
 /* Reemplazos entre iguales: un operario por un operario, un Material Handler por un Material Handler (ej. un Material Handler de otro equipo). */
 const sameKind=(a,b)=>!!a&&!!b&&(isUtil(a)?isUtil(b):a.role==='op'&&b.role==='op');
 /* Supervisor: no rota ni sale en los turnos; en desayuno y almuerzo cubre UNA máquina solo si los Material Handler no dan abasto. */
@@ -1031,11 +1031,11 @@ return h+`<button class="go" onclick="var e=document.getElementById('blk${cur}')
 function hoyHTML(d){
 const c=ctx(),cur=curBlock(d);
 const P=S.people.filter(here);
-const cnt=r=>P.filter(p=>p.role===r).length,ops=P.length-cnt('util')-cnt('senior')-cnt('sup');
+const cnt=r=>P.filter(p=>p.role===r).length,ops=P.length-cnt('util')-cnt('senior')-cnt('utl')-cnt('sup');
 const nx=nextShift(),wk=isWork(date);
 let h=`<div class="${wk?'alert soft':'alert'}"><b>Próximo turno: ${fmtD(nx)}</b>${date!==nx?` <button class="rt" onclick="setDate('${nx}')">Ir a ese día</button>`:' · es el que estás viendo'}${wk?'':`<br>El ${fmtD(date)} libras: la rotación no avanza ese día y sigue en tu próximo día de trabajo.`}</div>`;
 if(!wk&&!d.blocks.some(Boolean))return h+`<label for="dt">Fecha</label><input type="date" id="dt" value="${date}" onchange="setDate(this.value)"><p class="sub" style="margin-top:8px">Si este día sí trabajas, márcalo en el calendario y aquí aparecerá la rotación.</p>`;
-h+=rotNowHTML(d,cur)+breakBanner(d)+`<p class="sub">${ops} operarios · ${cnt('util')} Material Handler · ${cnt('senior')} Utility senior${cnt('sup')?' · '+cnt('sup')+' supervisor':''} · ${c.posts.length} puestos activos</p>`;
+h+=rotNowHTML(d,cur)+breakBanner(d)+`<p class="sub">${ops} operarios · ${cnt('util')} Material Handler${cnt('utl')?' · '+cnt('utl')+' Utility':''} · ${cnt('senior')} Utility senior${cnt('sup')?' · '+cnt('sup')+' supervisor':''} · ${c.posts.length} puestos activos</p>`;
 const off=S.machines.filter(m=>!m.on);
 if(off.length){
 const g={};off.forEach(m=>{const k=m.reason||'Sin motivo';(g[k]=g[k]||[]).push(m.n)});
@@ -1246,9 +1246,9 @@ function movePost(id,dir){const i=S.posts.findIndex(p=>p.id===id),j=i+dir;if(j<0
 
 function personalHTML(){
 let h=`<p class="sub">Marca quién está hoy. Los Material Handler y Utility senior cubren puestos cuando faltan operarios. El <b>Supervisor</b> no entra en la rotación; en desayuno y almuerzo cubre una máquina solo si los Material Handler no dan abasto. A quien no vino le eliges el motivo y quién lo reemplaza. Marca como <b>Extra</b> a los operarios y Material Handler que vienen de fuera del grupo y elige por quién viene cada uno (un Material Handler extra viene por el Material Handler que falta); los que no reemplazan a nadie salen en el reporte como extras necesitados.</p>`;
-h+=`<label for="addp">Agregar personal (uno por línea)</label><textarea id="addp" placeholder="Nombre y apellido"></textarea><label for="addr">Función</label><select id="addr"><option value="op">Operario</option><option value="util">Material Handler</option><option value="senior">Utility senior</option><option value="sup">Supervisor</option></select><button class="btn" onclick="addPeople()">Agregar</button><h2 class="lh">Tu personal</h2>`+evBarHTML();
+h+=`<label for="addp">Agregar personal (uno por línea)</label><textarea id="addp" placeholder="Nombre y apellido"></textarea><label for="addr">Función</label><select id="addr"><option value="op">Operario</option><option value="util">Material Handler</option><option value="utl">Utility</option><option value="senior">Utility senior</option><option value="sup">Supervisor</option></select><button class="btn" onclick="addPeople()">Agregar</button><h2 class="lh">Tu personal</h2>`+evBarHTML();
 h+=`<p class="tag" style="margin:0 0 4px">Usa las flechas ↑ ↓ para ponerlos en el orden en que caen: cada uno va detrás del de arriba.</p>`;
-h+=S.people.map((p,pi)=>`<div class="prow"><span class="num" aria-label="Orden">${pi+1}</span><input class="nm" value="${esc(p.name)}" aria-label="Nombre" onchange="ren('${p.id}',this.value)"><select aria-label="Función" onchange="setRole('${p.id}',this.value)"><option value="op" ${p.role==='op'?'selected':''}>Operario</option><option value="util" ${p.role==='util'?'selected':''}>Material Handler</option><option value="senior" ${p.role==='senior'?'selected':''}>Utility senior</option><option value="sup" ${p.role==='sup'?'selected':''}>Supervisor</option></select>${isUtil(p)?`<select aria-label="Línea que cubre" onchange="setULine('${p.id}',this.value)">${[1,2,0].map(l=>`<option value="${l}" ${uLine(p)===l?'selected':''}>${LN[l]}</option>`).join('')}</select>`:''}${onVac(p.id,todayStr())?'<span class="tag">'+(vKind(vacOf(p.id,todayStr()))==='enf'?'Ausente por enfermedad':'De vacaciones')+'</span>':leftOn(p.id,todayStr())?`<button class="pill hold" aria-label="Deshacer la salida de ${esc(p.name)}" onclick="undoLeft('${p.id}')">${armed==='left'+p.id?'¿Deshacer salida?':'Se fue '+esc(hm12(leftOn(p.id,todayStr()).t))+' ✕'}</button>`:`<button class="pill ${p.present?'on':''}" onclick="togglePresent('${p.id}')">${p.present?'Hoy sí':'Hoy no'}</button>`}${lateOn(p.id,todayStr())?`<span class="chip ch">Llegó ${esc(hm12(lateOn(p.id,todayStr()).t))}</span>`:''}${p.role==='op'||isUtil(p)?`<button class="pill ${p.extra?'on':'ghost'}" aria-pressed="${!!p.extra}" onclick="toggleExtra('${p.id}')">Extra</button>`:''}<button class="x" aria-label="Subir a ${esc(p.name)}" ${pi===0?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',-1)">↑</button><button class="x" aria-label="Bajar a ${esc(p.name)}" ${pi===S.people.length-1?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',1)">↓</button><button class="x del" onclick="rm('people','${p.id}')">${armed==='people'+p.id?'¿Borrar?':'Quitar'}</button>${absentCtl(p)}${isSup(p)||p.extra?'':scoreHTML(p)}</div>`).join('');
+h+=S.people.map((p,pi)=>`<div class="prow"><span class="num" aria-label="Orden">${pi+1}</span><input class="nm" value="${esc(p.name)}" aria-label="Nombre" onchange="ren('${p.id}',this.value)"><select aria-label="Función" onchange="setRole('${p.id}',this.value)"><option value="op" ${p.role==='op'?'selected':''}>Operario</option><option value="util" ${p.role==='util'?'selected':''}>Material Handler</option><option value="utl" ${p.role==='utl'?'selected':''}>Utility</option><option value="senior" ${p.role==='senior'?'selected':''}>Utility senior</option><option value="sup" ${p.role==='sup'?'selected':''}>Supervisor</option></select>${isUtil(p)?`<select aria-label="Línea que cubre" onchange="setULine('${p.id}',this.value)">${[1,2,0].map(l=>`<option value="${l}" ${uLine(p)===l?'selected':''}>${LN[l]}</option>`).join('')}</select>`:''}${onVac(p.id,todayStr())?'<span class="tag">'+(vKind(vacOf(p.id,todayStr()))==='enf'?'Ausente por enfermedad':'De vacaciones')+'</span>':leftOn(p.id,todayStr())?`<button class="pill hold" aria-label="Deshacer la salida de ${esc(p.name)}" onclick="undoLeft('${p.id}')">${armed==='left'+p.id?'¿Deshacer salida?':'Se fue '+esc(hm12(leftOn(p.id,todayStr()).t))+' ✕'}</button>`:`<button class="pill ${p.present?'on':''}" onclick="togglePresent('${p.id}')">${p.present?'Hoy sí':'Hoy no'}</button>`}${lateOn(p.id,todayStr())?`<span class="chip ch">Llegó ${esc(hm12(lateOn(p.id,todayStr()).t))}</span>`:''}${p.role==='op'||isUtil(p)?`<button class="pill ${p.extra?'on':'ghost'}" aria-pressed="${!!p.extra}" onclick="toggleExtra('${p.id}')">Extra</button>`:''}<button class="x" aria-label="Subir a ${esc(p.name)}" ${pi===0?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',-1)">↑</button><button class="x" aria-label="Bajar a ${esc(p.name)}" ${pi===S.people.length-1?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',1)">↓</button><button class="x del" onclick="rm('people','${p.id}')">${armed==='people'+p.id?'¿Borrar?':'Quitar'}</button>${absentCtl(p)}${isSup(p)||p.extra?'':scoreHTML(p)}</div>`).join('');
 h+=brkCfgHTML()+ACEPTAR;
 return h;
 }
@@ -1493,7 +1493,7 @@ if(kind==='posts')postsChanged();else markDirty();save();rr();
 /* ===== Grupos: cada grupo guarda sus datos aparte en este dispositivo ===== */
 let newShift='dia',startGuide=false,focusNew=false;
 function savedGroups(){const out=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf(GKEY+'g:')===0){const g=lsGet(k);if(g&&g.g!=null&&g.g!=='')out.push(g)}}}catch(e){}return out.sort((a,b)=>String(a.g).localeCompare(String(b.g),'es',{numeric:true}))}
-function grpInfo(g){const P=g.people||[];if(!g.machines)return P.length+' personas · formato anterior, se actualiza al abrir';const ops=P.filter(p=>p.role==='op'&&!p.extra).length,ut=P.filter(p=>(p.role==='util'||p.role==='senior')&&!p.extra).length,ex=P.filter(p=>p.extra).length;return ops+' operarios · '+ut+' Material Handler'+(ex?' · '+ex+' extra':'')}
+function grpInfo(g){const P=g.people||[];if(!g.machines)return P.length+' personas · formato anterior, se actualiza al abrir';const ops=P.filter(p=>p.role==='op'&&!p.extra).length,ut=P.filter(p=>isUtil(p)&&!p.extra).length,ex=P.filter(p=>p.extra).length;return ops+' operarios · '+ut+' Material Handler'+(ex?' · '+ex+' extra':'')}
 function calDef(){return {mode:'ciclo',on:1,off:0,start:todayStr(),wd:[1,2,3,4,5],ov:{},pid:''}}
 function startHTML(){
 let h=`<h1>Rotación de grupos PCI Miami</h1><p class="sub">Cada grupo arma su propia rotación: máquinas, personal, desayuno y almuerzo, vacaciones, mes y reporte. Lo que guardes aquí queda en este dispositivo (y en tu cuenta, si entras con tu correo) y no cambia nada de otros grupos.</p>`;
@@ -1678,12 +1678,12 @@ if(isRO())return h;
 h+=`<h2 class="lh">Tareas del plan</h2><p class="sub">Se repiten cada día del grupo. Las de «solo hoy» desaparecen mañana.</p>`;
 const T=(S.plan||[]);
 h+=T.length?T.map(t=>`<div class="prow"><div class="nm"><b>${esc(t.txt)}</b><br><span class="tag">${esc(plWhen(t))} · ${esc(plWho(t))}${t.day?' · solo '+esc(fmtD(t.day)):''}</span></div><button class="x del" onclick="rmPlan('${t.id}')">${armed==='pl'+t.id?'¿Borrar?':'Quitar'}</button></div>`).join(''):`<p class="sub">Ninguna todavía.</p>`;
-const W=S.people.filter(p=>p.role==='senior'),W2=S.people.filter(p=>p.role==='util');
+const okP=p=>!(p.extra&&absentOn(p,date)),W=S.people.filter(p=>p.role==='senior'&&okP(p)),W2=S.people.filter(p=>(p.role==='utl'||p.role==='util')&&okP(p));
 h+=`<div class="cbox" id="pl_add"><h2 style="margin-top:0">Agregar tarea</h2><label for="pl_t">Tarea</label><input id="pl_t" placeholder="Ej. Revisar aditivo y colorante en las máquinas" autocomplete="off">
 <label for="pl_m">Cuándo</label><select id="pl_m" onchange="$('#pl_c').hidden=this.value!=='cada';$('#pl_x').hidden=this.value==='cada'"><option value="cada">Cada cierto tiempo</option><option value="horas">A horas fijas</option></select>
 <div id="pl_c"><div class="row2"><div><label for="pl_e">Cada</label><select id="pl_e"><option value="0.5">30 min</option><option value="1">1 hora</option><option value="2" selected>2 horas</option><option value="3">3 horas</option><option value="4">4 horas</option></select></div><div><label for="pl_f">Desde</label><input id="pl_f" type="time" value="${plShift()[0]}"></div></div></div>
 <div id="pl_x" hidden><label for="pl_h">Horas (separadas por coma)</label><input id="pl_h" placeholder="Ej. 9:00, 15:00" autocomplete="off"></div>
-<label for="pl_w">Para</label><select id="pl_w"><option value="">Cualquier utility senior</option>${W.concat(W2).map(p=>`<option value="${p.id}">${esc(p.name)}${p.role==='senior'?' (US)':''}</option>`).join('')}</select>
+<label for="pl_w">Para</label><select id="pl_w"><option value="">Cualquier utility senior</option>${W.concat(W2).map(p=>`<option value="${p.id}">${esc(p.name)}${mk(p)}</option>`).join('')}</select>
 <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="pl_d" style="width:auto"> Solo para ${esc(fmtD(date))}</label>
 <button class="btn" onclick="addPlan()">Agregar tarea</button></div>`;
 return h}

@@ -241,6 +241,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <div id="app"></div>
 <button id="totop" hidden onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Volver arriba de la página">↑ Arriba</button>
 <style>#totop{position:fixed;left:max(14px,env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:15;background:var(--ink);color:var(--bg);border:0;font-family:'Barlow Semi Condensed',system-ui,sans-serif;font-weight:700;font-size:20px;line-height:1;padding:14px 20px;border-radius:999px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.28)}#totop[hidden]{display:none}
+.cfgrow{display:flex!important;flex-wrap:wrap}.cfgrow .tab{flex:1 1 auto;width:auto;padding-left:12px;padding-right:12px;white-space:nowrap}
 #plfab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:16;width:64px;height:64px;border-radius:50%;border:0;background:var(--accent);color:var(--onaccent);font-size:40px;font-weight:700;line-height:1;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.3)}
 @media print{#plfab{display:none}}#totop:focus-visible{outline:3px solid var(--accent);outline-offset:3px}body{padding-bottom:96px}@media print{#totop{display:none!important}}</style>
 <script>(function(){const b=document.getElementById('totop'),f=()=>{b.hidden=window.scrollY<400};window.addEventListener('scroll',f,{passive:true});f()})();</script>
@@ -367,16 +368,17 @@ return h;
 }
 function vacHTML(){
 const T=todayStr();
-let h=`<p class="sub">Registra las vacaciones aprobadas. Esos días la persona sale de la rotación, y la app avisa el día antes.</p>`;
+let h='';
 if(!S.people.length)return h+`<div class="warn">Agrega personal primero en la pestaña Personal.</div>`;
+if(vacOpen&&!isRO()){h+=`<div class="cbox" id="vac_add"><h2 style="margin-top:0">Registrar vacaciones o ausencia</h2><p class="sub" style="margin-top:0">Esos días la persona sale de la rotación, y la app avisa el día antes.</p>`;
 h+=`<label for="vp">Persona</label><select id="vp">${S.people.map(p=>`<option value="${p.id}">${esc(p.name)}${mk(p)}</option>`).join('')}</select>`;
 h+=`<div class="row2"><div><label for="vf">Desde</label><input type="date" id="vf" value="${addDays(T,1)}"></div><div><label for="vt">Hasta (último día)</label><input type="date" id="vt" value="${addDays(T,7)}"></div></div>`;
 h+=`<label for="vk">Motivo</label><select id="vk"><option value="vac">Vacaciones</option><option value="enferma">Se reportó enferma</option><option value="enfermo">Se reportó enfermo</option></select>`;
 h+=`<label for="vn">Nota (opcional)</label><input id="vn" placeholder="Ej. papel aprobado por RRHH">`;
-h+=`<button class="btn" onclick="addVac()">Registrar vacaciones</button>`;
+h+=`<div class="pbar" style="margin-top:12px"><button class="btn" style="margin-top:0" onclick="addVac()">Registrar</button><button class="btn soft" style="margin-top:0" onclick="vacOpen=false;rr()">Cancelar</button></div></div>`;}
 const list=S.vac.slice().sort((a,b)=>a.from<b.from?-1:a.from>b.from?1:0);
 const up=list.filter(v=>v.to>=T),past=list.filter(v=>v.to<T);
-h+=`<h2 class="lh">Próximas y actuales</h2>`+(up.length?up.map(vacRow).join(''):`<p class="sub">No hay vacaciones próximas. Registra la primera arriba.</p>`);
+h+=`<h2 class="lh">Próximas y actuales</h2>`+(up.length?up.map(vacRow).join(''):`<p class="sub">No hay vacaciones próximas.${isRO()?'':' Toca + para registrar.'}</p>`);
 if(past.length)h+=`<h2 class="lh">Pasadas</h2>`+past.slice(-10).reverse().map(vacRow).join('');
 return h;
 }
@@ -402,7 +404,7 @@ if(to<from){notice={t:'El último día debe ser igual o posterior al primero.',b
 if(S.vac.some(v=>v.pid===pid&&v.from<=to&&from<=v.to)){notice={t:pname(pid)+' ya tiene vacaciones registradas en esas fechas.',bad:true};return rr()}
 S.vac.push({id:uid(),pid,from,to,note,kind});
 Object.keys(S.days).forEach(k=>{if(k>=from&&k<=to&&S.days[k].blocks.some(Boolean))S.days[k].dirty=true});
-save();notice={t:(kind!=='vac'?'Ausencia por enfermedad registrada: ':'Vacaciones registradas: ')+pname(pid)+', del '+fmtD(from)+' al '+fmtD(to)+'.'};rr();
+vacOpen=false;save();notice={t:(kind!=='vac'?'Ausencia por enfermedad registrada: ':'Vacaciones registradas: ')+pname(pid)+', del '+fmtD(from)+' al '+fmtD(to)+'.'};rr();
 }
 
 /* Motor de rotación: todos suben un puesto cada bloque y el primero pasa al último. */
@@ -907,7 +909,8 @@ setInterval(remTick,5000);setInterval(()=>{try{planTick()}catch(e){}},15000);
 
 let cfgOpen=false;
 function toggleCfg(){const CFG=['vacaciones','calendario','grupo','equipo','ayuda'];if(CFG.includes(tab)){cfgOpen=false;tab='hoy'}else cfgOpen=!cfgOpen;rr()}
-function setTab(t){if(!['vacaciones','calendario','grupo','equipo','ayuda'].includes(t))cfgOpen=false;if(t!=='personal')evLock();printing=false;tab=t;armed=null;render();window.scrollTo(0,0)}
+let vacOpen=false;
+function setTab(t){vacOpen=false;if(!['vacaciones','calendario','grupo','equipo','ayuda'].includes(t))cfgOpen=false;if(t!=='personal')evLock();printing=false;tab=t;armed=null;render();window.scrollTo(0,0)}
 function rr(){const y=window.scrollY;render();window.scrollTo(0,y)}
 function render(){
 if(teamOpen&&window.cloud&&cloud.isAdmin()){$('#app').innerHTML=`<button class="link" onclick="teamOpen=false;render();window.scrollTo(0,0)">‹ Volver</button><h1>Equipo</h1>`+(notice?`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`:'')+equipoHTML();notice=null;return}
@@ -926,10 +929,10 @@ else if(window.cloud&&cloud.user&&cloud.mode==='compartido'&&!S.example&&!cloud.
 {const CFG=new Set(['vacaciones','calendario','grupo','equipo','ayuda']),T1=TABS.filter(t=>!CFG.has(t[0])),T2=TABS.filter(t=>CFG.has(t[0])),inCfg=CFG.has(tab),open=cfgOpen||inCfg;
 const tb=t=>`<button class="tab ${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`;
 h+=`<div class="tabs mt">`+T1.map(tb).join('')+(T2.length?`<button class="tab ${inCfg?'on':''}" aria-label="Configuración" aria-expanded="${open}" onclick="toggleCfg()" style="font-size:22px">⚙️</button>`:'')+`</div>`;
-if(open&&T2.length)h+=`<div class="tabs" style="margin-top:-6px;padding:8px;border:2px dashed var(--line);border-radius:14px">`+T2.map(tb).join('')+`</div>`;}
+if(open&&T2.length)h+=`<div class="tabs cfgrow" style="margin-top:-6px;padding:8px;border:2px dashed var(--line);border-radius:14px">`+T2.map(tb).join('')+`</div>`;}
 h+=alertsHTML();if(tab==='hoy')h+=remNextHTML();
 if(notice)h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;
-h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML():tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='ayuda'?guideHTML():tab==='equipo'?equipoHTML():tab==='plan'?planHTML()+(isRO()?'':'<button id="plfab" aria-label="Agregar tarea" onclick="plGoAdd()">+</button>'):personalHTML();
+h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML()+(isRO()||vacOpen||!S.people.length?'':'<button id="plfab" class="fabx" aria-label="Registrar vacaciones" onclick="vacOpen=true;rr();window.scrollTo({top:0,behavior:\'smooth\'})">+</button>'):tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='ayuda'?guideHTML():tab==='equipo'?equipoHTML():tab==='plan'?planHTML()+(isRO()?'':'<button id="plfab" aria-label="Agregar tarea" onclick="plGoAdd()">+</button>'):personalHTML();
 notice=null;
 $('#app').innerHTML=h;nightDom($('#app'));roLock();
 if(tab==='reporte'&&repShow===date)repFill();

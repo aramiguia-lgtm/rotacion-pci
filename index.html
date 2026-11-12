@@ -1737,13 +1737,14 @@ ts.forEach(a=>{const hh=hm(plShift()[0],a);out.push({key:t.id+'@'+hh,t,hh,a})})}
 function plChecks(){if(window.cloud&&cloud.watchChecks&&cloud.watchChecks(S.g,date))return cloud.checks||{};const d=S.days[date];return (d&&d.chk)||{}}
 function plWhen(t){return t.every>0?'Cada '+(t.every<1?Math.round(t.every*60)+' min':t.every+' h')+' desde las '+(t.from||plShift()[0]):'A las '+(t.times||[]).join(', ')}
 const plWho=t=>t.who?pname(t.who):'Cualquier utility senior';
-function plStatus(it,c){if(c)return 'ok';if(date!==todayStr())return date<todayStr()?'late':'';const st=new Date(date+'T'+plShift()[0]+':00').getTime()+it.a*60000,now=Date.now();if(now>st+15*60000)return 'late';if(now>=st-5*60000)return 'now';return ''}
+function plStatus(it,c){if(c)return 'ok';if(!isWork(date))return '';if(date!==todayStr())return date<todayStr()?'late':'';const st=new Date(date+'T'+plShift()[0]+':00').getTime()+it.a*60000,now=Date.now();if(now>st+15*60000)return 'late';if(now>=st-5*60000)return 'now';return ''}
 async function planChk(k){if(!S||!S.g)return;const C0=plChecks(),had=!!C0[k];const who=window.cloud&&cloud.user?(cloud.name||cloud.user.email):'';const val=had?null:{t:Date.now(),por:who};
 if(window.cloud&&cloud.checksOn){rr();const r=await cloud.setCheck(S.g,date,k,val);if(r!=='ok'){notice={t:r,bad:true}}rr();return}
 const d=day();d.chk=d.chk||{};if(val)d.chk[k]=val;else delete d.chk[k];save();rr()}
 function planHTML(){
 const its=plItems(date),C0=plChecks(),done=its.filter(i=>C0[i.key]).length,late=its.filter(i=>plStatus(i,C0[i.key])==='late').length;
 let h=`<h2>Plan de trabajo · ${esc(fmtD(date))}</h2>`;
+if(!isWork(plShiftDate()))h+=`<p class="sub" style="margin-top:0">🔕 Hoy el grupo no trabaja: los avisos del plan no suenan. Empiezan a sonar el ${esc(fmtD(nextShift()))}.</p>`;
 if(!its.length)h+=`<p class="sub">${(S.plan||[]).length?'No hay tareas para este día.':'Todavía no hay tareas. '+(isRO()?'El supervisor las agrega.':'Agrégalas abajo.')}</p>`;
 else h+=`<p class="sub" style="margin-top:0"><b>${done} de ${its.length}</b> hechas${late?` · <b style="color:var(--bad)">${late} atrasada${late>1?'s':''}</b>`:''}. Toca ✓ cuando la hagas.</p>`;
 h+=its.map(i=>{const c=C0[i.key],st=plStatus(i,c);const tm=c?new Date(c.t):null;
@@ -1771,7 +1772,8 @@ function plShiftDate(){const T=todayStr();if(S.shift==='noche'&&new Date().getHo
 function planTick(){if(!ready||!S||!S.g||S.example)return;if(!Array.isArray(S.plan))S.plan=[];
 const now=Date.now(),sk=GKEY+'plseen:'+S.g,seen=lsGet(sk),ids=S.plan.map(t=>t.id);
 if(!seen)lsSet(sk,ids);else{const nw=S.plan.filter(t=>seen.indexOf(t.id)<0);if(nw.length){nw.forEach(t=>{if(!plMine.has(t.id))remQ.push({id:'pn:'+t.id,text:'Nueva tarea: '+t.txt+' · '+plWhen(t)+(t.who?' · '+pname(t.who):''),at:now,late:false})});lsSet(sk,ids);if(nw.some(t=>!plMine.has(t.id))){remUnlock();remPaint();if(tab==='plan')rr()}}}
-const ds=plShiftDate();if(ds!==date&&window.cloud&&cloud.checksOn)return;
+const ds=plShiftDate();if(!isWork(ds))return; /* Solo suena el día que el grupo trabaja (Mes). */
+if(ds!==date&&window.cloud&&cloud.checksOn)return;
 const C0=ds===date?plChecks():((S.days[ds]&&S.days[ds].chk)||{});
 const fk=GKEY+'plfired:'+S.g+':'+ds,fired=lsGet(fk)||{};let ch=false;
 const ro=isRO(),base=new Date(ds+'T'+plShift()[0]+':00').getTime();

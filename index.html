@@ -1085,7 +1085,7 @@ function blockRows(b,i){
 return b.posts.map((pid,j)=>{
 const p=S.posts.find(x=>x.id===pid);if(!p)return '';
 const sel=b.arr[j]||'';
-const hd=postHeld(p),rt=hd&&postRT(p),utk=hd&&postUT(p),zc=hd?postZC(p):[],cls=hd?'mrow held':'mrow',zx=postZCX(p),lab=esc(postLabel(p))+(hd?'<small>Detenida · '+esc(heldReason(p))+'</small>':zx.length?'<small>+ cubre '+zx.join(', ')+' (sin puesto)</small>':'');
+const hd=postHeld(p),rt=hd&&postRT(p),utk=hd&&postUT(p),zc=hd?postZC(p):[],cls=hd?'mrow held':'mrow',zx=postZCX(p),lab=esc(postLabel(p))+(hd?'<small>Detenida · '+esc(heldReason(p))+'</small>':zx.length?zx.map(n=>' <span class="pill zero" title="Cero operario" style="display:inline-block;padding:1px 9px;margin:0 0 0 4px;font-size:inherit;line-height:1.3;vertical-align:middle">'+n+'</span>').join(''):'');
 const task=rt?'Retrabajo':utk?'Cubre como utility':zc.length?'Cubre '+zc.join(', ')+' (sin puesto)':hd?'Cubre descansos':'';
 if(i<0)return `<div class="${cls}"><span>${lab}</span><span class="who">${sel?esc(pname(sel))+pmark(sel):'Sin cubrir'}${hd?'<b>'+task+'</b>':''}</span></div>`;
 if(hd)return `<div class="${cls}"><span>${lab}</span><span class="rtname">${sel?esc(pname(sel))+pmark(sel):'Sin cubrir'}<small>${task}</small></span><div class="hctl">${heldCtl(p)}</div></div>`;

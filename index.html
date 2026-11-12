@@ -1731,7 +1731,8 @@ if(n){remUnlock();}remPaint()};
 /* S.plan: tareas del grupo que se repiten cada día ({id,txt,every(horas, 0 = horas fijas),from,times[],who,day}). */
 const plShift=()=>S.shift==='noche'?['18:00','06:00']:['06:00','18:00'];
 const plAbs=hhmm=>{const st=toMin(plShift()[0]),m=toMin(hhmm);return (m-st+1440)%1440};
-function plItems(ds){const out=[];(S.plan||[]).forEach(t=>{if(t.day&&t.day!==ds)return;let ts=[];
+const plSupTask=t=>!!(t.who&&isSup(S.people.find(p=>p.id===t.who)));
+function plItems(ds){const out=[];(S.plan||[]).forEach(t=>{if(t.day&&t.day!==ds)return;if(isRO()&&plSupTask(t))return;let ts=[];
 if(t.every>0){const st=plAbs(t.from||plShift()[0]),step=Math.round(t.every*60);for(let a=st;a<720;a+=step)ts.push(a)}else ts=(t.times||[]).map(plAbs).filter(a=>a<720);
 ts.forEach(a=>{const hh=hm(plShift()[0],a);out.push({key:t.id+'@'+hh,t,hh,a})})});const ix=new Map((S.plan||[]).map((t,i)=>[t.id,i]));return out.sort((x,y)=>x.a-y.a||ix.get(x.t.id)-ix.get(y.t.id))}
 function plChecks(){if(window.cloud&&cloud.watchChecks&&cloud.watchChecks(S.g,date))return cloud.checks||{};const d=S.days[date];return (d&&d.chk)||{}}
@@ -1755,12 +1756,12 @@ if(isRO())return h;
 h+=`<h2 class="lh">Tareas del plan</h2><p class="sub">Se repiten cada día del grupo. Las de «solo hoy» desaparecen mañana.</p>`;
 const T=(S.plan||[]);
 h+=T.length?T.map(t=>plEdit===t.id?plEditForm(t):`<div class="prow"><div class="nm"><b>${esc(t.txt)}</b><br><span class="tag">${esc(plWhen(t))} · ${esc(plWho(t))}${t.day?' · solo '+esc(fmtD(t.day)):''}</span></div><button class="x" onclick="plEdit='${t.id}';armed=null;rr()">Editar</button><button class="x del" onclick="rmPlan('${t.id}')">${armed==='pl'+t.id?'¿Borrar?':'Quitar'}</button></div>`).join(''):`<p class="sub">Ninguna todavía.</p>`;
-const okP=p=>!(p.extra&&absentOn(p,date)),W=S.people.filter(p=>p.role==='senior'&&okP(p)),W2=S.people.filter(p=>(p.role==='utl'||p.role==='util')&&okP(p));
+const okP=p=>!(p.extra&&absentOn(p,date)),W=S.people.filter(p=>p.role==='senior'&&okP(p)),W2=S.people.filter(p=>(p.role==='utl'||p.role==='util')&&okP(p)),W3=S.people.filter(p=>isSup(p)&&okP(p));
 h+=`<div class="cbox" id="pl_add"><h2 style="margin-top:0">Agregar tarea</h2><label for="pl_t">Tarea</label><input id="pl_t" placeholder="Ej. Revisar aditivo y colorante en las máquinas" autocomplete="off">
 <label for="pl_m">Cuándo</label><select id="pl_m" onchange="$('#pl_c').hidden=this.value!=='cada';$('#pl_x').hidden=this.value==='cada'"><option value="cada">Cada cierto tiempo</option><option value="horas">A horas fijas</option></select>
 <div id="pl_c"><div class="row2"><div><label for="pl_e">Cada</label><select id="pl_e"><option value="0.5">30 min</option><option value="1">1 hora</option><option value="2" selected>2 horas</option><option value="3">3 horas</option><option value="4">4 horas</option></select></div><div><label for="pl_f">Desde</label><input id="pl_f" type="time" value="${plShift()[0]}"></div></div></div>
 <div id="pl_x" hidden><label for="pl_h">Horas (separadas por coma)</label><input id="pl_h" placeholder="Ej. 9:00, 15:00" autocomplete="off"></div>
-<label for="pl_w">Para</label><select id="pl_w"><option value="">Cualquier utility senior</option>${W.concat(W2).map(p=>`<option value="${p.id}">${esc(p.name)}${mk(p)}</option>`).join('')}</select>
+<label for="pl_w">Para</label><select id="pl_w"><option value="">Cualquier utility senior</option>${W.concat(W2,W3).map(p=>`<option value="${p.id}">${esc(p.name)}${mk(p)}</option>`).join('')}</select>
 <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="pl_d" style="width:auto"> Solo para ${esc(fmtD(date))}</label>
 <button class="btn" onclick="addPlan()">Agregar tarea</button></div>`;
 h+=`<div class="cbox"><h2 style="margin-top:0">Pegar una lista</h2><p class="sub" style="margin-top:0">Pega tu lista: una hora en su línea (ej. <b>6:00 AM</b>) y debajo una tarea por línea. Cada tarea queda a esa hora, todos los días, para cualquier utility senior.</p><textarea id="pl_list" style="min-height:140px" placeholder="6:00 AM&#10;☐ Recibir relevo y revisar pendientes.&#10;☐ Revisar secadores, encendido y alarmas.&#10;&#10;11:00 AM&#10;☐ Revisar secadores y alarmas."></textarea><button class="btn soft" onclick="pastePlan()">Agregar la lista al plan</button></div>`;
@@ -1779,7 +1780,8 @@ const C0=ds===date?plChecks():((S.days[ds]&&S.days[ds].chk)||{});
 const fk=GKEY+'plfired:'+S.g+':'+ds,fired=lsGet(fk)||{};let ch=false;
 const ro=isRO(),base=new Date(ds+'T'+plShift()[0]+':00').getTime();
 plItems(ds).forEach(it=>{if(C0[it.key])return;const at=base+it.a*60000;
-if(ro){if(now>=at&&now-at<20*60000&&!fired['t'+it.key]){fired['t'+it.key]=1;ch=true;remQ.push({id:'pt:'+it.key,text:it.t.txt+(it.t.who?' · '+pname(it.t.who):''),at,late:false,plk:it.key,plds:ds})}}
+const mineSup=!ro&&it.t.who&&isSup(S.people.find(p=>p.id===it.t.who));
+if(ro||mineSup){if(now>=at&&now-at<20*60000&&!fired['t'+it.key]){fired['t'+it.key]=1;ch=true;remQ.push({id:'pt:'+it.key,text:it.t.txt+(it.t.who?' · '+pname(it.t.who):''),at,late:false,plk:it.key,plds:ds})}}
 else if(now>=at+15*60000&&now-at<60*60000&&!fired['l'+it.key]){fired['l'+it.key]=1;ch=true;remQ.push({id:'pl:'+it.key,text:'Atrasada: '+it.t.txt+' ('+it.hh+')'+(it.t.who?' · '+pname(it.t.who):''),at,late:true})}});
 if(ch){lsSet(fk,fired);remUnlock();remPaint()}}
 function pastePlan(){const raw=String($('#pl_list').value||'');let cur=null,n=0,bad=0;const T=[];
@@ -1792,7 +1794,7 @@ if(!n){notice={t:'No encontré tareas. Pon primero una hora (ej. 6:00 AM) y deba
 T.forEach(t=>plMine.add(t.id));S.plan=(S.plan||[]).concat(T);save();notice={t:n+' tareas agregadas al plan.'+(bad?' '+bad+' líneas sin hora antes no se agregaron.':'')};rr()}
 
 let plEdit=null;
-function plEditForm(t){const W=S.people.filter(p=>isUtil(p)&&!(p.extra&&absentOn(p,date))&&p.id!==t.who),cur=t.who&&S.people.find(p=>p.id===t.who);const cada=t.every>0;
+function plEditForm(t){const W=S.people.filter(p=>(isUtil(p)||isSup(p))&&!(p.extra&&absentOn(p,date))&&p.id!==t.who),cur=t.who&&S.people.find(p=>p.id===t.who);const cada=t.every>0;
 return `<div class="cbox" style="border-color:var(--accent)"><h2 style="margin-top:0">Editar tarea</h2><label for="pe_t">Tarea</label><input id="pe_t" value="${esc(t.txt)}" autocomplete="off">
 <label for="pe_m">Cuándo</label><select id="pe_m" onchange="$('#pe_c').hidden=this.value!=='cada';$('#pe_x').hidden=this.value==='cada'"><option value="cada" ${cada?'selected':''}>Cada cierto tiempo</option><option value="horas" ${cada?'':'selected'}>A horas fijas</option></select>
 <div id="pe_c" ${cada?'':'hidden'}><div class="row2"><div><label for="pe_e">Cada</label><select id="pe_e">${[['0.5','30 min'],['1','1 hora'],['2','2 horas'],['3','3 horas'],['4','4 horas']].map(([v,l])=>`<option value="${v}" ${Number(v)===Number(t.every||2)?'selected':''}>${l}</option>`).join('')}</select></div><div><label for="pe_f">Desde</label><input id="pe_f" type="time" value="${esc(t.from||plShift()[0])}"></div></div></div>

@@ -1063,13 +1063,9 @@ if(c.ids.length&&c.ids.length<c.posts.length)h+=`<div class="warn">Faltan ${c.po
 if(!c.posts.length||!c.ids.length)h+=`<div class="warn">Necesitas al menos un puesto con máquina encendida y una persona presente.</div>`;
 h+=printWarn(d);
 h+=lateHTML(d)+leftHTML(d,cur);
-h+=`<label for="dt">Fecha</label><input type="date" id="dt" value="${date}" onchange="setDate(this.value)">`;
-h+=`<div class="row3"><div><label for="st">Inicio</label><input type="time" id="st" value="${esc(d.start)}" onchange="cfg('start',this.value)"></div><div><label for="hr">Horas por bloque</label><input type="number" id="hr" min="1" max="12" step="0.5" value="${d.hours}" onchange="cfg('hours',this.value)"></div><div><label for="nb">Bloques</label><input type="number" id="nb" min="1" max="12" value="${d.n}" onchange="cfg('n',this.value)"></div></div>`;
-if(d.dirty)h+=`<div class="warn">Cambió el personal, los puestos o las máquinas. Aplica los cambios desde el bloque actual.</div>`;
 const has=d.blocks.some(Boolean);
-const fi=fromSel!=null&&fromSel<d.n?fromSel:(cur>=0?cur:0);
-h+=`<label for="fr">Aplicar desde el bloque</label><select id="fr" onchange="fromSel=Number(this.value)">`+Array.from({length:d.n},(_,i)=>`<option value="${i}" ${i===fi?'selected':''}>${i+1} · ${blockLabel(d,i)}${i===cur?' (ahora)':''}</option>`).join('')+`</select>`;
-h+=`<button class="btn" onclick="doGen()">${has?'Recalcular rotación':'Generar rotación'}</button>`;
+if(d.dirty)h+=`<div class="warn">Cambió el personal, los puestos o las máquinas. Aplica los cambios desde el bloque actual.</div><button class="btn" onclick="fromSel=null;doGen()">Recalcular desde el bloque actual</button>`;
+else if(!has)h+=`<button class="btn" onclick="doGen()">Generar rotación</button>`;
 if(has)h+=`<button class="btn soft" onclick="openPrint()">Imprimir desayuno y almuerzo</button>`;
 h+=rtCfgHTML(d);
 h+=legendHTML();
@@ -1587,8 +1583,16 @@ const T=todayStr(),st=v==='noche'?'18:00':'06:00';Object.keys(S.days).forEach(k=
 date=nextShift();save();notice={t:'Horario cambiado a '+(v==='noche'?'noche (18:00 a 6:00).':'día (6:00 a 18:00).')+' Revisa las horas de desayuno y almuerzo en Personal.'};rr()}
 function renGroup(){const g=String($('#rg').value||'').trim().replace(/^grupo\s*/i,'');if(!g||g===S.g)return;if(lsGet(GKEY+'g:'+g)){notice={t:'Ya existe un grupo '+g+' en este dispositivo.',bad:true};return rr()}const og=S.g;if(!S.example)lsDel(GKEY+'g:'+S.g);S.g=g;if(!S.example){cDirty=true;saveNow();if(window.cloud){cloud.removed(og);cloud.renamed&&cloud.renamed(og,g)}}notice={t:'Ahora es el grupo '+g+'.'};rr()}
 function delGroup(){if(armed!=='delg'){armed='delg';return rr()}armed=null;clearTimeout(saveT);saveT=null;lsDel(GKEY+'g:'+S.g);const g=S.g;const inCloud=!!(window.cloud&&cloud.user&&cloud.canDeleteCloud()&&cloud.syncs(g));window.cloud&&cloud.removed(g);try{if(localStorage.getItem(GKEY+'last')===JSON.stringify(g))lsDel(GKEY+'last')}catch(e){}S=defaults();SHIFT='dia';tab='hoy';notice={t:'Se borró el grupo '+g+(inCloud?' de este dispositivo y de tu cuenta.':' de este dispositivo.')};render();window.scrollTo(0,0)}
+function rotCfgHTML(){const d=day(),cur=curBlock(d);let h=`<h2 style="margin-top:4px">Rotación del día</h2><p class="sub" style="margin-top:0">Fecha que se ve en Hoy, horario de los bloques y recalcular desde un bloque.</p>`;
+h+=`<label for="dt">Fecha</label><input type="date" id="dt" value="${date}" onchange="setDate(this.value)">`;
+h+=`<div class="row3"><div><label for="st">Inicio</label><input type="time" id="st" value="${esc(d.start)}" onchange="cfg('start',this.value)"></div><div><label for="hr">Horas por bloque</label><input type="number" id="hr" min="1" max="12" step="0.5" value="${d.hours}" onchange="cfg('hours',this.value)"></div><div><label for="nb">Bloques</label><input type="number" id="nb" min="1" max="12" value="${d.n}" onchange="cfg('n',this.value)"></div></div>`;
+const has=d.blocks.some(Boolean);
+const fi=fromSel!=null&&fromSel<d.n?fromSel:(cur>=0?cur:0);
+h+=`<label for="fr">Aplicar desde el bloque</label><select id="fr" onchange="fromSel=Number(this.value)">`+Array.from({length:d.n},(_,i)=>`<option value="${i}" ${i===fi?'selected':''}>${i+1} · ${blockLabel(d,i)}${i===cur?' (ahora)':''}</option>`).join('')+`</select>`;
+h+=`<button class="btn" onclick="doGen()">${has?'Recalcular rotación':'Generar rotación'}</button>`;
+return h+`<button class="btn soft" onclick="setTab('hoy')">Ver la rotación en Hoy</button>`}
 function grupoHTML(){
-let h=`<h2>Horario del grupo</h2><div class="seg">${[['dia','Día','6:00 a 18:00'],['noche','Noche','18:00 a 6:00']].map(([k,l,s])=>`<button class="${S.shift===k?'on':''}" aria-pressed="${S.shift===k}" onclick="setShiftG('${k}')">${l}<small>${s}</small></button>`).join('')}</div>`;
+let h=(S.example?'':rotCfgHTML())+`<h2 class="lh">Horario del grupo</h2><div class="seg">${[['dia','Día','6:00 a 18:00'],['noche','Noche','18:00 a 6:00']].map(([k,l,s])=>`<button class="${S.shift===k?'on':''}" aria-pressed="${S.shift===k}" onclick="setShiftG('${k}')">${l}<small>${s}</small></button>`).join('')}</div>`;
 h+=`<p class="sub" style="margin-top:8px">En el turno de noche, la rotación de la noche que empezó ayer sigue en pantalla hasta las 6:00.</p>`;
 h+=`<label for="inf">Quién informa en el reporte</label><input id="inf" value="${esc(S.informa||'')}" placeholder="Nombre del supervisor" onchange="S.informa=this.value.trim();save()">`;
 if(S.example)h+=`<div class="ex">Esto es un ejemplo: no se guarda ni tiene respaldo.</div>`;

@@ -1733,7 +1733,7 @@ const plShift=()=>S.shift==='noche'?['18:00','06:00']:['06:00','18:00'];
 const plAbs=hhmm=>{const st=toMin(plShift()[0]),m=toMin(hhmm);return (m-st+1440)%1440};
 function plItems(ds){const out=[];(S.plan||[]).forEach(t=>{if(t.day&&t.day!==ds)return;let ts=[];
 if(t.every>0){const st=plAbs(t.from||plShift()[0]),step=Math.round(t.every*60);for(let a=st;a<720;a+=step)ts.push(a)}else ts=(t.times||[]).map(plAbs).filter(a=>a<720);
-ts.forEach(a=>{const hh=hm(plShift()[0],a);out.push({key:t.id+'@'+hh,t,hh,a})})});return out.sort((x,y)=>x.a-y.a||String(x.t.txt).localeCompare(String(y.t.txt)))}
+ts.forEach(a=>{const hh=hm(plShift()[0],a);out.push({key:t.id+'@'+hh,t,hh,a})})});const ix=new Map((S.plan||[]).map((t,i)=>[t.id,i]));return out.sort((x,y)=>x.a-y.a||ix.get(x.t.id)-ix.get(y.t.id))}
 function plChecks(){if(window.cloud&&cloud.watchChecks&&cloud.watchChecks(S.g,date))return cloud.checks||{};const d=S.days[date];return (d&&d.chk)||{}}
 function plWhen(t){return t.every>0?'Cada '+(t.every<1?Math.round(t.every*60)+' min':t.every+' h')+' desde las '+(t.from||plShift()[0]):'A las '+(t.times||[]).join(', ')}
 const plWho=t=>t.who?pname(t.who):'Cualquier utility senior';
@@ -1763,6 +1763,7 @@ h+=`<div class="cbox" id="pl_add"><h2 style="margin-top:0">Agregar tarea</h2><la
 <label for="pl_w">Para</label><select id="pl_w"><option value="">Cualquier utility senior</option>${W.concat(W2).map(p=>`<option value="${p.id}">${esc(p.name)}${mk(p)}</option>`).join('')}</select>
 <label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="pl_d" style="width:auto"> Solo para ${esc(fmtD(date))}</label>
 <button class="btn" onclick="addPlan()">Agregar tarea</button></div>`;
+h+=`<div class="cbox"><h2 style="margin-top:0">Pegar una lista</h2><p class="sub" style="margin-top:0">Pega tu lista: una hora en su línea (ej. <b>6:00 AM</b>) y debajo una tarea por línea. Cada tarea queda a esa hora, todos los días, para cualquier utility senior.</p><textarea id="pl_list" style="min-height:140px" placeholder="6:00 AM&#10;☐ Recibir relevo y revisar pendientes.&#10;☐ Revisar secadores, encendido y alarmas.&#10;&#10;11:00 AM&#10;☐ Revisar secadores y alarmas."></textarea><button class="btn soft" onclick="pastePlan()">Agregar la lista al plan</button></div>`;
 return h}
 
 function plGoAdd(){const f=$('#pl_add');if(f){f.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>{const i=$('#pl_t');if(i)i.focus({preventScroll:true})},400)}}
@@ -1781,6 +1782,14 @@ plItems(ds).forEach(it=>{if(C0[it.key])return;const at=base+it.a*60000;
 if(ro){if(now>=at&&now-at<20*60000&&!fired['t'+it.key]){fired['t'+it.key]=1;ch=true;remQ.push({id:'pt:'+it.key,text:it.t.txt+(it.t.who?' · '+pname(it.t.who):''),at,late:false,plk:it.key,plds:ds})}}
 else if(now>=at+15*60000&&now-at<60*60000&&!fired['l'+it.key]){fired['l'+it.key]=1;ch=true;remQ.push({id:'pl:'+it.key,text:'Atrasada: '+it.t.txt+' ('+it.hh+')'+(it.t.who?' · '+pname(it.t.who):''),at,late:true})}});
 if(ch){lsSet(fk,fired);remUnlock();remPaint()}}
+function pastePlan(){const raw=String($('#pl_list').value||'');let cur=null,n=0,bad=0;const T=[];
+raw.split(/\r?\n/).forEach(l=>{const t=l.trim();if(!t)return;
+const m=t.match(/^(\d{1,2})(?::(\d{2}))?\s*([ap])\.?\s*m\.?$/i)||t.match(/^(\d{1,2}):(\d{2})()$/);
+if(m){let H=Number(m[1]),M=Number(m[2]||0);const ap=(m[3]||'').toLowerCase();if(ap==='p'&&H<12)H+=12;if(ap==='a'&&H===12)H=0;if(H<24&&M<60){cur=pad(H)+':'+pad(M);return}}
+const txt=t.replace(/^[☐☑✅✔\-\*•·\[\]\sx]+/i,'').trim();if(!txt)return;if(!cur){bad++;return}
+T.push({id:uid(),txt,who:'',every:0,times:[cur]});n++});
+if(!n){notice={t:'No encontré tareas. Pon primero una hora (ej. 6:00 AM) y debajo las tareas.',bad:true};return rr()}
+T.forEach(t=>plMine.add(t.id));S.plan=(S.plan||[]).concat(T);save();notice={t:n+' tareas agregadas al plan.'+(bad?' '+bad+' líneas sin hora antes no se agregaron.':'')};rr()}
 function addPlan(){const txt=$('#pl_t').value.trim();if(!txt){notice={t:'Escribe la tarea.',bad:true};return rr()}
 const mode=$('#pl_m').value,t={id:uid(),txt,who:$('#pl_w').value||''};
 if(mode==='cada'){t.every=Number($('#pl_e').value)||2;t.from=$('#pl_f').value||plShift()[0]}

@@ -37,9 +37,9 @@ const ui = () => { try { window.cloudUI && window.cloudUI() } catch (e) { } };
 
 let A, F, auth, db, timers = {};
 let subs = [];            // escuchas activas de grupos
-let subMe = null, subTeam = null, subAll = null;
+let subMe = null, subTeam = null, subAll = null, subPlant = null;
 const stopGroups = () => { subs.forEach(u => { try { u() } catch (e) { } }); subs = [] };
-const stopAll = () => { stopGroups(); if (chkSub) { try { chkSub() } catch (e) { } chkSub = null; chkKey = '' }[subMe, subTeam, subAll].forEach(u => { try { u && u() } catch (e) { } }); subMe = subTeam = subAll = null };
+const stopAll = () => { stopGroups(); if (subPlant) { try { subPlant() } catch (e) { } subPlant = null; C.plantReady = false } if (chkSub) { try { chkSub() } catch (e) { } chkSub = null; chkKey = '' }[subMe, subTeam, subAll].forEach(u => { try { u && u() } catch (e) { } }); subMe = subTeam = subAll = null };
 
 const shared = () => C.mode === 'compartido';
 const gref = g => shared() ? F.doc(db, 'grupos', docId(g)) : F.doc(db, 'usuarios', C.user.uid, 'grupos', docId(g));
@@ -181,12 +181,14 @@ async function decide(u) {
     if (!d.exists()) {
       const was = C.mode === 'compartido' || getMeta().mode === 'compartido';
       C.role = null; C.groups = []; C.name = '';
+      if (subPlant) { try { subPlant() } catch (e) { } subPlant = null; C.plantReady = false }
       if (was) dropLocal(null);
       setMode('sinacceso'); ui(); return;
     }
     const x = d.data();
     setMode('compartido');
     C.role = x.rol; C.name = x.nombre || '';
+    listenPlant();
     C.groups = (x.grupos || []).map(normG).filter(Boolean);
     if (C.role === 'admin') {
       listenCol(F.collection(db, 'grupos'));
@@ -250,6 +252,26 @@ C.renamed = async (og, g) => {
     const gs = (m.grupos || []).map(normG);
     if (gs.indexOf(og) >= 0) F.setDoc(F.doc(db, 'miembros', m.email), memberDoc(m.email, m.rol, m.nombre, gs.map(x => x === og ? g : x))).catch(() => { });
   });
+};
+
+/* ---------- Planta compartida: máquinas y puestos iguales para los 4 grupos ---------- */
+C.plant = lsGet(LS + 'planta'); C.plantReady = false; C.plantErr = ''; C.plantRev = '';
+C.canEditPlant = () => shared() && (C.role === 'admin' || C.role === 'supervisor');
+function listenPlant() {
+  if (subPlant) return;
+  subPlant = F.onSnapshot(F.doc(db, 'planta', 'main'), d => {
+    C.plantErr = '';
+    if (!d.exists()) { C.plant = null; C.plantReady = true; window.plantSeed && window.plantSeed(); ui(); return }
+    const x = d.data(); C.plant = x; C.plantReady = true; lsSet(LS + 'planta', x);
+    window.plantApply && window.plantApply(x); ui();
+  }, e => { C.plantErr = /permission/.test(e && e.code || '') ? 'Falta activar la planta compartida en Firebase (reglas).' : msg(e); C.plantReady = false; ui() });
+}
+C.pushPlant = async data => {
+  if (!C.canEditPlant() || !C.plantReady) return 'no';
+  const rev = Date.now() + '-' + dev; C.plantRev = rev;
+  const x = Object.assign({}, data, { rev, por: C.user.email || '', nombre: C.name || '', ms: Date.now(), at: F.serverTimestamp() });
+  try { await F.setDoc(F.doc(db, 'planta', 'main'), x); C.plant = Object.assign({}, x, { at: null }); lsSet(LS + 'planta', C.plant); ui(); return 'ok' }
+  catch (e) { C.plantErr = msg(e); ui(); return C.plantErr }
 };
 
 /* ---------- Plan de trabajo: los checks viven aparte para que los de solo ver puedan marcarlos ---------- */

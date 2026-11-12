@@ -281,7 +281,7 @@ const lsDel=k=>{try{localStorage.removeItem(k)}catch(e){}};
 let saveT=null,saveFail=false,cDirty=false;
 let autoGen=false;
 function save(){if(!S||!S.g||S.example)return;if(!autoGen)cDirty=true;clearTimeout(saveT);saveT=setTimeout(saveNow,250)}
-function saveNow(){clearTimeout(saveT);saveT=null;if(!S||!S.g||S.example)return;S.saved=Date.now();const dirty=cDirty;if(dirty)S.edit=S.saved;const ok=lsSet(GKEY+'g:'+S.g,S);lsSet(GKEY+'last',S.g);if(ok&&dirty){cDirty=false;window.cloud&&cloud.changed(S.g)}if(!ok&&!saveFail){saveFail=true;notice={t:'No se pudo guardar en este dispositivo. Revisa que el navegador permita guardar datos de sitios.',bad:true};rr()}}
+function saveNow(){clearTimeout(saveT);saveT=null;if(!S||!S.g||S.example)return;S.saved=Date.now();const dirty=cDirty;if(dirty)S.edit=S.saved;const ok=lsSet(GKEY+'g:'+S.g,S);lsSet(GKEY+'last',S.g);if(ok&&dirty){cDirty=false;window.cloud&&cloud.changed(S.g)}if(ok)plantCheck();if(!ok&&!saveFail){saveFail=true;notice={t:'No se pudo guardar en este dispositivo. Revisa que el navegador permita guardar datos de sitios.',bad:true};rr()}}
 window.addEventListener('pagehide',()=>{if(saveT)saveNow()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&saveT)saveNow()});
 const mainOf=()=>{const o=Object.assign({},S);delete o.days;return clone(o)};
@@ -1041,7 +1041,7 @@ const c=ctx(),cur=curBlock(d);
 const P=S.people.filter(here);
 const cnt=r=>P.filter(p=>p.role===r).length,ops=P.length-cnt('util')-cnt('senior')-cnt('utl')-cnt('sup');
 const nx=nextShift(),wk=isWork(date);
-let h=`<div class="${wk?'alert soft':'alert'}"><b>Próximo turno: ${fmtD(nx)}</b>${date!==nx?` <button class="rt" onclick="setDate('${nx}')">Ir a ese día</button>`:' · es el que estás viendo'}${wk?'':`<br>El ${fmtD(date)} libras: la rotación no avanza ese día y sigue en tu próximo día de trabajo.`}</div>`;
+let h=plantInfoHTML(false)+`<div class="${wk?'alert soft':'alert'}"><b>Próximo turno: ${fmtD(nx)}</b>${date!==nx?` <button class="rt" onclick="setDate('${nx}')">Ir a ese día</button>`:' · es el que estás viendo'}${wk?'':`<br>El ${fmtD(date)} libras: la rotación no avanza ese día y sigue en tu próximo día de trabajo.`}</div>`;
 if(!wk&&!d.blocks.some(Boolean))return h+`<label for="dt">Fecha</label><input type="date" id="dt" value="${date}" onchange="setDate(this.value)"><p class="sub" style="margin-top:8px">Si este día sí trabajas, márcalo en el calendario y aquí aparecerá la rotación.</p>`;
 h+=rotNowHTML(d,cur)+breakBanner(d)+`<p class="sub">${ops} operarios · ${cnt('util')} Material Handler${cnt('utl')?' · '+cnt('utl')+' Utility':''} · ${cnt('senior')} Utility senior${cnt('sup')?' · '+cnt('sup')+' supervisor':''} · ${c.posts.length} puestos activos</p>`;
 const off=S.machines.filter(m=>!m.on);
@@ -1217,7 +1217,7 @@ function prioHead(){const P=prioList();let h=`<p class="sub">Prioridad 1 arriba 
 h+=`<label for="prp">Pegar el orden de la semana</label><input id="prp" inputmode="numeric" placeholder="Ej. 21, 14, 13, 15, 1, 8 …" value="${esc(P.map(m=>m.n).join(', '))}"><div class="pbar" style="margin-top:8px"><button class="btn" style="margin-top:0" onclick="prioPaste()">Guardar orden</button><button class="btn soft" style="margin-top:0" onclick="prioClear()">${armed==='prc'?'Toca otra vez para borrar':'Borrar prioridades'}</button></div>`;
 return h+`<h2 class="lh">Orden de prioridad</h2>`}
 function maquinasHTML(){
-let h=`<p class="sub"><b>Encendida</b>: trabaja normal. <b>Detenida</b>: parada por un motivo pero sigue en la rotación con su operario; en desayuno y almuerzo ese operario cubre primero a los que salen, o lo mandas a retrabajo. <b>Cero operario</b>: encendida pero no es puesto; la atiende el Material Handler. Las encendidas que no están en ningún puesto ya cuentan como cero operario. Si una detenida tiene «Cubre máq. sin puesto», su operario cubre las que elijas. <b>Parada</b>: fuera todo el turno y sale de la rotación.</p>`;
+let h=plantInfoHTML(true)+`<p class="sub"><b>Encendida</b>: trabaja normal. <b>Detenida</b>: parada por un motivo pero sigue en la rotación con su operario; en desayuno y almuerzo ese operario cubre primero a los que salen, o lo mandas a retrabajo. <b>Cero operario</b>: encendida pero no es puesto; la atiende el Material Handler. Las encendidas que no están en ningún puesto ya cuentan como cero operario. Si una detenida tiene «Cubre máq. sin puesto», su operario cubre las que elijas. <b>Parada</b>: fuera todo el turno y sale de la rotación.</p>`;
 h+=`<div class="tabs">`+[['linea','Por línea'],['prio','Por prioridad']].map(([k,l])=>`<button class="tab ${mView===k?'on':''}" onclick="setMView('${k}')">${l}</button>`).join('')+`</div>`;
 if(mView==='prio')h+=prioHead();
 const mCard=m=>`<div class="prow">${mView==='prio'?prioCtl(m):''}<b class="num">${m.n}</b>${mView==='prio'?`<span class="tag">L${m.line}</span>`:''}${mState(m)}${mView!=='prio'&&m.prio?`<span style="margin-left:auto;align-self:center">${prioBadge(m)}</span>`:''}${m.on&&m.hold?`<select class="nm" aria-label="Operario de la máquina ${m.n}" onchange="setTask(${m.n},this.value)"><option value="" ${!m.task?'selected':''}>Operario cubre descansos</option><option value="rt" ${m.task==='rt'?'selected':''}>Operario va a retrabajo</option><option value="zc" ${m.task==='zc'?'selected':''}>Operario cubre máq. sin puesto (se eligen en Hoy)</option><option value="ut" ${m.task==='ut'?'selected':''}>Operario cubre como utility</option></select>`:''}${m.on&&!m.hold?'':`<select class="nm ${m.reason?'':'miss'}" aria-label="Motivo máquina ${m.n}" onchange="setReason(${m.n},this.value)"><option value="">Elige el motivo</option>${reasonOpts(m.reason)}</select><input class="nm" style="flex-basis:100%" maxlength="140" value="${esc(m.note||'')}" placeholder="Describe el problema" aria-label="Descripción del problema de la máquina ${m.n}" onchange="setNote(${m.n},this.value)">`}</div>`;
@@ -1523,7 +1523,7 @@ return h;
 }
 function pickShift(v){newShift=v;const g=$('#ng')?$('#ng').value:'';render();const i=$('#ng');if(i)i.value=g}
 function prepS(){evLock();SHIFT=S.shift==='noche'?'noche':'dia';if(!S.cal)S.cal=calDef();fixS();ensureBreaks();if(!Array.isArray(S.machines))S.machines=[];if(!Array.isArray(S.posts))S.posts=[]}
-function enterGroup(o,msg,t){S=o;prepS();printing=false;repShow=null;armed=null;fromSel=null;lvOpen=false;ltOpen=false;tab=t||'hoy';calM=todayStr().slice(0,7);date=nextShift();notice=msg?{t:msg}:null;if(!S.example){saveNow()}render();window.scrollTo(0,0)}
+function enterGroup(o,msg,t){S=o;prepS();if(plantOn())plantMerge(cloud.plant);printing=false;repShow=null;armed=null;fromSel=null;lvOpen=false;ltOpen=false;tab=t||'hoy';calM=todayStr().slice(0,7);date=nextShift();notice=msg?{t:msg}:null;if(!S.example){saveNow()}render();window.scrollTo(0,0)}
 function openGroup(g){let o=lsGet(GKEY+'g:'+g);if(!o){notice={t:'No se encontró ese grupo.',bad:true};return render()}let msg=null;if(!o.machines){o=convertSimple(o);msg='El grupo '+o.g+' se pasó a la versión completa. Revisa Máquinas, Personal y Desayuno y almuerzo.'}enterGroup(o,msg)}
 function createGroup(){
 const g=String($('#ng').value||'').trim().replace(/^grupo\s*/i,'');
@@ -1617,6 +1617,7 @@ function guideBody(){return `<div id="gbody">
 <p>Esta aplicación arma la rotación del personal de tu grupo en bloques de horas, dice quién cubre a quién en el desayuno y el almuerzo, lleva las vacaciones, el calendario del mes y prepara el reporte del turno. Cada grupo tiene sus propios datos y no afecta a los demás.</p>
 <div class="step"><h3><b>1</b>Crea tu grupo</h3><p>En la primera pantalla escribe el <b>número de tu grupo</b> y elige el horario: <b>Día (6:00 a 18:00)</b> o <b>Noche (18:00 a 6:00)</b>. Toca «Crear grupo».</p></div>
 <div class="step"><h3><b>2</b>Pon tus máquinas</h3><p>En <b>Máquinas</b>, al final, escribe los números de máquina de la línea 1 y de la línea 2 y toca «Guardar máquinas». Arriba marca cada una:</p><dl><dt>Encendida</dt><dd>Trabaja normal.</dd><dt>Detenida</dt><dd>Parada por un motivo, pero su operario sigue en la rotación: cubre descansos, va a retrabajo o cubre máquinas sin puesto.</dd><dt>Cero operario</dt><dd>Encendida pero sin operario fijo: la atiende el Material Handler.</dd><dt>Parada</dt><dd>Fuera todo el turno. Sale de la rotación. Elige el motivo.</dd></dl><p>En <b>Puestos de rotación</b> cada puesto es una máquina o varias que cubre una sola persona (ej. «3, 4, 5»). El orden de esa lista es el orden en que se rota.</p></div>
+<div class="step"><h3><b>2b</b>Planta compartida entre los 4 grupos</h3><p>Cuando el equipo está activado, <b>las máquinas y los puestos son los mismos para los 4 grupos</b>: encendida, detenida, cero operario, parada, el motivo, la descripción, la prioridad y los puestos de rotación. El supervisor que está trabajando los mantiene al día, y los demás lo ven al instante en su teléfono para preparar su turno. En Hoy y en Máquinas sale quién hizo el último cambio y a qué hora, y si con tu personal te alcanza para los puestos o necesitas extras.</p><p><b>Importante:</b> cualquier cambio que haga un supervisor, <b>bien o mal hecho, se refleja en todos los demás</b>. Por eso, antes de entregar el turno, revisa que las máquinas estén como de verdad quedan en la planta. Las máquinas que marques <b>detenidas o paradas salen así en el reporte</b> aunque estén funcionando, y las que dejes <b>encendidas salen produciendo</b> aunque estén paradas. Ese error le llega al reporte y a la organización del <b>supervisor que entra</b>.</p><p>Lo que sigue siendo de cada grupo: su personal, su rotación, qué hace el operario de una máquina detenida (cubre descansos, retrabajo o utility), vacaciones, plan y reporte.</p></div>
 <div class="step"><h3><b>3</b>Agrega al personal</h3><p>En <b>Personal</b> escribe los nombres, uno por línea, elige la función (Operario, Material Handler, Utility senior o Supervisor) y toca «Agregar».</p><p><b>El orden de la lista es el orden de la rotación</b>: cada persona va detrás de la de arriba. Súbelos o bájalos con las flechas <b>↑ ↓</b> hasta que quede igual que en la planta.</p></div>
 <div class="step"><h3><b>4</b>Faltas, extras y reemplazos</h3><ol><li>Quien no vino: toca <b>«Hoy sí»</b> para que diga «Hoy no» y elige el motivo y quién lo reemplaza.</li><li>Marca como <b>Extra</b> a los operarios y Material Handler que vienen de fuera del grupo. Elige por quién viene cada uno: toma su lugar en la rotación y su turno de comida.</li><li>Un <b>Material Handler de otro equipo</b> que viene a cubrir al Material Handler que falta: márcalo Extra y elige por cuál Material Handler viene.</li><li>Los extras que no vienen por nadie cubren los puestos que quedan vacíos y salen en el reporte como extras necesitados.</li></ol><p><b>No borres a los extras.</b> Los días que no vienen déjalos en «Hoy no» y quedan guardados para cuando vuelvan.</p></div>
 <div class="step"><h3><b>5</b>Evaluaciones confidenciales</h3><p>En <b>Personal</b>, debajo de «Tu personal», crea una <b>contraseña</b> que solo sepas tú. Las evaluaciones quedan cifradas con ella: nadie más las puede ver, ni en este teléfono ni en el código de respaldo. Para verlas, escribe la contraseña y toca «Ver»; se ocultan solas al salir de Personal. <b>Si la olvidas, no se pueden recuperar</b>: solo se pueden borrar y empezar de nuevo.</p><p>Cada persona de tu grupo tiene su nivel (los extras y el supervisor no se evalúan):</p><dl><dt>1</dt><dd>Requiere mejoras significativas</dd><dt>2</dt><dd>Por debajo de las expectativas</dd><dt>3</dt><dd>Cumple con los estándares (todos empiezan aquí)</dd><dt>4</dt><dd>Supera las expectativas</dd><dt>5</dt><dd>Desempeño sobresaliente</dd></dl><ol><li>Toca <b>− Incidencia</b> cada vez que haya una llamada de atención. Se llena un puntito rojo; <b>cada 3 incidencias baja un nivel</b>.</li><li>Toca <b>+ Buena acción</b> cuando ayude, tenga buena actitud o haga bien su trabajo. <b>Cada 3 buenas acciones sube un nivel</b>.</li><li>Abajo ves cuántas lleva esta semana y este mes, con la fecha de la última. Si tocaste por error, toca «Deshacer».</li></ol></div>
@@ -1661,6 +1662,35 @@ function nightTxt(t){if(!isNight()||typeof t!=='string')return t;NIGHT_W.forEach
 function nightDom(root){if(!isNight()||!root)return;try{const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode())){if(n.parentNode&&/^(TEXTAREA|SCRIPT|STYLE)$/.test(n.parentNode.nodeName))continue;const v=nightTxt(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v}
 root.querySelectorAll('[aria-label],[placeholder],[title]').forEach(e=>{['aria-label','placeholder','title'].forEach(a=>{const v=e.getAttribute(a);if(v){const x=nightTxt(v);if(x!==v)e.setAttribute(a,x)}})})}catch(e){}}
 try{if(navigator.clipboard&&navigator.clipboard.writeText){const _wt=navigator.clipboard.writeText.bind(navigator.clipboard);navigator.clipboard.writeText=t=>_wt(nightTxt(t))}}catch(e){}
+
+/* ---------- Planta compartida (cloud.js): máquinas y puestos son los mismos para los 4 grupos ---------- */
+/* Lo compartido: número, línea, estado, motivo, nota, prioridad y los puestos. Lo de cada grupo: qué hace el operario de una detenida. */
+let plantSig='',plantApplying=false,plantT=null;
+const plantData=()=>({machines:(S.machines||[]).map(m=>({n:m.n,line:m.line,on:!!m.on,hold:!!m.hold,zero:!!m.zero,reason:m.reason||'',note:m.note||'',prio:m.prio||0})),posts:(S.posts||[]).map(p=>JSON.parse(JSON.stringify(p)))});
+const plantSigOf=d=>JSON.stringify(d);
+const plantRot=()=>JSON.stringify([(S.machines||[]).map(m=>[m.n,!!m.on,!!m.hold,!!m.zero]),(S.posts||[]).map(p=>[p.id,p.ms,p.sfx||''])]);
+function plantMerge(x){const old=new Map((S.machines||[]).map(m=>[m.n,m]));
+S.machines=(x.machines||[]).map(m=>{const o=old.get(m.n)||{};const r=Object.assign({},o,{n:m.n,line:m.line,on:!!m.on,hold:!!m.hold,zero:!!m.zero,reason:m.reason||'',note:m.note||''});if(m.prio)r.prio=m.prio;else delete r.prio;if(!r.hold){r.task='';delete r.zc}return r});
+S.posts=(x.posts||[]).map(p=>JSON.parse(JSON.stringify(p)));plantSig=plantSigOf(plantData())}
+function plantOn(){return !!(window.cloud&&cloud.mode==='compartido'&&cloud.plant&&S&&S.g&&!S.example)}
+function plantApply(x){if(!S||!S.g||S.example||!x||!Array.isArray(x.machines))return;
+if(x.rev&&x.rev===cloud.plantRev){plantSig=plantSigOf({machines:x.machines,posts:x.posts});return}
+if(saveT||cloudBusy()){clearTimeout(plantT);plantT=setTimeout(()=>plantApply(cloud.plant),1500);return}
+const before=plantRot();plantMerge(x);plantApplying=true;try{if(before!==plantRot())markDirty();saveNow()}finally{plantApplying=false}
+if(ready&&!printing)rr()}
+function plantSeed(){if(!S||!S.g||S.example||!(S.machines||[]).length||!cloud.canEditPlant())return;cloud.pushPlant(plantData()).then(r=>{if(r==='ok')plantSig=plantSigOf(plantData())})}
+function plantCheck(){if(plantApplying||!S||!S.g||S.example||!window.cloud||!cloud.canEditPlant||!cloud.canEditPlant()||!cloud.plantReady)return;
+const sg=plantSigOf(plantData());if(sg===plantSig)return;plantSig=sg;clearTimeout(plantT);plantT=setTimeout(()=>cloud.pushPlant(plantData()),1000)}
+function plantWho(){const p=cloud.plant;if(!p)return '';const t=new Date(p.ms||Date.now()),hh=pad(t.getHours())+':'+pad(t.getMinutes());const d=todayStr()===t.toISOString().slice(0,10)?'hoy':fmtD(t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate()));return (p.nombre||p.por||'?')+' · '+d+' '+hh}
+function plantInfoHTML(full){if(!window.cloud||cloud.mode!=='compartido')return '';
+if(cloud.plantErr)return `<div class="warn">🏭 ${esc(cloud.plantErr)}</div>`;
+if(!cloud.plant)return '';
+let h=`<div class="alert soft"><b>🏭 Planta compartida</b> · actualizada por ${esc(plantWho())}`;
+if(full)h+=`<br><span class="sub">Lo que cambies en máquinas y puestos lo ven al instante los 4 grupos.${cloud.canEditPlant()?'':' Tú solo puedes verlo.'}</span>`;
+const c=ctx(),P=S.people.filter(here),ops=P.filter(p=>p.role==='op').length,ut=P.filter(isUtil).length,need=c.posts.length;
+if(need){if(ops>=need)h+=`<br>La planta necesita <b>${need} puestos</b> · tienes <b>${ops} operarios</b>: <b>completo</b>.`;
+else{const f=need-ops;h+=`<br>La planta necesita <b>${need} puestos</b> · tienes <b>${ops} operarios</b>: <b style="color:var(--bad)">faltan ${f}</b>`+(ut>=f?` (los pueden cubrir ${f} de tus ${ut} utility, pero te quedan menos para los descansos).`:` · <b>necesitas ${f-ut} extra${f-ut>1?'s':''}</b>.`)}}
+return h+`</div>`}
 /* ---------- Plan de trabajo de los utilities senior ---------- */
 /* S.plan: tareas del grupo que se repiten cada día ({id,txt,every(horas, 0 = horas fijas),from,times[],who,day}). */
 const plShift=()=>S.shift==='noche'?['18:00','06:00']:['06:00','18:00'];
@@ -1789,7 +1819,7 @@ function cloudUI(){if(!ready||printing)return;const c=window.cloud||{};const k=[
 let cloudWait=null;
 function cloudApply(g,o,force){g=String(g);if(!o||typeof o!=='object')return;o.g=g;
 if(S&&String(S.g)===g&&!S.example){if(!force&&(saveT||cloudBusy())){clearTimeout(cloudWait);cloudWait=setTimeout(()=>cloudApply(g,o),2000);return}
-const t=tab;lsSet(GKEY+'g:'+g,o);S=o;prepS();tab=t;if(!printing)rr();return}
+const t=tab;lsSet(GKEY+'g:'+g,o);S=o;prepS();if(plantOn())plantMerge(cloud.plant);tab=t;if(!printing)rr();return}
 lsSet(GKEY+'g:'+g,o);if(!S||!S.g)render()}
 function cloudRemove(g){g=String(g);lsDel(GKEY+'g:'+g);if(S&&String(S.g)===g&&!S.example){clearTimeout(saveT);saveT=null;S=defaults();SHIFT='dia';tab='hoy';notice={t:'El grupo '+g+' se borró desde otro aparato.'};render()}else if(!S||!S.g)render()}
 

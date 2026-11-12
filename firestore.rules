@@ -37,6 +37,12 @@ service cloud.firestore {
       allow delete: if isAdmin() && email != em();
     }
 
+    // Planta compartida: máquinas y puestos de los 4 grupos. Todos la ven; la cambian supervisores y administrador.
+    match /planta/{doc} {
+      allow read: if isMember();
+      allow write: if isAdmin() || (isMember() && me().rol == 'supervisor');
+    }
+
     // Plan de trabajo: cualquiera del grupo (también solo ver) marca las tareas hechas.
     match /checks/{gid}/dias/{dia} {
       allow read, write: if isAdmin() || hasGroup(gid);

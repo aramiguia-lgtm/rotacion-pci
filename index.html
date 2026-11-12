@@ -9,9 +9,9 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Rotación PCI">
+<meta name="apple-mobile-web-app-title" content="Leadership">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Rotación de grupos PCI Miami</title>
+<title>Leadership PCI Miami · Gestión de grupos</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 /* Layout: una sola columna de teléfono; pestañas arriba, bloques de 2 h como tarjetas. */
@@ -1507,7 +1507,7 @@ function savedGroups(){const out=[];try{for(let i=0;i<localStorage.length;i++){c
 function grpInfo(g){const P=g.people||[];if(!g.machines)return P.length+' personas · formato anterior, se actualiza al abrir';const ops=P.filter(p=>p.role==='op'&&!p.extra).length,ut=P.filter(p=>isUtil(p)&&!p.extra).length,ex=P.filter(p=>p.extra).length;return ops+' operarios · '+ut+' Utility'+(ex?' · '+ex+' extra':'')}
 function calDef(){return {mode:'ciclo',on:1,off:0,start:todayStr(),wd:[1,2,3,4,5],ov:{},pid:''}}
 function startHTML(){
-let h=`<h1>Rotación de grupos PCI Miami</h1><p class="sub">Cada grupo arma su propia rotación: máquinas, personal, desayuno y almuerzo, vacaciones, mes y reporte. Lo que guardes aquí queda en este dispositivo (y en tu cuenta, si entras con tu correo) y no cambia nada de otros grupos.</p>`;
+let h=`<h1>Leadership PCI Miami</h1><p style="margin:-6px 0 6px;font-weight:700;color:var(--accent)">Gestión de grupos</p><p class="sub">Cada grupo arma su propia rotación: máquinas, personal, desayuno y almuerzo, vacaciones, mes y reporte. Lo que guardes aquí queda en este dispositivo (y en tu cuenta, si entras con tu correo) y no cambia nada de otros grupos.</p>`;
 if(notice){h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;notice=null}
 h+=avisosHTML()+cloudHTML(false);
 if(window.cloud&&cloud.isAdmin&&cloud.isAdmin())h+=`<button class="btn soft" onclick="openTeam()">👥 Administrar equipo</button>`;

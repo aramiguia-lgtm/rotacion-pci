@@ -912,7 +912,7 @@ setInterval(remTick,5000);setInterval(()=>{try{planTick()}catch(e){}},15000);
 let cfgOpen=false;
 function toggleCfg(){const CFG=['vacaciones','calendario','grupo','equipo','ayuda'];if(CFG.includes(tab)){cfgOpen=false;tab='hoy'}else cfgOpen=!cfgOpen;rr()}
 let vacOpen=false;
-function setTab(t){vacOpen=false;if(!['vacaciones','calendario','grupo','equipo','ayuda'].includes(t))cfgOpen=false;if(t!=='personal')evLock();printing=false;tab=t;armed=null;render();window.scrollTo(0,0)}
+function setTab(t){vacOpen=false;plEdit=null;if(!['vacaciones','calendario','grupo','equipo','ayuda'].includes(t))cfgOpen=false;if(t!=='personal')evLock();printing=false;tab=t;armed=null;render();window.scrollTo(0,0)}
 function rr(){const y=window.scrollY;render();window.scrollTo(0,y)}
 function render(){
 if(teamOpen&&window.cloud&&cloud.isAdmin()){$('#app').innerHTML=`<button class="link" onclick="teamOpen=false;render();window.scrollTo(0,0)">‹ Volver</button><h1>Equipo</h1>`+(notice?`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`:'')+equipoHTML();notice=null;return}
@@ -1754,7 +1754,7 @@ return `<div class="cbox" style="display:flex;gap:12px;align-items:center;margin
 if(isRO())return h;
 h+=`<h2 class="lh">Tareas del plan</h2><p class="sub">Se repiten cada día del grupo. Las de «solo hoy» desaparecen mañana.</p>`;
 const T=(S.plan||[]);
-h+=T.length?T.map(t=>`<div class="prow"><div class="nm"><b>${esc(t.txt)}</b><br><span class="tag">${esc(plWhen(t))} · ${esc(plWho(t))}${t.day?' · solo '+esc(fmtD(t.day)):''}</span></div><button class="x del" onclick="rmPlan('${t.id}')">${armed==='pl'+t.id?'¿Borrar?':'Quitar'}</button></div>`).join(''):`<p class="sub">Ninguna todavía.</p>`;
+h+=T.length?T.map(t=>plEdit===t.id?plEditForm(t):`<div class="prow"><div class="nm"><b>${esc(t.txt)}</b><br><span class="tag">${esc(plWhen(t))} · ${esc(plWho(t))}${t.day?' · solo '+esc(fmtD(t.day)):''}</span></div><button class="x" onclick="plEdit='${t.id}';armed=null;rr()">Editar</button><button class="x del" onclick="rmPlan('${t.id}')">${armed==='pl'+t.id?'¿Borrar?':'Quitar'}</button></div>`).join(''):`<p class="sub">Ninguna todavía.</p>`;
 const okP=p=>!(p.extra&&absentOn(p,date)),W=S.people.filter(p=>p.role==='senior'&&okP(p)),W2=S.people.filter(p=>(p.role==='utl'||p.role==='util')&&okP(p));
 h+=`<div class="cbox" id="pl_add"><h2 style="margin-top:0">Agregar tarea</h2><label for="pl_t">Tarea</label><input id="pl_t" placeholder="Ej. Revisar aditivo y colorante en las máquinas" autocomplete="off">
 <label for="pl_m">Cuándo</label><select id="pl_m" onchange="$('#pl_c').hidden=this.value!=='cada';$('#pl_x').hidden=this.value==='cada'"><option value="cada">Cada cierto tiempo</option><option value="horas">A horas fijas</option></select>
@@ -1790,6 +1790,23 @@ const txt=t.replace(/^[☐☑✅✔\-\*•·\[\]\sx]+/i,'').trim();if(!txt)retur
 T.push({id:uid(),txt,who:'',every:0,times:[cur]});n++});
 if(!n){notice={t:'No encontré tareas. Pon primero una hora (ej. 6:00 AM) y debajo las tareas.',bad:true};return rr()}
 T.forEach(t=>plMine.add(t.id));S.plan=(S.plan||[]).concat(T);save();notice={t:n+' tareas agregadas al plan.'+(bad?' '+bad+' líneas sin hora antes no se agregaron.':'')};rr()}
+
+let plEdit=null;
+function plEditForm(t){const W=S.people.filter(p=>isUtil(p)&&!(p.extra&&absentOn(p,date))&&p.id!==t.who),cur=t.who&&S.people.find(p=>p.id===t.who);const cada=t.every>0;
+return `<div class="cbox" style="border-color:var(--accent)"><h2 style="margin-top:0">Editar tarea</h2><label for="pe_t">Tarea</label><input id="pe_t" value="${esc(t.txt)}" autocomplete="off">
+<label for="pe_m">Cuándo</label><select id="pe_m" onchange="$('#pe_c').hidden=this.value!=='cada';$('#pe_x').hidden=this.value==='cada'"><option value="cada" ${cada?'selected':''}>Cada cierto tiempo</option><option value="horas" ${cada?'':'selected'}>A horas fijas</option></select>
+<div id="pe_c" ${cada?'':'hidden'}><div class="row2"><div><label for="pe_e">Cada</label><select id="pe_e">${[['0.5','30 min'],['1','1 hora'],['2','2 horas'],['3','3 horas'],['4','4 horas']].map(([v,l])=>`<option value="${v}" ${Number(v)===Number(t.every||2)?'selected':''}>${l}</option>`).join('')}</select></div><div><label for="pe_f">Desde</label><input id="pe_f" type="time" value="${esc(t.from||plShift()[0])}"></div></div></div>
+<div id="pe_x" ${cada?'hidden':''}><label for="pe_h">Horas (separadas por coma)</label><input id="pe_h" value="${esc((t.times||[]).join(', '))}" autocomplete="off"></div>
+<label for="pe_w">Para</label><select id="pe_w"><option value="">Cualquier utility senior</option>${cur?`<option value="${cur.id}" selected>${esc(cur.name)}${mk(cur)}</option>`:''}${W.map(p=>`<option value="${p.id}">${esc(p.name)}${mk(p)}</option>`).join('')}</select>
+<label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="pe_d" style="width:auto" ${t.day?'checked':''}> Solo para ${esc(fmtD(t.day||date))}</label>
+<div class="pbar" style="margin-top:12px"><button class="btn" style="margin-top:0" onclick="savePlanEdit('${t.id}')">Guardar</button><button class="btn soft" style="margin-top:0" onclick="plEdit=null;rr()">Cancelar</button></div></div>`}
+function savePlanEdit(id){const t=(S.plan||[]).find(x=>x.id===id);if(!t)return;const txt=$('#pe_t').value.trim();if(!txt){notice={t:'Escribe la tarea.',bad:true};return rr()}
+const mode=$('#pe_m').value;let nt={id:t.id,txt,who:$('#pe_w').value||''};
+if(mode==='cada'){nt.every=Number($('#pe_e').value)||2;nt.from=$('#pe_f').value||plShift()[0]}
+else{const hs=String($('#pe_h').value||'').split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).map(x=>{const m=x.match(/^(\d{1,2})(?::(\d{2}))?$/);if(!m)return null;const H=Number(m[1]),M=Number(m[2]||0);return H<24&&M<60?pad(H)+':'+pad(M):null});
+if(!hs.length||hs.some(x=>!x)){notice={t:'Escribe las horas así: 9:00, 15:00',bad:true};return rr()}nt.every=0;nt.times=Array.from(new Set(hs))}
+if($('#pe_d').checked)nt.day=t.day||date;
+S.plan=S.plan.map(x=>x.id===id?nt:x);plEdit=null;save();notice={t:'Tarea guardada.'};rr()}
 function addPlan(){const txt=$('#pl_t').value.trim();if(!txt){notice={t:'Escribe la tarea.',bad:true};return rr()}
 const mode=$('#pl_m').value,t={id:uid(),txt,who:$('#pl_w').value||''};
 if(mode==='cada'){t.every=Number($('#pl_e').value)||2;t.from=$('#pl_f').value||plShift()[0]}

@@ -11,6 +11,7 @@ service cloud.firestore {
     function isAdmin() { return isMember() && me().rol == 'admin'; }
     function hasGroup(gid) { return isMember() && gid in me().docs; }
     function canEdit(gid) { return isAdmin() || (hasGroup(gid) && me().rol == 'supervisor'); }
+    function isSup() { return isMember() && me().rol in ['admin', 'supervisor']; }
     function validRole() { return request.resource.data.rol in ['admin', 'supervisor', 'utility']; }
 
     // Grupos personales (antes de activar el administrador). Solo el dueño.
@@ -41,6 +42,16 @@ service cloud.firestore {
     match /planta/{doc} {
       allow read: if isMember();
       allow write: if isAdmin() || (isMember() && me().rol == 'supervisor');
+    }
+
+    // Lista de supervisores (la mantiene el administrador) y avisos a supervisores.
+    match /config/equipo {
+      allow read: if isMember();
+      allow write: if isAdmin();
+    }
+    match /avisos/{id} {
+      allow read, update, delete: if isSup();
+      allow create: if isSup() && request.resource.data.por == em();
     }
 
     // Plan de trabajo: cualquiera del grupo (también solo ver) marca las tareas hechas.

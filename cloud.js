@@ -37,9 +37,9 @@ const ui = () => { try { window.cloudUI && window.cloudUI() } catch (e) { } };
 
 let A, F, auth, db, timers = {};
 let subs = [];            // escuchas activas de grupos
-let subMe = null, subTeam = null, subAll = null, subPlant = null;
+let subMe = null, subTeam = null, subAll = null, subPlant = null, subAv = null, subEq = null;
 const stopGroups = () => { subs.forEach(u => { try { u() } catch (e) { } }); subs = [] };
-const stopAll = () => { stopGroups(); if (subPlant) { try { subPlant() } catch (e) { } subPlant = null; C.plantReady = false } if (chkSub) { try { chkSub() } catch (e) { } chkSub = null; chkKey = '' }[subMe, subTeam, subAll].forEach(u => { try { u && u() } catch (e) { } }); subMe = subTeam = subAll = null };
+const stopAll = () => { stopGroups(); [subAv, subEq].forEach(u => { try { u && u() } catch (e) { } }); subAv = subEq = null; C.avisos = []; if (subPlant) { try { subPlant() } catch (e) { } subPlant = null; C.plantReady = false } if (chkSub) { try { chkSub() } catch (e) { } chkSub = null; chkKey = '' }[subMe, subTeam, subAll].forEach(u => { try { u && u() } catch (e) { } }); subMe = subTeam = subAll = null };
 
 const shared = () => C.mode === 'compartido';
 const gref = g => shared() ? F.doc(db, 'grupos', docId(g)) : F.doc(db, 'usuarios', C.user.uid, 'grupos', docId(g));
@@ -188,12 +188,14 @@ async function decide(u) {
     const x = d.data();
     setMode('compartido');
     C.role = x.rol; C.name = x.nombre || '';
-    listenPlant();
+    listenPlant(); listenAvisos();
     C.groups = (x.grupos || []).map(normG).filter(Boolean);
     if (C.role === 'admin') {
       listenCol(F.collection(db, 'grupos'));
       subTeam = F.onSnapshot(F.collection(db, 'miembros'), s => {
         C.members = []; s.forEach(m => C.members.push(Object.assign({ email: m.id }, m.data())));
+        const sups = C.members.filter(m => m.rol === 'admin' || m.rol === 'supervisor').map(m => ({ email: m.email, nombre: m.nombre || m.email })).sort((a, b) => a.email.localeCompare(b.email));
+        if (JSON.stringify(sups) !== JSON.stringify(C.sups)) F.setDoc(F.doc(db, 'config', 'equipo'), { sups }).catch(() => { });
         C.members.sort((a, b) => (a.rol === 'admin' ? -1 : 0) - (b.rol === 'admin' ? -1 : 0) || String(a.nombre || a.email).localeCompare(String(b.nombre || b.email), 'es'));
         ui();
       }, onErr);
@@ -273,6 +275,38 @@ C.pushPlant = async data => {
   try { await F.setDoc(F.doc(db, 'planta', 'main'), x); C.plant = Object.assign({}, x, { at: null }); lsSet(LS + 'planta', C.plant); ui(); return 'ok' }
   catch (e) { C.plantErr = msg(e); ui(); return C.plantErr }
 };
+
+/* ---------- Avisos a supervisores: quedan hasta que todos los marquen como vistos ---------- */
+C.avisos = []; C.sups = [];
+C.isSup = () => shared() && (C.role === 'admin' || C.role === 'supervisor');
+const ekey = e => normEmail(e).replace(/[.]/g, ',');
+function listenAvisos() {
+  if (subAv || !C.isSup()) return;
+  subEq = F.onSnapshot(F.doc(db, 'config', 'equipo'), d => { C.sups = d.exists() ? (d.data().sups || []) : []; ui() }, () => { });
+  subAv = F.onSnapshot(F.collection(db, 'avisos'), s => {
+    const A = []; s.forEach(d => A.push(Object.assign({ id: d.id }, d.data())));
+    C.avisos = A.sort((a, b) => (b.ms || 0) - (a.ms || 0)); window.avisosIn && window.avisosIn(); ui();
+  }, e => { C.avErr = /permission/.test(e && e.code || '') ? 'Falta activar los avisos en Firebase (reglas).' : ''; ui() });
+}
+C.myKey = () => C.user ? ekey(C.user.email) : '';
+C.avPending = a => (a.para || []).filter(p => !(a.vistos || {})[ekey(p.email)]);
+C.sendAviso = async txt => {
+  if (!C.isSup()) return 'Solo supervisores y administrador.';
+  const me = normEmail(C.user.email);
+  let para = (C.sups || []).slice(); if (!para.some(p => p.email === me)) para.push({ email: me, nombre: C.name || me });
+  const id = Date.now() + '-' + dev;
+  try { await F.setDoc(F.doc(db, 'avisos', id), { txt, por: me, nombre: C.name || me, ms: Date.now(), para, vistos: { [ekey(me)]: { n: C.name || me, t: Date.now() } } }); return 'ok' } catch (e) { return msg(e) }
+};
+C.seeAviso = async id => {
+  const a = (C.avisos || []).find(x => x.id === id); if (!a) return;
+  const k = C.myKey(); a.vistos = a.vistos || {}; a.vistos[k] = { n: C.name || C.user.email, t: Date.now() };
+  try {
+    if (!C.avPending(a).length) await F.deleteDoc(F.doc(db, 'avisos', id));
+    else await F.setDoc(F.doc(db, 'avisos', id), { vistos: { [k]: a.vistos[k] } }, { merge: true });
+  } catch (e) { C.err = msg(e) }
+  ui();
+};
+C.delAviso = async id => { try { await F.deleteDoc(F.doc(db, 'avisos', id)) } catch (e) { C.err = msg(e) } ui() };
 
 /* ---------- Plan de trabajo: los checks viven aparte para que los de solo ver puedan marcarlos ---------- */
 let chkSub = null, chkKey = '';

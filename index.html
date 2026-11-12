@@ -893,7 +893,7 @@ function remPaint(){let o=document.getElementById('remov');if(!remQ.length){if(o
 if(!o){o=document.createElement('div');o.id='remov';o.setAttribute('role','alertdialog');o.setAttribute('aria-live','assertive');document.body.appendChild(o)}
 o.innerHTML=`<div class="rembox"><div class="remh">🔔 Recordatorio</div>`+remQ.map(q=>`<div class="remi"><b>${esc(q.text)}</b><small>${q.late?'Se pasó: era a las '+hhmm(q.at):'Ahora · '+hhmm(q.at)}</small><div class="pbar"><button class="btn" onclick="remAck('${q.id}')">Hecho</button><button class="btn soft" onclick="remSnooze('${q.id}')">En 5 min</button></div></div>`).join('')+`</div>`;
 nightDom(o);remSound(true);try{if(navigator.vibrate)navigator.vibrate([500,250,500,250,500])}catch(e){}}
-function remAck(id){const q=remQ.find(x=>x.id===id);remQ=remQ.filter(x=>x.id!==id);remPaint();if(q&&q.plk&&q.plds===date){const C0=plChecks();if(!C0[q.plk])planChk(q.plk)}}
+function remAck(id){const q=remQ.find(x=>x.id===id);remQ=remQ.filter(x=>x.id!==id);remPaint();if(q&&q.avid&&window.cloud)cloud.seeAviso(q.avid);if(q&&q.plk&&q.plds===date){const C0=plChecks();if(!C0[q.plk])planChk(q.plk)}}
 function remSnooze(id){const q=remQ.find(x=>x.id===id);remQ=remQ.filter(x=>x.id!==id);if(q){const s={id:'s'+uid(),text:q.text,k:'en',min:5,on:true,next:Date.now()+300000,snooze:1};RL().push(s);save()}remPaint();if(tab==='avisos')rr()}
 function remTest(){remUnlock();remQ.push({id:'test'+uid(),text:'Prueba de alarma',at:Date.now(),late:false});remPaint()}
 /* Sonido: el navegador solo deja sonar después de que tocaste la pantalla alguna vez. */
@@ -921,9 +921,10 @@ if(printing){$('#app').innerHTML=printHTML(d);nightDom($('#app'));if(onZebra())f
 if(tab==='hoy'&&!d.blocks.some(Boolean)&&canGen()&&isWork(date)){autoGen=true;try{gen(0)}finally{autoGen=false}}
 else if(tab==='hoy'&&date>todayStr()&&stale(d)&&canGen()){autoGen=true;try{gen(0)}finally{autoGen=false}notice=notice||{t:'La rotación de '+fmtD(date)+' se rehízo con los puestos actuales.'}}
 else if(stale(d))d.dirty=true;
-let h=`<div class="gtop"><div><h1>Grupo ${esc(S.g)}</h1><span class="shiftchip ${S.shift==='noche'?'n':''}">${S.shift==='noche'?'Noche · 18:00 a 6:00':'Día · 6:00 a 18:00'}</span></div><div class="hbtns">${window.cloud&&!S.example&&cloud.syncs(S.g)?'<button class="pill" onclick="syncBoth()">🔄 Sincronizar</button>':''}${isRO()?'':'<button class="pill new" onclick="leave(true)">+ Nuevo grupo</button>'}<button class="link" onclick="leave()">Cambiar de grupo</button></div></div>`;
+let h=`<div class="gtop"><div><h1>Grupo ${esc(S.g)}</h1><span class="shiftchip ${S.shift==='noche'?'n':''}">${S.shift==='noche'?'Noche · 18:00 a 6:00':'Día · 6:00 a 18:00'}</span></div><div class="hbtns">${window.cloud&&!S.example&&cloud.syncs(S.g)?'<button class="pill" onclick="syncBoth()">🔄 Sincronizar</button>':''}${window.cloud&&cloud.isSup&&cloud.isSup()&&!S.example?'<button class="pill" onclick="avOpenF()">📢 Aviso</button>':''}${isRO()?'':'<button class="pill new" onclick="leave(true)">+ Nuevo grupo</button>'}<button class="link" onclick="leave()">Cambiar de grupo</button></div></div>`;
 if(S.example)h+=`<div class="ex">Estás viendo un ejemplo con nombres inventados. No se guarda. Para tu grupo, toca «+ Nuevo grupo».</div>`;
 const TABS=myTabs();if(!TABS.some(t=>t[0]===tab))tab='hoy';
+h+=avisosHTML();
 if(isRO())h+=`<div class="ex">👁 Solo ver: tu acceso al grupo ${esc(S.g)} es de consulta. Los cambios los hace el supervisor.</div>`;
 else if(window.cloud&&cloud.user&&cloud.mode==='compartido'&&!S.example&&!cloud.syncs(S.g))h+=`<div class="ex">Este grupo está solo en este aparato: no está asignado a tu cuenta, así que no se sincroniza.</div>`;
 {const CFG=new Set(['vacaciones','calendario','grupo','equipo','ayuda']),T1=TABS.filter(t=>!CFG.has(t[0])),T2=TABS.filter(t=>CFG.has(t[0])),inCfg=CFG.has(tab),open=cfgOpen||inCfg;
@@ -1508,7 +1509,7 @@ function calDef(){return {mode:'ciclo',on:1,off:0,start:todayStr(),wd:[1,2,3,4,5
 function startHTML(){
 let h=`<h1>Rotación de grupos PCI Miami</h1><p class="sub">Cada grupo arma su propia rotación: máquinas, personal, desayuno y almuerzo, vacaciones, mes y reporte. Lo que guardes aquí queda en este dispositivo (y en tu cuenta, si entras con tu correo) y no cambia nada de otros grupos.</p>`;
 if(notice){h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;notice=null}
-h+=cloudHTML(false);
+h+=avisosHTML()+cloudHTML(false);
 if(window.cloud&&cloud.isAdmin&&cloud.isAdmin())h+=`<button class="btn soft" onclick="openTeam()">👥 Administrar equipo</button>`;
 const G=savedGroups();
 if(G.length)h+=`<h2 class="lh">Tus grupos en este dispositivo</h2><div class="glist">`+G.map(g=>`<button class="gbtn" onclick="openGroup('${esc(String(g.g)).replace(/'/g,'&#39;')}')"><span>Grupo ${esc(g.g)}<small style="display:block">${g.shift==='noche'?'Noche · 18:00 a 6:00':'Día · 6:00 a 18:00'} · ${esc(grpInfo(g))}</small></span><span aria-hidden="true">›</span></button>`).join('')+`</div>`;
@@ -1691,6 +1692,26 @@ const c=ctx(),P=S.people.filter(here),ops=P.filter(p=>p.role==='op').length,ut=P
 if(need){if(ops>=need)h+=`<br>La planta necesita <b>${need} puestos</b> · tienes <b>${ops} operarios</b>: <b>completo</b>.`;
 else{const f=need-ops;h+=`<br>La planta necesita <b>${need} puestos</b> · tienes <b>${ops} operarios</b>: <b style="color:var(--bad)">faltan ${f}</b>`+(ut>=f?` (los pueden cubrir ${f} de tus ${ut} utility, pero te quedan menos para los descansos).`:` · <b>necesitas ${f-ut} extra${f-ut>1?'s':''}</b>.`)}}
 return h+`</div>`}
+
+/* ---------- Avisos a supervisores (cloud.js): se quedan hasta que todos los marcan como vistos ---------- */
+let avOpen=false;const avAlerted=new Set();
+function avisosHTML(){const c=window.cloud;if(!c||!c.isSup||!c.isSup())return '';let h='';
+if(c.avErr)h+=`<div class="warn">📢 ${esc(c.avErr)}</div>`;
+if(avOpen)h+=`<div class="cbox" style="border-color:var(--warnink)"><h2 style="margin-top:0">📢 Aviso a supervisores</h2><p class="sub" style="margin-top:0">Les sale a todos los supervisores y no se quita hasta que todos lo marquen como visto.</p><textarea id="av_t" placeholder="Ej. Se acabó el material: hay que alimentar las máquinas a mano"></textarea><div class="pbar" style="margin-top:10px"><button class="btn" style="margin-top:0" onclick="avSend()">Enviar aviso</button><button class="btn soft" style="margin-top:0" onclick="avOpen=false;rr()">Cancelar</button></div></div>`;
+const me=c.myKey(),mine=String(c.user.email||'').toLowerCase();
+(c.avisos||[]).filter(a=>c.avPending(a).length).forEach(a=>{const V=a.vistos||{},seen=!!V[me],t=new Date(a.ms||0);
+const who=(a.para||[]).map(p=>{const k=p.email.replace(/[.]/g,',');return V[k]?`<span class="tag" style="color:var(--accent)">✓ ${esc(p.nombre||p.email)}</span>`:`<span class="tag" style="opacity:.75">… ${esc(p.nombre||p.email)}</span>`}).join(' ');
+h+=`<div class="alert" style="margin:10px 0"><b style="font-size:20px">📢 ${esc(a.txt)}</b><br><span class="sub">${esc(a.nombre||a.por)} · ${pad(t.getHours())}:${pad(t.getMinutes())}${todayStr()===t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())?'':' · '+esc(fmtD(t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())))}</span><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">Visto por: ${who}</div>
+<div class="pbar" style="margin-top:8px">${seen?'':`<button class="btn" style="margin-top:0" onclick="avSee('${a.id}')">✓ Visto</button>`}${(a.por===mine||c.isAdmin())?`<button class="btn soft" style="margin-top:0" onclick="avDel('${a.id}')">${armed==='av'+a.id?'Toca otra vez para quitarlo':'Quitar aviso'}</button>`:''}</div></div>`});
+return h}
+async function avSend(){const t=($('#av_t').value||'').trim();if(!t){notice={t:'Escribe el aviso.',bad:true};return rr()}const r=await cloud.sendAviso(t);if(r==='ok'){avOpen=false;notice={t:'Aviso enviado a los supervisores.'}}else notice={t:r,bad:true};rr()}
+function avSee(id){remQ=remQ.filter(x=>x.avid!==id);remPaint();cloud.seeAviso(id)}
+function avDel(id){if(armed!=='av'+id){armed='av'+id;return rr()}armed=null;cloud.delAviso(id)}
+function avOpenF(){avOpen=true;rr();window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>{const t=$('#av_t');if(t)t.focus()},300)}
+window.avisosIn=function(){const c=window.cloud;if(!c||!c.isSup())return;const me=c.myKey();let n=0;
+(c.avisos||[]).forEach(a=>{if((a.vistos||{})[me]||avAlerted.has(a.id)||!c.avPending(a).length)return;avAlerted.add(a.id);n++;remQ.push({id:'av:'+a.id,avid:a.id,text:'📢 '+a.txt+' · '+(a.nombre||a.por),at:a.ms||Date.now(),late:false})});
+remQ=remQ.filter(q=>!q.avid||(c.avisos||[]).some(a=>a.id===q.avid&&!(a.vistos||{})[me]));
+if(n){remUnlock();}remPaint()};
 /* ---------- Plan de trabajo de los utilities senior ---------- */
 /* S.plan: tareas del grupo que se repiten cada día ({id,txt,every(horas, 0 = horas fijas),from,times[],who,day}). */
 const plShift=()=>S.shift==='noche'?['18:00','06:00']:['06:00','18:00'];
@@ -1769,7 +1790,8 @@ app.querySelectorAll('input:not([type=date]):not([type=month]),textarea,select')
 ['click','change','input'].forEach(ev=>document.addEventListener(ev,e=>{if(!isRO())return;const el=e.target.closest&&e.target.closest('[onclick],[onchange],[oninput]');if(el&&el.closest('#app')&&!roAllowed(el)){e.stopPropagation();e.preventDefault()}},true));
 
 function openTeam(){teamOpen=true;teamEdit=null;armed=null;render();window.scrollTo(0,0)}
-async function claimAdmin(){if(armed!=='claim'){armed='claim';return rr()}armed=null;const n=($('#adn')&&$('#adn').value||'').trim();notice={t:'Activando el equipo…'};rr();const r=await cloud.claimAdmin(n);notice=r==='ok'?{t:'Listo: eres el administrador. Ahora agrega a tu equipo en «👥 Administrar equipo».'}:{t:r,bad:true};rr()}
+let claimName='';
+async function claimAdmin(){const v=($('#adn')&&$('#adn').value||'').trim();if(v)claimName=v;if(armed!=='claim'){armed='claim';rr();const i=$('#adn');if(i)i.value=claimName;return}armed=null;const n=claimName;notice={t:'Activando el equipo…'};rr();const r=await cloud.claimAdmin(n);notice=r==='ok'?{t:'Listo: eres el administrador. Ahora agrega a tu equipo en «👥 Administrar equipo».'}:{t:r,bad:true};rr()}
 const ROLES=[['supervisor','Supervisor','Edita la rotación de su grupo'],['utility','Solo ver','Ve la rotación y los descansos, no cambia nada'],['admin','Administrador','Maneja el equipo y todos los grupos']];
 const parseGs=v=>String(v||'').split(/[,;\s]+/).map(x=>x.trim().replace(/^grupo/i,'')).filter(Boolean);
 function memberForm(m){const isMe=m&&m.email===String(cloud.user.email||'').toLowerCase();const r=m?m.rol:'supervisor';
@@ -1815,7 +1837,7 @@ async function syncPush(){if(!S||!S.g)return;if(armed!=='spush'){armed='spush';r
 function cloudOut(){if(armed!=='cout'){armed='cout';return rr()}armed=null;cloud.signOut()}
 function cloudBusy(){const a=document.activeElement;return a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)}
 let cloudKey='';
-function cloudUI(){if(!ready||printing)return;const c=window.cloud||{};const k=[c.mode,c.role,(c.groups||[]).join(','),c.user&&c.user.uid].join('|');const roleChanged=k!==cloudKey;cloudKey=k;if((roleChanged||teamOpen||!S||!S.g||tab==='grupo'||tab==='equipo'||tab==='plan')&&!cloudBusy()){const keep={};document.querySelectorAll('#app input[id],#app textarea[id]').forEach(e=>{if(e.value)keep[e.id]=e.value});rr();for(const id in keep){const e=document.getElementById(id);if(e&&!e.value)e.value=keep[id]}}}
+function cloudUI(){if(!ready||printing)return;const c=window.cloud||{};const k=[c.mode,c.role,(c.groups||[]).join(','),c.user&&c.user.uid,(c.avisos||[]).map(a=>a.id+':'+Object.keys(a.vistos||{}).length).join(','),c.avErr||''].join('|');const roleChanged=k!==cloudKey;cloudKey=k;if((roleChanged||teamOpen||!S||!S.g||tab==='grupo'||tab==='equipo'||tab==='plan')&&!cloudBusy()){const keep={};document.querySelectorAll('#app input[id],#app textarea[id]').forEach(e=>{if(e.value)keep[e.id]=e.value});rr();for(const id in keep){const e=document.getElementById(id);if(e&&!e.value)e.value=keep[id]}}}
 let cloudWait=null;
 function cloudApply(g,o,force){g=String(g);if(!o||typeof o!=='object')return;o.g=g;
 if(S&&String(S.g)===g&&!S.example){if(!force&&(saveT||cloudBusy())){clearTimeout(cloudWait);cloudWait=setTimeout(()=>cloudApply(g,o),2000);return}

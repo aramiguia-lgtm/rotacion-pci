@@ -1358,7 +1358,9 @@ return L.join('\n');
 const joinN=(a,b)=>[a,b].map(x=>String(x||'').trim()).filter(Boolean).join('\n');
 const P4='4. Cómo fue la asistencia y puntualidad, nombre de los ausentes y llegadas tarde. Reportar si se apagaron máquinas por este motivo:';
 function repHead(){const r=repD();return ['Grupo '+S.g,'Fecha: '+numD(date),'Informa: '+(String(r.informa||'').trim()||S.informa||''),'']}
-function repAsis(){return joinN(asisAuto(),repD().asis)||'Asistencia completa.'}
+/* Punto 4: primero si el grupo quedó completo (todos los ausentes con reemplazo), luego el detalle. */
+function asisStatus(){const pres=S.people.filter(p=>!absentOn(p,date));const miss=S.people.filter(p=>!p.extra&&p.role!=='sup'&&absentOn(p,date)&&!(p.sub&&pres.some(x=>x.id===p.sub)));return miss.length?'Grupo incompleto ('+miss.length+(miss.length>1?' faltan':' falta')+' sin reemplazo)':'Grupo completo'}
+function repAsis(){const det=joinN(asisAuto(),repD().asis);return asisStatus()+(det?'\n\n'+det:'')}
 function repText(){
 const r=repD(),v=k=>String(r[k]||'').trim();
 return repHead().concat([
@@ -1367,11 +1369,11 @@ return repHead().concat([
 'Máquinas paradas y motivos:',joinN(paradasAuto(),r.paradas),'','',
 '2. Como funcionaron los moldes',v('moldes'),'',
 '3. ¿Qué hubo con los periféricos?','',v('perif')||'(Sin novedades )','',
-P4,repAsis(),'',
+P4,'',repAsis(),'',
 '5. Nombre y apellidos de los implicados en violaciones a las Buenas Prácticas de Manufactura:','',v('bpm')||'(Sin incidencias)','',
 '6. Otras observaciones generales:',v('otras')]).join('\n').replace(/\n{4,}/g,'\n\n\n').trimEnd();
 }
-function repRH(){return repHead().concat([P4,repAsis()]).join('\n').trimEnd()}
+function repRH(){return repHead().concat([P4,'',repAsis()]).join('\n').trimEnd()}
 function setRep(k,v){repD()[k]=v;save();if(repShow===date)repFill()}
 function repFill(){const t=repText(),h=repRH();const a=$('#rpv'),b=$('#rpv2');if(a)a.textContent=t;if(b)b.textContent=h;const w=$('#rwa'),w2=$('#rwa2');if(w)w.href='https://wa.me/?text='+encodeURIComponent(t);if(w2)w2.href='https://wa.me/?text='+encodeURIComponent(h)}
 function genRep(){repShow=date;rr();repFill();const e=$('#rout');if(e)e.scrollIntoView({behavior:'smooth',block:'start'})}

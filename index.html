@@ -521,22 +521,24 @@ const inPost=n=>S.posts.some(p=>p.ms.indexOf(n)>=0);
 const zeroM=()=>S.machines.filter(m=>m.on&&!m.hold&&(m.zero||!inPost(m.n))).sort((a,b)=>a.line-b.line||a.n-b.n);
 const lineUtil=l=>S.people.find(p=>isUtil(p)&&here(p)&&uLine(p)===l)||S.people.find(p=>isUtil(p)&&here(p)&&uLine(p)===0)||null;
 const postZC=p=>{if(!postHeld(p))return [];const z=new Set(zeroM().map(m=>m.n)),o=[];S.machines.forEach(m=>{if(p.ms.indexOf(m.n)>=0&&m.on&&m.hold&&m.task==='zc')(m.zc||[]).forEach(n=>{if(z.has(n)&&o.indexOf(n)<0)o.push(n)})});return o.sort((a,b)=>a-b)};
+/* Un puesto que trabaja normal también puede atender máquinas de cero operario (p.zcx), sin detenerlo. */
+const postZCX=p=>{if(!p||postHeld(p)||!Array.isArray(p.zcx)||!p.zcx.length)return [];const z=new Set(zeroM().map(m=>m.n));return p.zcx.filter(n=>z.has(n)).sort((a,b)=>a-b)};
 function zeroAssign(d,i,b){
 const Z=zeroM();if(!Z.length)return [];
 const by={};
-if(b)b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid),id=b.arr[j];const q=id&&S.people.find(x=>x.id===id);if(p&&q&&here(q))postZC(p).forEach(n=>{if(!by[n])by[n]={pid:id,from:p}})});
-return Z.map(m=>{const a=by[m.n];if(a)return {n:m.n,line:m.line,pid:a.pid,src:'det',from:a.from};const u=lineUtil(m.line);return {n:m.n,line:m.line,pid:u?u.id:null,src:'util'}});
+if(b)b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid),id=b.arr[j];const q=id&&S.people.find(x=>x.id===id);if(p&&q&&here(q)){postZC(p).forEach(n=>{if(!by[n])by[n]={pid:id,from:p,src:'det'}});postZCX(p).forEach(n=>{if(!by[n])by[n]={pid:id,from:p,src:'post'}})}});
+return Z.map(m=>{const a=by[m.n];if(a)return {n:m.n,line:m.line,pid:a.pid,src:a.src,from:a.from};const u=lineUtil(m.line);return {n:m.n,line:m.line,pid:u?u.id:null,src:'util'}});
 }
 function heldOf(p){return S.machines.filter(m=>p.ms.indexOf(m.n)>=0&&m.on&&m.hold)}
 function setPostTask(pid,v){const p=S.posts.find(x=>x.id===pid);if(!p)return;heldOf(p).forEach(m=>{m.task=v;if(v==='zc'&&!Array.isArray(m.zc))m.zc=[]});save();notice={t:'Máq. '+postLabel(p)+': '+(v==='rt'?'su operario va a retrabajo.':v==='ut'?'su operario cubre como utility.':v==='zc'?'toca las máquinas sin puesto que cubre su operario.':'su operario cubre descansos.')};rr()}
 function togglePostZC(pid,n){const p=S.posts.find(x=>x.id===pid);if(!p)return;const H=heldOf(p);if(!H.length)return;const on=!(H[0].zc||[]).includes(n);
-S.machines.forEach(m=>{if(Array.isArray(m.zc))m.zc=m.zc.filter(x=>x!==n)});
+S.machines.forEach(m=>{if(Array.isArray(m.zc))m.zc=m.zc.filter(x=>x!==n)});S.posts.forEach(q=>{if(Array.isArray(q.zcx))q.zcx=q.zcx.filter(x=>x!==n)});
 if(on){H[0].task='zc';H[0].zc=(H[0].zc||[]).concat([n])}
 save();rr()}
 function heldCtl(p){
 const H=heldOf(p),tk=H.length?(H[0].task||''):'',zc=postZC(p);
 let h=`<select class="tk" aria-label="Qué hace el operario de la máquina ${esc(postLabel(p))}" onchange="setPostTask('${p.id}',this.value)">`+[['','Cubre descansos'],['rt','Retrabajo'],['zc','Cubre máq. sin puesto'],['ut','Cubre como utility']].map(([k,l])=>`<option value="${k}" ${tk===k?'selected':''}>${l}</option>`).join('')+`</select>`;
-if(tk==='zc'){const Z=zeroM(),taken={};S.posts.forEach(q=>{if(q.id!==p.id)postZC(q).forEach(n=>taken[n]=postLabel(q))});
+if(tk==='zc'){const Z=zeroM(),taken={};S.posts.forEach(q=>{if(q.id!==p.id)postZC(q).concat(postZCX(q)).forEach(n=>taken[n]=postLabel(q))});
 h+=`<div class="zcp">`+(Z.length?Z.map(m=>`<button class="pill ${zc.includes(m.n)?'zero':'ghost'}" aria-pressed="${zc.includes(m.n)}" onclick="togglePostZC('${p.id}',${m.n})">${m.n}${taken[m.n]?' <small>(de la '+esc(taken[m.n])+')</small>':''}</button>`).join(''):'<span class="tag">No hay máquinas encendidas sin puesto.</span>')+`</div>`}
 return h;
 }
@@ -556,7 +558,7 @@ if(!id){A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:'x',pp:'Sin
 if(brk.has(id)){const r=rows.find(x=>x.id===id);A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:r&&r.u?'':'x',pp:r&&r.u?esc(pname(r.u)):'SIN CUBRIR',sm:'cubre a '+esc(pname(id))+' ('+slot.kind.toLowerCase()+')'});return}
 A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:'',pp:esc(pname(id))+pmark(id),sm:''});
 });
-const ZG=[];Z.forEach(z=>{let who=z.pid,sm=z.src==='det'?'operario de la '+esc(postLabel(z.from))+' (detenida)':'Utility';const busy=who&&(brk.has(who)||cov[who]);
+const ZG=[];Z.forEach(z=>{let who=z.pid,sm=z.src==='det'?'operario de la '+esc(postLabel(z.from))+' (detenida)':z.src==='post'?'operario de la '+esc(postLabel(z.from)):'Utility';const busy=who&&(brk.has(who)||cov[who]);
 if(busy){sm=esc(pname(who))+' está '+where(who);const fr=S.people.filter(p=>isUtil(p)&&here(p)&&!cov[p.id]&&!brk.has(p.id));const u=fr.find(p=>uLine(p)===z.line)||fr.find(p=>uLine(p)===0)||fr[0];who=u?u.id:null}
 const k=(who||'')+'|'+sm,g=ZG.find(x=>x.k===k);if(g)g.ns.push(z.n);else ZG.push({k,who,sm,ns:[z.n],det:z.src==='det'&&!busy})});
 A.sort((x,y)=>x.line-y.line||x.n-y.n);
@@ -687,7 +689,7 @@ const post=S.posts.find(x=>x.id===b.posts[j]);
 const ms=post?post.ms.filter(machOn):[];
 const m=S.machines.find(x=>x.n===(ms[0]||(post&&post.ms[0])));
 if(post&&postHeld(post)){const zc=postZC(post);if(zc.length)return {id,orig,st:'ok',zc:true,ms:zc,line:lineN(zc[0]),u:null,off:false};return {id,orig,st:'det',rt:postRT(post),utk:postUT(post),ms:post.ms.filter(machOn),sx:post.sfx||''}}
-return {id,orig,st:'ok',ms:ms.length?ms:(post?post.ms:[]),sx:post?post.sfx||'':'',line:m?m.line:0,u:null,off:false};
+return {id,orig,st:'ok',ms:(ms.length?ms:(post?post.ms:[])).concat(postZCX(post)),sx:post?post.sfx||'':'',line:m?m.line:0,u:null,off:false};
 });
 const pick=(r,f)=>{const u=U.find(x=>!used.has(x.id)&&f(x));if(u){used.add(u.id);r.u=u.id}return !!u};
 const need=rows.filter(r=>r.st==='ok');
@@ -1083,7 +1085,7 @@ function blockRows(b,i){
 return b.posts.map((pid,j)=>{
 const p=S.posts.find(x=>x.id===pid);if(!p)return '';
 const sel=b.arr[j]||'';
-const hd=postHeld(p),rt=hd&&postRT(p),utk=hd&&postUT(p),zc=hd?postZC(p):[],cls=hd?'mrow held':'mrow',lab=esc(postLabel(p))+(hd?'<small>Detenida · '+esc(heldReason(p))+'</small>':'');
+const hd=postHeld(p),rt=hd&&postRT(p),utk=hd&&postUT(p),zc=hd?postZC(p):[],cls=hd?'mrow held':'mrow',zx=postZCX(p),lab=esc(postLabel(p))+(hd?'<small>Detenida · '+esc(heldReason(p))+'</small>':zx.length?'<small>+ cubre '+zx.join(', ')+' (sin puesto)</small>':'');
 const task=rt?'Retrabajo':utk?'Cubre como utility':zc.length?'Cubre '+zc.join(', ')+' (sin puesto)':hd?'Cubre descansos':'';
 if(i<0)return `<div class="${cls}"><span>${lab}</span><span class="who">${sel?esc(pname(sel))+pmark(sel):'Sin cubrir'}${hd?'<b>'+task+'</b>':''}</span></div>`;
 if(hd)return `<div class="${cls}"><span>${lab}</span><span class="rtname">${sel?esc(pname(sel))+pmark(sel):'Sin cubrir'}<small>${task}</small></span><div class="hctl">${heldCtl(p)}</div></div>`;
@@ -1217,6 +1219,13 @@ function prioCtl(m){return `<span style="display:inline-flex;gap:4px;align-items
 function prioHead(){const P=prioList();let h=`<p class="sub">Prioridad 1 arriba = la más importante. Si hay que detener una máquina por falta de personal, va la de más abajo${P.length?' (ahora: <b>máquina '+P[P.length-1].n+'</b>)':''}. Este orden no cambia la rotación ni los puestos.</p>`;
 h+=`<label for="prp">Pegar el orden de la semana</label><input id="prp" inputmode="numeric" placeholder="Ej. 21, 14, 13, 15, 1, 8 …" value="${esc(P.map(m=>m.n).join(', '))}"><div class="pbar" style="margin-top:8px"><button class="btn" style="margin-top:0" onclick="prioPaste()">Guardar orden</button><button class="btn soft" style="margin-top:0" onclick="prioClear()">${armed==='prc'?'Toca otra vez para borrar':'Borrar prioridades'}</button></div>`;
 return h+`<h2 class="lh">Orden de prioridad</h2>`}
+
+let zcxOpen=null;
+function zcxCtl(p){const Z=zeroM(),mine=postZCX(p),taken={};S.posts.forEach(q=>{if(q.id!==p.id)postZC(q).concat(postZCX(q)).forEach(n=>taken[n]=postLabel(q))});
+return `<div style="flex-basis:100%"><p class="sub" style="margin:6px 0 4px">El operario de la <b>${esc(postLabel(p))}</b> también atiende estas máquinas de cero operario (la máquina sigue encendida, no sale detenida). Toca para marcar o quitar:</p><div class="zcp">`+(Z.length?Z.map(m=>`<button class="pill ${mine.includes(m.n)?'zero':'ghost'}" aria-pressed="${mine.includes(m.n)}" onclick="togglePostZCX('${p.id}',${m.n})">${m.n}${taken[m.n]?' <small>(de la '+esc(taken[m.n])+')</small>':''}</button>`).join(''):'<span class="tag">No hay máquinas de cero operario.</span>')+`</div></div>`}
+function togglePostZCX(pid,n){const p=S.posts.find(x=>x.id===pid);if(!p)return;const on=!(p.zcx||[]).includes(n);
+S.posts.forEach(q=>{if(Array.isArray(q.zcx))q.zcx=q.zcx.filter(x=>x!==n)});S.machines.forEach(m=>{if(Array.isArray(m.zc))m.zc=m.zc.filter(x=>x!==n)});
+if(on)p.zcx=(p.zcx||[]).concat([n]);save();notice={t:on?'El operario de la '+postLabel(p)+' también atiende la '+n+'.':'La '+n+' vuelve a quedar con el utility.'};rr()}
 function maquinasHTML(){
 let h=plantInfoHTML(true)+`<p class="sub"><b>Encendida</b>: trabaja normal. <b>Detenida</b>: parada por un motivo pero sigue en la rotación con su operario; en desayuno y almuerzo ese operario cubre primero a los que salen, o lo mandas a retrabajo. <b>Cero operario</b>: encendida pero no es puesto; la atiende el utility. Las encendidas que no están en ningún puesto ya cuentan como cero operario. Si una detenida tiene «Cubre máq. sin puesto», su operario cubre las que elijas. <b>Parada</b>: fuera todo el turno y sale de la rotación.</p>`;
 h+=`<div class="tabs">`+[['linea','Por línea'],['prio','Por prioridad']].map(([k,l])=>`<button class="tab ${mView===k?'on':''}" onclick="setMView('${k}')">${l}</button>`).join('')+`</div>`;
@@ -1226,7 +1235,7 @@ if(mView==='prio'){const P=prioList();h+=P.map(mCard).join('');const R=S.machine
 else [1,2].forEach(l=>{h+=`<h2 class="lh">Línea ${l}</h2>`+S.machines.filter(m=>m.line===l).map(mCard).join('')});
 h+=`<h2 class="lh">Puestos de rotación</h2><p class="sub">Cada puesto es una máquina, o varias, que cubre una sola persona. Separa los números con coma, punto o espacio (ej. 1, 2 ó 1.2). Para poner dos operarios en la misma máquina, agrega otro puesto con una letra al final: <b>21</b> y <b>21A</b> (adelante y atrás) son dos puestos distintos; puedes usar A, B, C… El orden de la lista es el orden de la rotación, y la rotación de hoy se actualiza sola al cambiar un puesto.</p>`;
 h+=`<label for="np">Agregar puesto (números de máquina)</label><input id="np" inputmode="text" autocapitalize="characters" placeholder="Ej. 6, 8  ó  21A"><button class="btn soft" onclick="addPost()">Agregar puesto</button>`;
-h+=S.posts.map(p=>{const a=postActive(p);return `<div class="prow"><input class="nm" inputmode="text" autocapitalize="characters" value="${esc(postLabel(p))}" aria-label="Máquinas del puesto" onchange="setPost('${p.id}',this.value)"><span class="tag">${a?(postHeld(p)?'Detenido, en rotación':'Activo'):'Parado'}</span><button class="x" aria-label="Subir" onclick="movePost('${p.id}',-1)">↑</button><button class="x" aria-label="Bajar" onclick="movePost('${p.id}',1)">↓</button><button class="x del" onclick="rm('posts','${p.id}')">${armed==='posts'+p.id?'¿Borrar?':'Quitar'}</button></div>`}).join('');
+h+=S.posts.map(p=>{const a=postActive(p);return `<div class="prow"><input class="nm" inputmode="text" autocapitalize="characters" value="${esc(postLabel(p))}" aria-label="Máquinas del puesto" onchange="setPost('${p.id}',this.value)"><span class="tag">${a?(postHeld(p)?'Detenido, en rotación':'Activo'):'Parado'}</span>${a&&!postHeld(p)?`<button class="x" aria-pressed="${zcxOpen===p.id}" onclick="zcxOpen=zcxOpen==='${p.id}'?null:'${p.id}';rr()">${postZCX(p).length?'+ '+postZCX(p).join(', '):'＋ sin puesto'}</button>`:''}<button class="x" aria-label="Subir" onclick="movePost('${p.id}',-1)">↑</button><button class="x" aria-label="Bajar" onclick="movePost('${p.id}',1)">↓</button><button class="x del" onclick="rm('posts','${p.id}')">${armed==='posts'+p.id?'¿Borrar?':'Quitar'}</button>${zcxOpen===p.id?zcxCtl(p):''}</div>`}).join('');
 h+=lineCfgHTML()+ACEPTAR;
 return h;
 }

@@ -340,11 +340,11 @@ const held=n=>{const m=S.machines.find(x=>x.n===n);return !!(m&&m.on&&m.hold)};
 const postHeld=p=>{const a=p.ms.filter(machOn);return a.length>0&&a.every(held)};
 /* Retrabajo: quien pasa por esa máquina detenida va a retrabajo y no cubre descansos. */
 const postRT=p=>postHeld(p)&&p.ms.some(n=>{const m=S.machines.find(x=>x.n===n);return m&&m.on&&m.hold&&m.task==='rt'});
-/* Cubre como utility: quien pasa por esa máquina detenida cubre descansos como un utility (Material Handler), en cualquier línea. */
+/* Cubre como utility: quien pasa por esa máquina detenida cubre descansos como un utility (Utility), en cualquier línea. */
 const postUT=p=>postHeld(p)&&heldOf(p).some(m=>m.task==='ut');
 function setRT(pid,on){const p=S.posts.find(x=>x.id===pid);if(!p)return;S.machines.forEach(m=>{if(p.ms.indexOf(m.n)>=0&&m.on&&m.hold)m.task=on?'rt':''});save();notice={t:on?'Máq. '+postLabel(p)+': quien pasa por ahí va a retrabajo.':'Máq. '+postLabel(p)+': el operario vuelve a cubrir descansos.'};rr()}
 const pname=id=>{const p=S.people.find(x=>x.id===id);return p?p.name:'?'};
-const mk=p=>p&&p.role==='util'?' (MH)':p&&p.role==='senior'?' (US)':p&&p.role==='utl'?' (U)':p&&p.role==='sup'?' (Sup.)':'';
+const mk=p=>p&&p.role==='util'?' (U)':p&&p.role==='senior'?' (US)':p&&p.role==='utl'?' (U)':p&&p.role==='sup'?' (Sup.)':'';
 const pmark=id=>mk(S.people.find(x=>x.id===id));
 const postLabel=p=>p.ms.join(', ')+(p.sfx||''); const mql=r=>(r.ms||[]).join(', ')+(r.sx||'');
 const addDays=(s,n)=>{const p=s.split('-').map(Number),t=new Date(p[0],p[1]-1,p[2]+n);return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())};
@@ -486,35 +486,35 @@ const R=new Set();
 if(d.rtLib&&b){const UT=utIds(d,i);b.arr.slice(b.posts.length).forEach(x=>{const p=S.people.find(q=>q.id===x);if(p&&!isUtil(p)&&!UT.has(x))R.add(x)})}
 return R;
 }
-/* Operarios sacados de la línea a cubrir como Material Handler en esos bloques: cubren descansos como un Material Handler. */
+/* Operarios sacados de la línea a cubrir como Utility en esos bloques: cubren descansos como un utility. */
 function utIds(d,i){const U=new Set();(d.rt||[]).forEach(e=>{if(e.k!=='u')return;const p=S.people.find(x=>x.id===e.pid);if(p&&here(p)&&i>=e.from&&i<=e.to)U.add(e.pid)});return U}
 function utLine(d,i,id){const e=(d.rt||[]).find(x=>x.k==='u'&&x.pid===id&&i>=x.from&&i<=x.to);return e&&(e.line===1||e.line===2)?e.line:0}
 function rtRegen(msg){const d=day();if(d.blocks.some(Boolean)&&canGen()){const cur=curBlock(d);gen(Math.max(cur,0))}save();notice={t:msg};rr()}
 function addRT(){
 const d=day(),pid=$('#rtp').value,k=$('#rtk').value==='u'?'u':'',ln=Number($('#rtl').value)||0;let f=Number($('#rtf').value),t=Number($('#rtt').value);
-if(!pid){notice={t:k?'Elige quién sale a cubrir como Material Handler.':'Elige quién va a retrabajo.',bad:true};return rr()}
+if(!pid){notice={t:k?'Elige quién sale a cubrir como Utility.':'Elige quién va a retrabajo.',bad:true};return rr()}
 if(t<f){const x=f;f=t;t=x}
 d.rt=(d.rt||[]).filter(e=>!(e.pid===pid&&e.from<=t&&f<=e.to));d.rt.push(k?{pid,from:f,to:t,k:'u',line:ln}:{pid,from:f,to:t});
-rtRegen(pname(pid)+(k?' cubriendo como Material Handler'+(ln?' ('+LN[ln]+')':'')+': ':' en retrabajo: ')+hm(d.start,f*d.hours*60)+' – '+hm(d.start,(t+1)*d.hours*60)+'.');
+rtRegen(pname(pid)+(k?' cubriendo como Utility'+(ln?' ('+LN[ln]+')':'')+': ':' en retrabajo: ')+hm(d.start,f*d.hours*60)+' – '+hm(d.start,(t+1)*d.hours*60)+'.');
 }
 function rmRT(k){const d=day(),e=(d.rt||[])[k];if(!e)return;d.rt.splice(k,1);rtRegen(pname(e.pid)+' vuelve a la rotación.')}
-function rtKind(v){const l=$('#rtlw');if(l)l.hidden=v!=='u';const b=$('#rtgo');if(b)b.textContent=v==='u'?'Sacar a cubrir como Material Handler':'Agregar a retrabajo'}
+function rtKind(v){const l=$('#rtlw');if(l)l.hidden=v!=='u';const b=$('#rtgo');if(b)b.textContent=v==='u'?'Sacar a cubrir como Utility':'Agregar a retrabajo'}
 function toggleRTLib(){const d=day();d.rtLib=!d.rtLib;save();notice={t:d.rtLib?'Los libres de cada bloque van a retrabajo.':'Los libres ya no van a retrabajo; cubren descansos.'};rr()}
 function rtCfgHTML(d){
-let h=`<div class="rtbox"><h2>Retrabajo y Material Handler</h2><p class="sub" style="margin:0 0 6px">Puesto aparte, fuera de la rotación. Pon personas fijas todo el turno o por bloques (ej. dos hasta las 12:00 y otras dos después), o manda ahí a los que quedan libres en cada bloque. En desayuno y almuerzo salen solos a cubrir la máquina más cercana, antes que los Material Handler, y luego vuelven a retrabajo. También puedes sacar a un operario de la línea a <b>cubrir como Material Handler</b>: sale de la rotación en esos bloques y cubre descansos igual que un Material Handler.</p>`;
+let h=`<div class="rtbox"><h2>Retrabajo y Utility</h2><p class="sub" style="margin:0 0 6px">Puesto aparte, fuera de la rotación. Pon personas fijas todo el turno o por bloques (ej. dos hasta las 12:00 y otras dos después), o manda ahí a los que quedan libres en cada bloque. En desayuno y almuerzo salen solos a cubrir la máquina más cercana, antes que los utility, y luego vuelven a retrabajo. También puedes sacar a un operario de la línea a <b>cubrir como Utility</b>: sale de la rotación en esos bloques y cubre descansos igual que un utility.</p>`;
 h+=`<button class="pill ${d.rtLib?'hold':''}" aria-pressed="${!!d.rtLib}" onclick="toggleRTLib()">${d.rtLib?'✓ ':''}Los libres de cada bloque van a retrabajo</button>`;
 const L=(d.rt||[]);
-h+=L.map((e,k)=>`<div class="prow"><div class="nm"><b>${esc(pname(e.pid))}</b> <span class="chip ${e.k==='u'?'c'+(e.line||0):'ch'}" style="font-size:14px;padding:2px 10px">${e.k==='u'?'Cubriendo como Material Handler'+(e.line?' · L'+e.line:''):'Retrabajo'}</span><br><span class="tag">${e.from<=0&&e.to>=d.n-1?'Todo el turno · ':''}${hm(d.start,e.from*d.hours*60)} – ${hm(d.start,(e.to+1)*d.hours*60)}</span></div><button class="x del" onclick="rmRT(${k})">Quitar</button></div>`).join('');
+h+=L.map((e,k)=>`<div class="prow"><div class="nm"><b>${esc(pname(e.pid))}</b> <span class="chip ${e.k==='u'?'c'+(e.line||0):'ch'}" style="font-size:14px;padding:2px 10px">${e.k==='u'?'Cubriendo como Utility'+(e.line?' · L'+e.line:''):'Retrabajo'}</span><br><span class="tag">${e.from<=0&&e.to>=d.n-1?'Todo el turno · ':''}${hm(d.start,e.from*d.hours*60)} – ${hm(d.start,(e.to+1)*d.hours*60)}</span></div><button class="x del" onclick="rmRT(${k})">Quitar</button></div>`).join('');
 const used=new Set(L.map(e=>e.pid)),C=S.people.filter(p=>here(p)&&!isUtil(p)&&!isSup(p));
 const bo=sel=>Array.from({length:d.n},(_,i)=>`<option value="${i}" ${i===sel?'selected':''}>${i+1} · ${blockLabel(d,i)}</option>`).join('');
-h+=`<label for="rtk">Qué va a hacer</label><select id="rtk" onchange="rtKind(this.value)"><option value="">Retrabajo</option><option value="u">Cubrir como Material Handler</option></select>`;
+h+=`<label for="rtk">Qué va a hacer</label><select id="rtk" onchange="rtKind(this.value)"><option value="">Retrabajo</option><option value="u">Cubrir como Utility</option></select>`;
 h+=`<label for="rtp">Persona</label><select id="rtp"><option value="">Elige la persona</option>${C.map(p=>`<option value="${p.id}">${esc(p.name)}${used.has(p.id)?' (ya tiene horario)':''}</option>`).join('')}</select>`;
 h+=`<div class="row2"><div><label for="rtf">Desde el bloque</label><select id="rtf">${bo(0)}</select></div><div><label for="rtt">Hasta el bloque</label><select id="rtt">${bo(d.n-1)}</select></div></div>`;
 h+=`<div id="rtlw" hidden><label for="rtl">Cubre en</label><select id="rtl">${LN.map((l,n)=>`<option value="${n}">${l}</option>`).join('')}</select></div>`;
 h+=`<button class="btn soft" id="rtgo" onclick="addRT()">Agregar a retrabajo</button></div>`;
 return h;
 }
-/* Cero operario: máquinas encendidas que no son puesto. Las atiende el Material Handler de la línea,
+/* Cero operario: máquinas encendidas que no son puesto. Las atiende el utility de la línea,
    salvo las que eliges en una máquina detenida: el operario que pase por esa detenida las cubre. */
 const lineN=n=>{const m=S.machines.find(x=>x.n===n);return m?m.line:0};
 const inPost=n=>S.posts.some(p=>p.ms.indexOf(n)>=0);
@@ -548,7 +548,7 @@ const slot=breakSlots().find(slotNow),rows=slot?cover(d,slot)||[]:[];
 const brk=new Set(rows.filter(r=>r.st!=='fuera').map(r=>r.id)),cov={};rows.forEach(r=>{if(r.st==='ok'&&r.u)cov[r.u]=r});
 const R=rtIds(d,i,b),UT=utIds(d,i),Z=zeroAssign(d,i,b),zOf={},RTH=new Set();
 const UTH=new Set();b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(p&&postRT(p)&&b.arr[j])RTH.add(b.arr[j]);if(p&&postUT(p)&&b.arr[j])UTH.add(b.arr[j])});Z.forEach(z=>{if(z.src==='det')(zOf[z.pid]=zOf[z.pid]||[]).push(z.n)});
-const where=id=>brk.has(id)?'en '+slot.kind.toLowerCase():cov[id]?'cubriendo '+mql(cov[id]):R.has(id)||RTH.has(id)?'en retrabajo':UTH.has(id)?'cubriendo como utility':UT.has(id)?'cubriendo como Material Handler':zOf[id]?'cubriendo '+zOf[id].join(', ')+' (sin puesto)':'libre';
+const where=id=>brk.has(id)?'en '+slot.kind.toLowerCase():cov[id]?'cubriendo '+mql(cov[id]):R.has(id)||RTH.has(id)?'en retrabajo':UTH.has(id)?'cubriendo como utility':UT.has(id)?'cubriendo como Utility':zOf[id]?'cubriendo '+zOf[id].join(', ')+' (sin puesto)':'libre';
 const A=[];
 b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(!p)return;const id=b.arr[j],ms=p.ms.filter(machOn),n0=ms[0]||p.ms[0];
 if(postHeld(p)){A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:'h',pp:'Detenida',sm:esc(heldReason(p))+(id?' · '+esc(pname(id))+' está '+where(id):'')});return}
@@ -556,7 +556,7 @@ if(!id){A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:'x',pp:'Sin
 if(brk.has(id)){const r=rows.find(x=>x.id===id);A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:r&&r.u?'':'x',pp:r&&r.u?esc(pname(r.u)):'SIN CUBRIR',sm:'cubre a '+esc(pname(id))+' ('+slot.kind.toLowerCase()+')'});return}
 A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:'',pp:esc(pname(id))+pmark(id),sm:''});
 });
-const ZG=[];Z.forEach(z=>{let who=z.pid,sm=z.src==='det'?'operario de la '+esc(postLabel(z.from))+' (detenida)':'Material Handler';const busy=who&&(brk.has(who)||cov[who]);
+const ZG=[];Z.forEach(z=>{let who=z.pid,sm=z.src==='det'?'operario de la '+esc(postLabel(z.from))+' (detenida)':'Utility';const busy=who&&(brk.has(who)||cov[who]);
 if(busy){sm=esc(pname(who))+' está '+where(who);const fr=S.people.filter(p=>isUtil(p)&&here(p)&&!cov[p.id]&&!brk.has(p.id));const u=fr.find(p=>uLine(p)===z.line)||fr.find(p=>uLine(p)===0)||fr[0];who=u?u.id:null}
 const k=(who||'')+'|'+sm,g=ZG.find(x=>x.k===k);if(g)g.ns.push(z.n);else ZG.push({k,who,sm,ns:[z.n],det:z.src==='det'&&!busy})});
 A.sort((x,y)=>x.line-y.line||x.n-y.n);
@@ -568,7 +568,7 @@ const rtNow=[...R].filter(id=>!brk.has(id)&&!cov[id]);
 if(rtNow.length)h+=`<div class="lnh">Retrabajo</div><div class="arow"><span class="mq">—</span><span class="pp">${rtNow.map(x=>esc(pname(x))).join(', ')}</span></div>`;
 if(brk.size)h+=`<div class="lnh">${esc(slot.kind)} ahora</div><div class="arow"><span class="mq">${hmAbs(slot.start+slot.len)}</span><span class="pp">${[...brk].map(x=>esc(pname(x))).join(', ')}<small>regresan a esta hora</small></span></div>`;
 const utNow=[...UT].filter(id=>!brk.has(id)&&!cov[id]);
-if(utNow.length)h+=`<div class="lnh">Cubriendo como Material Handler</div><div class="arow"><span class="mq">—</span><span class="pp">${utNow.map(x=>esc(pname(x))+(utLine(d,i,x)?' <small style="display:inline">(L'+utLine(d,i,x)+')</small>':'')).join(', ')}</span></div>`;
+if(utNow.length)h+=`<div class="lnh">Cubriendo como Utility</div><div class="arow"><span class="mq">—</span><span class="pp">${utNow.map(x=>esc(pname(x))+(utLine(d,i,x)?' <small style="display:inline">(L'+utLine(d,i,x)+')</small>':'')).join(', ')}</span></div>`;
 const zs=new Set(Object.keys(zOf)),lib=b.arr.slice(b.posts.length).filter(x=>x&&!R.has(x)&&!UT.has(x)&&!zs.has(x)&&!brk.has(x)&&!cov[x]);
 if(lib.length)h+=`<div class="lnh">Libres</div><div class="arow"><span class="mq">—</span><span class="pp">${lib.map(x=>esc(pname(x))).join(', ')}</span></div>`;
 return h+`</div>`;
@@ -591,7 +591,7 @@ else{regenDay(k,0);regenMsg.push(fmtD(k))}});
 /* Rotación armada con puestos que ya no existen. */
 const stale=d=>d.blocks.some(b=>b&&b.posts.some(pid=>!S.posts.some(p=>p.id===pid)))
 
-/* Desayuno y almuerzo: salen 3 operarios por turno y los Material Handler cubren su máquina. */
+/* Desayuno y almuerzo: salen 3 operarios por turno y los utility cubren su máquina. */
 const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
 function findPerson(q){
 const n=norm(q),f=n.split(' ')[0];
@@ -599,9 +599,9 @@ return S.people.find(p=>norm(p.name)===n)||S.people.find(p=>norm(p.name).indexOf
 }
 function ensureBreaks(){if(!S.brk||!Array.isArray(S.brk.g)){S.brk=S.shift==='noche'?{bS:'21:00',bM:15,lS:'01:00',lM:30,g:[[],[],[]]}:{bS:'07:00',bM:15,lS:'12:00',lM:30,g:[[],[],[]]}}S.brkInit=1;S.brkOrd=2}
 const isUtil=p=>p&&(p.role==='util'||p.role==='senior'||p.role==='utl');
-/* Reemplazos entre iguales: un operario por un operario, un Material Handler por un Material Handler (ej. un Material Handler de otro equipo). */
+/* Reemplazos entre iguales: un operario por un operario, un utility por un utility (ej. un utility de otro equipo). */
 const sameKind=(a,b)=>!!a&&!!b&&(isUtil(a)?isUtil(b):a.role==='op'&&b.role==='op');
-/* Supervisor: no rota ni sale en los turnos; en desayuno y almuerzo cubre UNA máquina solo si los Material Handler no dan abasto. */
+/* Supervisor: no rota ni sale en los turnos; en desayuno y almuerzo cubre UNA máquina solo si los utility no dan abasto. */
 const isSup=p=>!!p&&p.role==='sup';
 const uLine=p=>p&&(p.uline===1||p.uline===2)?p.uline:0;
 const LN=['Ambas líneas','Línea 1','Línea 2'];
@@ -645,8 +645,8 @@ b.arr.slice(0,n).forEach((id,j)=>{const p=S.posts.find(x=>x.id===b.posts[j]);if(
 const key=r.orig||r.id,cur=((d.cov&&d.cov[s.kind+s.turn])||{})[key]||'';
 const C=S.people.filter(p=>here(p)&&s.ids.indexOf(p.id)<0&&p.id!==r.id&&(isUtil(p)?!busy.has(p.id):!busy.has(p.id)));
 const UT=utIds(d,i),ops=C.filter(p=>!isUtil(p)&&!isSup(p)&&!UT.has(p.id)),uts=C.filter(p=>isUtil(p)||UT.has(p.id)),sps=C.filter(isSup);
-const lab=p=>{const j=b.arr.slice(0,n).indexOf(p.id);const q=j>=0?S.posts.find(x=>x.id===b.posts[j]):null;return esc(p.name)+(isUtil(p)?' (MH)':UT.has(p.id)?' (cubriendo como Material Handler)':q?' · máq. '+esc(postLabel(q))+(postRT(q)?' (retrabajo)':postUT(q)?' (utility)':' (detenida)'):' · libre')};
-return `<select class="mv" aria-label="Quién cubre a ${esc(pname(key))}" onchange="setCov('${s.kind}',${s.turn},'${key}',this.value)"><option value="">${cur?'Volver a automático':'Quién cubre: automático'}</option>`+(ops.length?`<optgroup label="Operarios">`+ops.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${lab(p)}</option>`).join('')+`</optgroup>`:'')+(uts.length?`<optgroup label="Material Handler">`+uts.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${lab(p)}</option>`).join('')+`</optgroup>`:'')+(sps.length?`<optgroup label="Supervisor">`+sps.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${esc(p.name)} (supervisor)</option>`).join('')+`</optgroup>`:'')+`</select>`;
+const lab=p=>{const j=b.arr.slice(0,n).indexOf(p.id);const q=j>=0?S.posts.find(x=>x.id===b.posts[j]):null;return esc(p.name)+(isUtil(p)?' (U)':UT.has(p.id)?' (cubriendo como Utility)':q?' · máq. '+esc(postLabel(q))+(postRT(q)?' (retrabajo)':postUT(q)?' (utility)':' (detenida)'):' · libre')};
+return `<select class="mv" aria-label="Quién cubre a ${esc(pname(key))}" onchange="setCov('${s.kind}',${s.turn},'${key}',this.value)"><option value="">${cur?'Volver a automático':'Quién cubre: automático'}</option>`+(ops.length?`<optgroup label="Operarios">`+ops.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${lab(p)}</option>`).join('')+`</optgroup>`:'')+(uts.length?`<optgroup label="Utility">`+uts.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${lab(p)}</option>`).join('')+`</optgroup>`:'')+(sps.length?`<optgroup label="Supervisor">`+sps.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${esc(p.name)} (supervisor)</option>`).join('')+`</optgroup>`:'')+`</select>`;
 }
 function setCov(kind,turn,key,v){const d=day();d.cov=d.cov||{};const k=kind+turn,o=d.cov[k]=d.cov[k]||{};if(v){Object.keys(o).forEach(x=>{if(o[x]===v)delete o[x]});o[key]=v}else delete o[key];save();notice={t:v?kind+' turno '+turn+': '+pname(v)+' cubre a '+pname(key)+'. Solo para hoy.':'Quién cubre a '+pname(key)+' vuelve a automático.'};rr()}
 function moveSel(s,key){
@@ -691,7 +691,7 @@ return {id,orig,st:'ok',ms:ms.length?ms:(post?post.ms:[]),sx:post?post.sfx||'':'
 });
 const pick=(r,f)=>{const u=U.find(x=>!used.has(x.id)&&f(x));if(u){used.add(u.id);r.u=u.id}return !!u};
 const need=rows.filter(r=>r.st==='ok');
-/* Relevo automático antes que los Material Handler: detenidas, libres y retrabajo; cada uno a la máquina más cercana a la suya. */
+/* Relevo automático antes que los utility: detenidas, libres y retrabajo; cada uno a la máquina más cercana a la suya. */
 const HR=onPost.map((id,j)=>{const p=S.posts.find(x=>x.id===b.posts[j]);return id&&p&&postRT(p)&&effIds.indexOf(id)<0?S.people.find(x=>x.id===id&&here(x)):null}).filter(Boolean);
 const RTp=S.people.filter(p=>R.has(p.id)&&here(p)&&onPost.indexOf(p.id)<0&&effIds.indexOf(p.id)<0);
 /* Elección a mano de quién cubre (solo ese día): se respeta primero, lo demás se reparte solo. */
@@ -709,7 +709,7 @@ need.filter(r=>!r.u).forEach(r=>pick(r,u=>uL(u)===r.line&&r.line>0));
 need.filter(r=>!r.u).forEach(r=>pick(r,u=>uL(u)===0));
 need.forEach(r=>{if(r.u&&(UT.has(r.u)||UTP.has(r.u)))r.ut=1});
 need.filter(r=>!r.u).forEach(r=>{if(pick(r,()=>true))r.off=true});
-/* Si los Material Handler no dan abasto (ej. salen 4), el supervisor cubre una máquina. */
+/* Si los utility no dan abasto (ej. salen 4), el supervisor cubre una máquina. */
 const SV=S.people.filter(p=>isSup(p)&&here(p)&&!used.has(p.id)&&effIds.indexOf(p.id)<0&&onPost.indexOf(p.id)<0);
 need.filter(r=>!r.u).forEach(r=>{const s=SV.shift();if(s){used.add(s.id);r.u=s.id;r.sup=1}});
 return rows.filter(r=>r.st!=="fuera");
@@ -718,13 +718,13 @@ function chip(r){
 if(r.st==='fuera')return `<span class="chip cn">No está hoy · elige quién viene</span>`;
 if(r.st==='libre')return `<span class="chip cm">Libre, no hace falta cubrir</span>`;
 if(r.st==='rtp')return `<span class="chip ch">En retrabajo, no hace falta cubrir</span>`;
-if(r.st==='utp')return `<span class="chip cm">Cubriendo como Material Handler, no hace falta cubrir</span>`;
+if(r.st==='utp')return `<span class="chip cm">Cubriendo como Utility, no hace falta cubrir</span>`;
 if(r.st==='det')return `<span class="chip ch">${r.rt?'En retrabajo':r.utk?'Cubriendo como utility':'Máquina detenida'}, no hace falta cubrir</span>`;
-if(!r.u)return `<span class="chip cn">Sin Material Handler</span>`;
+if(!r.u)return `<span class="chip cn">Sin Utility</span>`;
 const u=S.people.find(x=>x.id===r.u);
 if(r.sup)return `<span class="chip cs">${esc(u.name)} (supervisor)</span>`;
 if(r.free)return `<span class="chip cf">${esc(u.name)} (${r.free==='det'?'máq. detenida':r.free==='rt'?'retrabajo':'libre'})</span>`;
-return `<span class="chip ${r.off?'cx':r.ut?'cf':'c'+uLine(u)}">${esc(u.name)}${r.ut?' (cubriendo como Material Handler)':''}${r.off?' (fuera de su línea)':''}</span>`;
+return `<span class="chip ${r.off?'cx':r.ut?'cf':'c'+uLine(u)}">${esc(u.name)}${r.ut?' (cubriendo como Utility)':''}${r.off?' (fuera de su línea)':''}</span>`;
 }
 function slotHTML(d,s,on){
 const rows=cover(d,s);
@@ -769,11 +769,11 @@ const U=S.people.filter(p=>isUtil(p)&&here(p));
 const SP=S.people.filter(p=>isSup(p)&&here(p));
 return U.length||SP.length?`<div class="legend">`+U.map(u=>{const f=S.people.find(q=>q.sub===u.id&&isUtil(q)&&!here(q));return `<span class="chip c${uLine(u)}">${esc(u.name)} · ${LN[uLine(u)]}${f?' · por '+esc(f.name):''}</span>`}).join('')+SP.map(u=>`<span class="chip cs">${esc(u.name)} · Supervisor</span>`).join('')+(S.people.some(p=>isUtil(p)&&(uLine(p)===1||uLine(p)===2))?`<button class="pill swl" onclick="swapLines()">⇄ Cambio de líneas</button>`:'')+`</div>`:'';
 }
-/* Cambio de líneas: los Material Handler y Utility senior de la línea 1 pasan a la 2 y viceversa. Los de ambas líneas no cambian. */
+/* Cambio de líneas: los utility y Utility senior de la línea 1 pasan a la 2 y viceversa. Los de ambas líneas no cambian. */
 function swapLines(){const M=S.people.filter(p=>isUtil(p)&&(uLine(p)===1||uLine(p)===2));if(!M.length)return;M.forEach(p=>{p.uline=uLine(p)===1?2:1});save();notice={t:'Cambio de líneas: '+M.map(p=>p.name+' → línea '+p.uline).join(', ')+'.'};rr()}
 function brkCfgHTML(){
 const B=S.brk,ops=S.people.filter(p=>p.role==='op');
-let h=`<h2 class="lh">Desayuno y almuerzo</h2><p class="sub">Cada turno lleva las personas que pongas (3, 4 o las que hagan falta). Primero cubren, solos, los operarios de máquinas detenidas, los libres y los de retrabajo, cada uno en la máquina más cercana (en su propio descanso salen y no cubren; al regresar cubren al siguiente turno). Después, el Material Handler de su línea; si no está libre, quien atiende ambas líneas. Si aun así falta alguien (por ejemplo, salen 4 y los Material Handler no dan abasto), el supervisor cubre una máquina. Si alguien falta, en Hoy eliges quién sale en su lugar ese día; el orden de aquí no cambia.</p>`;
+let h=`<h2 class="lh">Desayuno y almuerzo</h2><p class="sub">Cada turno lleva las personas que pongas (3, 4 o las que hagan falta). Primero cubren, solos, los operarios de máquinas detenidas, los libres y los de retrabajo, cada uno en la máquina más cercana (en su propio descanso salen y no cubren; al regresar cubren al siguiente turno). Después, el utility de su línea; si no está libre, quien atiende ambas líneas. Si aun así falta alguien (por ejemplo, salen 4 y los utility no dan abasto), el supervisor cubre una máquina. Si alguien falta, en Hoy eliges quién sale en su lugar ese día; el orden de aquí no cambia.</p>`;
 h+=`<div class="row2"><div><label for="bs">Desayuno empieza</label><input type="time" id="bs" value="${esc(B.bS)}" onchange="setBrk('bS',this.value)"></div><div><label for="bm">Minutos</label><input type="number" id="bm" min="5" max="60" value="${B.bM}" onchange="setBrk('bM',this.value)"></div></div>`;
 h+=`<div class="row2"><div><label for="ls">Almuerzo empieza</label><input type="time" id="ls" value="${esc(B.lS)}" onchange="setBrk('lS',this.value)"></div><div><label for="lm">Minutos</label><input type="number" id="lm" min="5" max="90" value="${B.lM}" onchange="setBrk('lM',this.value)"></div></div>`;
 const opt=(sel)=>ops.filter(p=>here(p)||p.id===sel).map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>${esc(p.name)}${here(p)?'':' (no está)'}</option>`).join('');
@@ -784,9 +784,9 @@ h+=xtHTML();
 const U=S.people.filter(p=>isUtil(p)&&here(p)).length,mx=Math.max.apply(null,B.g.map(g=>g.filter(Boolean).length));
 const SPn=S.people.filter(p=>isSup(p)&&here(p)).length;
 const lib=Math.max(0,S.people.filter(p=>!isUtil(p)&&!isSup(p)&&here(p)).length-S.posts.filter(postActive).length)+S.posts.filter(postHeld).length,A0=U+lib,A=A0+SPn;
-if(mx>A)h+=`<div class="warn">Un turno saca ${mx} personas a la vez y hoy hay ${U} Material Handler${lib?' y '+lib+' operario'+(lib>1?'s':'')+' libre'+(lib>1?'s':''):''}${SPn?' y '+SPn+' supervisor':''}. Hasta ${mx-A} máquina${mx-A>1?'s':''} podría${mx-A>1?'n':''} quedar sin cubrir en ese descanso.</div>`;
+if(mx>A)h+=`<div class="warn">Un turno saca ${mx} personas a la vez y hoy hay ${U} Utility${lib?' y '+lib+' operario'+(lib>1?'s':'')+' libre'+(lib>1?'s':''):''}${SPn?' y '+SPn+' supervisor':''}. Hasta ${mx-A} máquina${mx-A>1?'s':''} podría${mx-A>1?'n':''} quedar sin cubrir en ese descanso.</div>`;
 else if(mx>A0&&SPn)h+=`<p class="sub" style="margin-top:8px">Un turno saca ${mx} personas a la vez: el supervisor cubrirá ${mx-A0>1?mx-A0+' máquinas':'una máquina'} en ese descanso.</p>`;
-else if(mx>A0)h+=`<div class="warn">Un turno saca ${mx} personas y no alcanzan los Material Handler. Agrega al supervisor en la lista de arriba (función «Supervisor») para que cubra una máquina.</div>`;
+else if(mx>A0)h+=`<div class="warn">Un turno saca ${mx} personas y no alcanzan los utility. Agrega al supervisor en la lista de arriba (función «Supervisor») para que cubra una máquina.</div>`;
 return h;
 }
 function setBrk(k,v){const B=S.brk;if(k==='bS'||k==='lS')B[k]=v||B[k];else B[k]=Math.max(1,Math.round(Number(v))||B[k]);save();rr()}
@@ -975,7 +975,7 @@ st.textContent=onZebra()?'@media print{@page{size:'+zdim()[0]+'in '+zdim()[1]+'i
 function brData(d,s){
 const rows=cover(d,s);if(!rows)return null;
 return rows.map(r=>{let cv,cl='cv',tp='';
-if(r.st==='ok'){if(r.u){cv=pname(r.u);tp=r.sup?'supervisor':r.free==='det'?'máq. det.':r.free==='rt'?'retrabajo':r.free==='libre'?'libre':'Material Handler'}else{cv='SIN CUBRIR';cl='bad'}}
+if(r.st==='ok'){if(r.u){cv=pname(r.u);tp=r.sup?'supervisor':r.free==='det'?'máq. det.':r.free==='rt'?'retrabajo':r.free==='libre'?'libre':'Utility'}else{cv='SIN CUBRIR';cl='bad'}}
 else{cl='nc';cv=r.st==='det'?(r.rt?'No hace falta · retrabajo':r.utk?'No hace falta · utility':'No hace falta · máq. det.'):r.st==='rtp'?'No hace falta · retrabajo':r.st==='libre'?'No hace falta · libre':'No está hoy'}
 const mq=r.ms&&r.ms.length?mql(r):'—',ml=r.st==='det'?'det.':r.line?'L'+r.line:'';
 return {sale:pname(r.id),por:r.orig?pname(r.orig):'',mq,ml,cv,cl,tp}});
@@ -984,7 +984,7 @@ function printHTML(d){
 pageCSS();
 let h=`<div class="noprint"><div class="pbar"><button class="btn" onclick="doPrint()">Imprimir</button><button class="btn soft" onclick="printing=false;render();window.scrollTo(0,0)">Volver</button></div>`;
 h+=`<div class="tabs">`+[['hoja','Hoja carta'],['zebra','Zebra por turno'],['notas','Notas por persona']].map(([k,l])=>`<button class="tab ${pfmt===k?'on':''}" onclick="setPfmt('${k}')">${l}</button>`).join('')+`</div>`;
-if(pfmt==='notas')h+=`<div class="tabs">`+[['zebra','En la Zebra (una por persona)'],['hoja','En hoja carta para recortar']].map(([k,l])=>`<button class="tab ${nout===k?'on':''}" onclick="setNout('${k}')">${l}</button>`).join('')+`</div>`+(nout==='zebra'?`<div class="tabs">`+[['h','Horizontal 4 × 3'],['v','Vertical 3 × 4']].map(([k,l])=>`<button class="tab ${zor===k?'on':''}" onclick="setZor('${k}')">${l}</button>`).join('')+`</div>`+zmgTabs():'')+`<p class="sub">Una nota para cada operario y Material Handler que cubre a alguien: su descanso y, en cada relevo, la hora, la máquina y a quién cubre.${nout==='zebra'?' En el cuadro de imprimir: la Zebra, papel <b>'+zdim()[0]+' × '+zdim()[1]+' pulg.</b>, márgenes <b>Ninguno</b>.':''}</p>`;
+if(pfmt==='notas')h+=`<div class="tabs">`+[['zebra','En la Zebra (una por persona)'],['hoja','En hoja carta para recortar']].map(([k,l])=>`<button class="tab ${nout===k?'on':''}" onclick="setNout('${k}')">${l}</button>`).join('')+`</div>`+(nout==='zebra'?`<div class="tabs">`+[['h','Horizontal 4 × 3'],['v','Vertical 3 × 4']].map(([k,l])=>`<button class="tab ${zor===k?'on':''}" onclick="setZor('${k}')">${l}</button>`).join('')+`</div>`+zmgTabs():'')+`<p class="sub">Una nota para cada operario y Utility que cubre a alguien: su descanso y, en cada relevo, la hora, la máquina y a quién cubre.${nout==='zebra'?' En el cuadro de imprimir: la Zebra, papel <b>'+zdim()[0]+' × '+zdim()[1]+' pulg.</b>, márgenes <b>Ninguno</b>.':''}</p>`;
 else h+=pfmt==='zebra'?`<div class="tabs">`+[['h','Horizontal · 4 ancho × 3 alto'],['v','Vertical · 3 ancho × 4 alto']].map(([k,l])=>`<button class="tab ${zor===k?'on':''}" onclick="setZor('${k}')">${l}</button>`).join('')+`</div>`+zmgTabs()+`<p class="sub">Una etiqueta por turno. En el cuadro de imprimir: impresora Zebra, tamaño de papel <b>${zdim()[0]} × ${zdim()[1]} pulg.</b>, márgenes <b>Ninguno</b>, escala <b>Predeterminada</b>. Si sale girada, cambia la orientación aquí arriba.</p>`:`<p class="sub">Todo en una hoja carta. En el cuadro de imprimir deja la escala en <b>Ajustar</b> o 100%.</p>`;
 h+=`<p class="sub" style="margin:8px 0 2px">Qué imprimir:</p><div class="tabs">`+[['todo','Desayuno y almuerzo'],['Desayuno','Solo desayuno'],['Almuerzo','Solo almuerzo']].map(([k,l])=>`<button class="tab ${pkind===k?'on':''}" onclick="setPkind('${k}')">${l}</button>`).join('')+`</div>`;
 h+=`</div>`;
@@ -1043,7 +1043,7 @@ const cnt=r=>P.filter(p=>p.role===r).length,ops=P.length-cnt('util')-cnt('senior
 const nx=nextShift(),wk=isWork(date);
 let h=plantInfoHTML(false)+`<div class="${wk?'alert soft':'alert'}"><b>Próximo turno: ${fmtD(nx)}</b>${date!==nx?` <button class="rt" onclick="setDate('${nx}')">Ir a ese día</button>`:' · es el que estás viendo'}${wk?'':`<br>El ${fmtD(date)} libras: la rotación no avanza ese día y sigue en tu próximo día de trabajo.`}</div>`;
 if(!wk&&!d.blocks.some(Boolean))return h+`<label for="dt">Fecha</label><input type="date" id="dt" value="${date}" onchange="setDate(this.value)"><p class="sub" style="margin-top:8px">Si este día sí trabajas, márcalo en el calendario y aquí aparecerá la rotación.</p>`;
-h+=rotNowHTML(d,cur)+breakBanner(d)+`<p class="sub">${ops} operarios · ${cnt('util')} Material Handler${cnt('utl')?' · '+cnt('utl')+' Utility':''} · ${cnt('senior')} Utility senior${cnt('sup')?' · '+cnt('sup')+' supervisor':''} · ${c.posts.length} puestos activos</p>`;
+h+=rotNowHTML(d,cur)+breakBanner(d)+`<p class="sub">${ops} operarios · ${cnt('util')+cnt('utl')} Utility · ${cnt('senior')} Utility senior${cnt('sup')?' · '+cnt('sup')+' supervisor':''} · ${c.posts.length} puestos activos</p>`;
 const off=S.machines.filter(m=>!m.on);
 if(off.length){
 const g={};off.forEach(m=>{const k=m.reason||'Sin motivo';(g[k]=g[k]||[]).push(m.n)});
@@ -1053,7 +1053,7 @@ const hl=S.machines.filter(m=>m.on&&m.hold);
 const hc=hl.filter(m=>m.task!=='rt'&&m.task!=='ut'),hr=hl.filter(m=>m.task==='rt'),hu=hl.filter(m=>m.task==='ut'),ml=a=>a.map(m=>m.n+(m.reason?' ('+esc(m.reason)+')':'')).join(', ');
 if(hc.length)h+=`<p class="stops">Detenidas, su operario cubre descansos: <b>${ml(hc)}</b></p>`;
 if(hr.length)h+=`<p class="stops">Detenidas, su operario va a retrabajo: <b>${ml(hr)}</b></p>`;if(hu.length)h+=`<p class="stops">Detenidas, su operario cubre como utility: <b>${ml(hu)}</b></p>`;
-const zm=zeroM();if(zm.length)h+=`<p class="stops">Sin puesto (cero operario, las atiende el Material Handler): <b>${zm.map(m=>m.n).join(', ')}</b></p>`;
+const zm=zeroM();if(zm.length)h+=`<p class="stops">Sin puesto (cero operario, las atiende el utility): <b>${zm.map(m=>m.n).join(', ')}</b></p>`;
 const orphan=S.machines.filter(m=>machOn(m.n)&&!S.posts.some(p=>p.ms.indexOf(m.n)>=0)).map(m=>m.n);
 /* Las máquinas encendidas sin puesto son de cero operario: no hace falta aviso. */
 if(c.ids.length&&c.ids.length<c.posts.length)h+=`<div class="warn">Faltan ${c.posts.length-c.ids.length} persona(s) para cubrir todos los puestos. Los puestos sin cubrir también rotan.</div>`;
@@ -1097,7 +1097,7 @@ const inArr=new Set(b.arr.filter(Boolean));
 const apoyo=S.people.filter(p=>here(p)&&!inArr.has(p.id)&&!R.has(p.id)&&!UT.has(p.id));
 let h='';
 if(R.size)h+=`<div class="mrow held"><span>Retrabajo<small>fuera de la rotación</small></span><span class="rtname">${[...R].map(x=>esc(pname(x))).join(', ')}</span></div>`;
-if(UT.size)h+=`<div class="mrow zero"><span>Cubriendo como Material Handler<small>fuera de la rotación</small></span><span class="rtname">${[...UT].map(x=>esc(pname(x))).join(', ')}</span></div>`;
+if(UT.size)h+=`<div class="mrow zero"><span>Cubriendo como Utility<small>fuera de la rotación</small></span><span class="rtname">${[...UT].map(x=>esc(pname(x))).join(', ')}</span></div>`;
 if(libres.length)h+=`<p class="free">Libre: ${libres.map(x=>esc(pname(x))+pmark(x)).join(', ')}</p>`;
 if(apoyo.length)h+=`<p class="free">Apoyo: ${apoyo.map(p=>esc(p.name)+mk(p)).join(', ')}</p>`;
 return h;
@@ -1134,7 +1134,7 @@ return R;
 }
 /* Pones a un operario en un puesto y el resto del bloque se llena solo siguiendo el orden de Personal. */
 function fillFrom(b,j,pid,skip){
-/* Quien está fuera de la rotación en este bloque (Material Handler o retrabajo) se salta: el siguiente del orden ocupa su lugar. */
+/* Quien está fuera de la rotación en este bloque (Utility o retrabajo) se salta: el siguiente del orden ocupa su lugar. */
 const R=opRing().filter(x=>!(skip&&skip.has(x))),k=R.indexOf(pid),n=b.posts.length;
 const L=R.length;
 if(k<0)return false;
@@ -1155,7 +1155,7 @@ return arr.filter(x=>!x).length;
 function setCell(i,j,pid){
 const d=day(),b=d.blocks[i],n=b.posts.length;
 /* Si pones a un operario del grupo en un puesto, la rotación arranca desde ahí: el resto del bloque se llena
-   siguiendo el orden de Personal (saltando a quien está de Material Handler o en retrabajo) y los bloques siguientes siguen desde este. */
+   siguiendo el orden de Personal (saltando a quien está de Utility o en retrabajo) y los bloques siguientes siguen desde este. */
 const skip=new Set([...rtFixed(d,i),...utIds(d,i)]);
 if(pid&&!skip.has(pid)&&opRing().indexOf(pid)>=0){
 const t={posts:b.posts.slice(),arr:(b.base||b.arr).slice()};
@@ -1165,7 +1165,7 @@ if(i+1<d.n&&canGen())gen(i+1);else{d.nextRing=rotate(b.base).filter(Boolean);sav
 notice={t:'La rotación arranca con '+pname(pid)+' en '+postLabel(S.posts.find(x=>x.id===b.posts[j]))+'. Los bloques siguientes siguen desde aquí.'};
 return rr();
 }
-/* Extras, Material Handler o dejar sin cubrir: solo un intercambio en ESTE bloque; la rotación (b.base) no se toca. */
+/* Extras, Utility o dejar sin cubrir: solo un intercambio en ESTE bloque; la rotación (b.base) no se toca. */
 if(!b.base)b.base=b.arr.slice();
 const prev=b.arr[j]||null;
 if(pid){
@@ -1188,7 +1188,7 @@ rr();
 async function copyDay(){
 const d=day(),c=ctx(),s=$('#cs');
 let t='Rotación '+date+'\n';
-d.blocks.forEach((b,i)=>{if(!b)return;t+='\n'+blockLabel(d,i)+'\n';b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(p)t+='Máq. '+postLabel(p)+': '+(b.arr[j]?pname(b.arr[j]):'sin cubrir')+'\n'});const R=rtIds(d,i,b),UT=utIds(d,i),l=b.arr.slice(b.posts.length).filter(x=>x&&!R.has(x)&&!UT.has(x));if(R.size)t+='Retrabajo: '+[...R].map(pname).join(', ')+'\n';if(UT.size)t+='Cubriendo como Material Handler: '+[...UT].map(pname).join(', ')+'\n';if(l.length)t+='Libre: '+l.map(pname).join(', ')+'\n'});
+d.blocks.forEach((b,i)=>{if(!b)return;t+='\n'+blockLabel(d,i)+'\n';b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(p)t+='Máq. '+postLabel(p)+': '+(b.arr[j]?pname(b.arr[j]):'sin cubrir')+'\n'});const R=rtIds(d,i,b),UT=utIds(d,i),l=b.arr.slice(b.posts.length).filter(x=>x&&!R.has(x)&&!UT.has(x));if(R.size)t+='Retrabajo: '+[...R].map(pname).join(', ')+'\n';if(UT.size)t+='Cubriendo como Utility: '+[...UT].map(pname).join(', ')+'\n';if(l.length)t+='Libre: '+l.map(pname).join(', ')+'\n'});
 t+='\nDesayuno y almuerzo\n';
 breakSlots().forEach(s=>{const rows=cover(d,s);if(!rows||!s.ids.length)return;t+=hmAbs(s.start)+' '+s.kind+' T'+s.turn+': '+rows.map(r=>pname(r.id)+(r.orig?' por '+pname(r.orig):'')+(r.st==='ok'?' (máq. '+mql(r)+') → '+(r.u?pname(r.u):'SIN MATERIAL HANDLER'):r.st==='libre'?' (libre)':r.st==='rtp'?' (retrabajo)':r.st==='det'?' (máq. detenida)':' (no está)')).join('; ')+'\n'});
 const off=S.machines.filter(m=>!m.on);
@@ -1217,7 +1217,7 @@ function prioHead(){const P=prioList();let h=`<p class="sub">Prioridad 1 arriba 
 h+=`<label for="prp">Pegar el orden de la semana</label><input id="prp" inputmode="numeric" placeholder="Ej. 21, 14, 13, 15, 1, 8 …" value="${esc(P.map(m=>m.n).join(', '))}"><div class="pbar" style="margin-top:8px"><button class="btn" style="margin-top:0" onclick="prioPaste()">Guardar orden</button><button class="btn soft" style="margin-top:0" onclick="prioClear()">${armed==='prc'?'Toca otra vez para borrar':'Borrar prioridades'}</button></div>`;
 return h+`<h2 class="lh">Orden de prioridad</h2>`}
 function maquinasHTML(){
-let h=plantInfoHTML(true)+`<p class="sub"><b>Encendida</b>: trabaja normal. <b>Detenida</b>: parada por un motivo pero sigue en la rotación con su operario; en desayuno y almuerzo ese operario cubre primero a los que salen, o lo mandas a retrabajo. <b>Cero operario</b>: encendida pero no es puesto; la atiende el Material Handler. Las encendidas que no están en ningún puesto ya cuentan como cero operario. Si una detenida tiene «Cubre máq. sin puesto», su operario cubre las que elijas. <b>Parada</b>: fuera todo el turno y sale de la rotación.</p>`;
+let h=plantInfoHTML(true)+`<p class="sub"><b>Encendida</b>: trabaja normal. <b>Detenida</b>: parada por un motivo pero sigue en la rotación con su operario; en desayuno y almuerzo ese operario cubre primero a los que salen, o lo mandas a retrabajo. <b>Cero operario</b>: encendida pero no es puesto; la atiende el utility. Las encendidas que no están en ningún puesto ya cuentan como cero operario. Si una detenida tiene «Cubre máq. sin puesto», su operario cubre las que elijas. <b>Parada</b>: fuera todo el turno y sale de la rotación.</p>`;
 h+=`<div class="tabs">`+[['linea','Por línea'],['prio','Por prioridad']].map(([k,l])=>`<button class="tab ${mView===k?'on':''}" onclick="setMView('${k}')">${l}</button>`).join('')+`</div>`;
 if(mView==='prio')h+=prioHead();
 const mCard=m=>`<div class="prow">${mView==='prio'?prioCtl(m):''}<b class="num">${m.n}</b>${mView==='prio'?`<span class="tag">L${m.line}</span>`:''}${mState(m)}${mView!=='prio'&&m.prio?`<span style="margin-left:auto;align-self:center">${prioBadge(m)}</span>`:''}${m.on&&m.hold?`<select class="nm" aria-label="Operario de la máquina ${m.n}" onchange="setTask(${m.n},this.value)"><option value="" ${!m.task?'selected':''}>Operario cubre descansos</option><option value="rt" ${m.task==='rt'?'selected':''}>Operario va a retrabajo</option><option value="zc" ${m.task==='zc'?'selected':''}>Operario cubre máq. sin puesto (se eligen en Hoy)</option><option value="ut" ${m.task==='ut'?'selected':''}>Operario cubre como utility</option></select>`:''}${m.on&&!m.hold?'':`<select class="nm ${m.reason?'':'miss'}" aria-label="Motivo máquina ${m.n}" onchange="setReason(${m.n},this.value)"><option value="">Elige el motivo</option>${reasonOpts(m.reason)}</select><input class="nm" style="flex-basis:100%" maxlength="140" value="${esc(m.note||'')}" placeholder="Describe el problema" aria-label="Descripción del problema de la máquina ${m.n}" onchange="setNote(${m.n},this.value)">`}</div>`;
@@ -1253,10 +1253,10 @@ function addPost(){const v=$('#np').value,ms=parseNums(v),bad=badNums(v);if(!ms.
 function movePost(id,dir){const i=S.posts.findIndex(p=>p.id===id),j=i+dir;if(j<0||j>=S.posts.length)return;const t=S.posts[i];S.posts[i]=S.posts[j];S.posts[j]=t;postsChanged();save();rr()}
 
 function personalHTML(){
-let h=`<p class="sub">Marca quién está hoy. Los Material Handler y Utility senior cubren puestos cuando faltan operarios. El <b>Supervisor</b> no entra en la rotación; en desayuno y almuerzo cubre una máquina solo si los Material Handler no dan abasto. A quien no vino le eliges el motivo y quién lo reemplaza. Marca como <b>Extra</b> a los operarios y Material Handler que vienen de fuera del grupo y elige por quién viene cada uno (un Material Handler extra viene por el Material Handler que falta); los que no reemplazan a nadie salen en el reporte como extras necesitados.</p>`;
-h+=`<label for="addp">Agregar personal (uno por línea)</label><textarea id="addp" placeholder="Nombre y apellido"></textarea><label for="addr">Función</label><select id="addr"><option value="op">Operario</option><option value="util">Material Handler</option><option value="utl">Utility</option><option value="senior">Utility senior</option><option value="sup">Supervisor</option></select><button class="btn" onclick="addPeople()">Agregar</button><h2 class="lh">Tu personal</h2>`+evBarHTML();
+let h=`<p class="sub">Marca quién está hoy. Los Utility y Utility senior cubren puestos cuando faltan operarios. El <b>Supervisor</b> no entra en la rotación; en desayuno y almuerzo cubre una máquina solo si los utility no dan abasto. A quien no vino le eliges el motivo y quién lo reemplaza. Marca como <b>Extra</b> a los operarios y Utility que vienen de fuera del grupo y elige por quién viene cada uno (un utility extra viene por el utility que falta); los que no reemplazan a nadie salen en el reporte como extras necesitados.</p>`;
+h+=`<label for="addp">Agregar personal (uno por línea)</label><textarea id="addp" placeholder="Nombre y apellido"></textarea><label for="addr">Función</label><select id="addr"><option value="op">Operario</option><option value="utl">Utility</option><option value="senior">Utility senior</option><option value="sup">Supervisor</option></select><button class="btn" onclick="addPeople()">Agregar</button><h2 class="lh">Tu personal</h2>`+evBarHTML();
 h+=`<p class="tag" style="margin:0 0 4px">Usa las flechas ↑ ↓ para ponerlos en el orden en que caen: cada uno va detrás del de arriba.</p>`;
-h+=S.people.map((p,pi)=>`<div class="prow"><span class="num" aria-label="Orden">${pi+1}</span><input class="nm" value="${esc(p.name)}" aria-label="Nombre" onchange="ren('${p.id}',this.value)"><select aria-label="Función" onchange="setRole('${p.id}',this.value)"><option value="op" ${p.role==='op'?'selected':''}>Operario</option><option value="util" ${p.role==='util'?'selected':''}>Material Handler</option><option value="utl" ${p.role==='utl'?'selected':''}>Utility</option><option value="senior" ${p.role==='senior'?'selected':''}>Utility senior</option><option value="sup" ${p.role==='sup'?'selected':''}>Supervisor</option></select>${isUtil(p)?`<select aria-label="Línea que cubre" onchange="setULine('${p.id}',this.value)">${[1,2,0].map(l=>`<option value="${l}" ${uLine(p)===l?'selected':''}>${LN[l]}</option>`).join('')}</select>`:''}${onVac(p.id,todayStr())?'<span class="tag">'+(vKind(vacOf(p.id,todayStr()))==='enf'?'Ausente por enfermedad':'De vacaciones')+'</span>':leftOn(p.id,todayStr())?`<button class="pill hold" aria-label="Deshacer la salida de ${esc(p.name)}" onclick="undoLeft('${p.id}')">${armed==='left'+p.id?'¿Deshacer salida?':'Se fue '+esc(hm12(leftOn(p.id,todayStr()).t))+' ✕'}</button>`:`<button class="pill ${p.present?'on':''}" onclick="togglePresent('${p.id}')">${p.present?'Hoy sí':'Hoy no'}</button>`}${lateOn(p.id,todayStr())?`<span class="chip ch">Llegó ${esc(hm12(lateOn(p.id,todayStr()).t))}</span>`:''}${p.role==='op'||isUtil(p)?`<button class="pill ${p.extra?'on':'ghost'}" aria-pressed="${!!p.extra}" onclick="toggleExtra('${p.id}')">Extra</button>`:''}<button class="x" aria-label="Subir a ${esc(p.name)}" ${pi===0?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',-1)">↑</button><button class="x" aria-label="Bajar a ${esc(p.name)}" ${pi===S.people.length-1?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',1)">↓</button><button class="x del" onclick="rm('people','${p.id}')">${armed==='people'+p.id?'¿Borrar?':'Quitar'}</button>${absentCtl(p)}${isSup(p)||p.extra?'':scoreHTML(p)}</div>`).join('');
+h+=S.people.map((p,pi)=>`<div class="prow"><span class="num" aria-label="Orden">${pi+1}</span><input class="nm" value="${esc(p.name)}" aria-label="Nombre" onchange="ren('${p.id}',this.value)"><select aria-label="Función" onchange="setRole('${p.id}',this.value)"><option value="op" ${p.role==='op'?'selected':''}>Operario</option><option value="utl" ${p.role==='utl'?'selected':''}>Utility</option><option value="senior" ${p.role==='senior'?'selected':''}>Utility senior</option><option value="sup" ${p.role==='sup'?'selected':''}>Supervisor</option></select>${isUtil(p)?`<select aria-label="Línea que cubre" onchange="setULine('${p.id}',this.value)">${[1,2,0].map(l=>`<option value="${l}" ${uLine(p)===l?'selected':''}>${LN[l]}</option>`).join('')}</select>`:''}${onVac(p.id,todayStr())?'<span class="tag">'+(vKind(vacOf(p.id,todayStr()))==='enf'?'Ausente por enfermedad':'De vacaciones')+'</span>':leftOn(p.id,todayStr())?`<button class="pill hold" aria-label="Deshacer la salida de ${esc(p.name)}" onclick="undoLeft('${p.id}')">${armed==='left'+p.id?'¿Deshacer salida?':'Se fue '+esc(hm12(leftOn(p.id,todayStr()).t))+' ✕'}</button>`:`<button class="pill ${p.present?'on':''}" onclick="togglePresent('${p.id}')">${p.present?'Hoy sí':'Hoy no'}</button>`}${lateOn(p.id,todayStr())?`<span class="chip ch">Llegó ${esc(hm12(lateOn(p.id,todayStr()).t))}</span>`:''}${p.role==='op'||isUtil(p)?`<button class="pill ${p.extra?'on':'ghost'}" aria-pressed="${!!p.extra}" onclick="toggleExtra('${p.id}')">Extra</button>`:''}<button class="x" aria-label="Subir a ${esc(p.name)}" ${pi===0?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',-1)">↑</button><button class="x" aria-label="Bajar a ${esc(p.name)}" ${pi===S.people.length-1?'disabled style="opacity:.3"':''} onclick="movePerson('${p.id}',1)">↓</button><button class="x del" onclick="rm('people','${p.id}')">${armed==='people'+p.id?'¿Borrar?':'Quitar'}</button>${absentCtl(p)}${isSup(p)||p.extra?'':scoreHTML(p)}</div>`).join('');
 h+=brkCfgHTML()+ACEPTAR;
 return h;
 }
@@ -1319,14 +1319,14 @@ let h=`<div style="flex-basis:100%;display:grid;gap:6px">`;
 if(!vac)h+=`<select class="${p.why?'':'miss'}" aria-label="Motivo de la ausencia de ${esc(p.name)}" onchange="setWhy('${p.id}',this.value)"><option value="">¿Por qué no vino?</option>${WHY.map(([k,l])=>`<option value="${k}" ${p.why===k?'selected':''}>${l}</option>`).join('')}</select>`;
 const cur=p.sub&&S.people.find(x=>x.id===p.sub);
 if(C.length||cur)h+=`<select aria-label="Quién reemplaza a ${esc(p.name)}" onchange="setSubP('${p.id}',this.value)"><option value="">${cur?'Quitar reemplazo':'¿Quién lo reemplaza? (sin reemplazo)'}</option>${C.map(c=>`<option value="${c.id}" ${c.id===p.sub?'selected':''}>${esc(c.name)}</option>`).join('')}${cur&&!C.some(c=>c.id===cur.id)?`<option value="${cur.id}" selected>${esc(cur.name)}</option>`:''}</select>`;
-else h+=`<span class="tag">${isUtil(p)?'No hay Material Handler disponibles para reemplazarlo. Agrega al Material Handler que viene en su lugar y márcalo como Extra.':'No hay operarios disponibles para reemplazarlo. Agrega en la lista de abajo a quien viene en su lugar.'}</span>`;
+else h+=`<span class="tag">${isUtil(p)?'No hay Utility disponibles para reemplazarlo. Agrega al Utility que viene en su lugar y márcalo como Extra.':'No hay operarios disponibles para reemplazarlo. Agrega en la lista de abajo a quien viene en su lugar.'}</span>`;
 return h+`</div>`;
 }
 function forCtl(p){
 const T=todayStr(),A=S.people.filter(q=>!q.extra&&sameKind(p,q)&&absentOn(q,T)&&(!q.sub||q.sub===p.id||!S.people.some(x=>x.id===q.sub&&!absentOn(x,T))));
 const cur=S.people.find(q=>q.sub===p.id);
-if(!A.length)return `<span class="tag" style="flex-basis:100%">${isUtil(p)?'Viene como Material Handler extra (no falta ningún Material Handler).':'Viene como operario extra (no falta nadie).'}</span>`;
-return `<select style="flex-basis:100%" aria-label="Por quién viene ${esc(p.name)}" onchange="setFor('${p.id}',this.value)"><option value="">${cur?'No reemplaza a nadie (extra)':isUtil(p)?'¿Viene por algún Material Handler? (si no, es extra)':'¿Viene por alguien? (si no, es extra)'}</option>${A.map(q=>`<option value="${q.id}" ${cur&&cur.id===q.id?'selected':''}>Viene por ${esc(q.name)}</option>`).join('')}</select>`;
+if(!A.length)return `<span class="tag" style="flex-basis:100%">${isUtil(p)?'Viene como Utility extra (no falta ningún Utility).':'Viene como operario extra (no falta nadie).'}</span>`;
+return `<select style="flex-basis:100%" aria-label="Por quién viene ${esc(p.name)}" onchange="setFor('${p.id}',this.value)"><option value="">${cur?'No reemplaza a nadie (extra)':isUtil(p)?'¿Viene por algún Utility? (si no, es extra)':'¿Viene por alguien? (si no, es extra)'}</option>${A.map(q=>`<option value="${q.id}" ${cur&&cur.id===q.id?'selected':''}>Viene por ${esc(q.name)}</option>`).join('')}</select>`;
 }
 function setFor(pid,v){S.people.forEach(q=>{if(q.sub===pid)delete q.sub});const q=v&&S.people.find(x=>x.id===v);if(q)q.sub=pid;save();notice={t:q?pname(pid)+' reemplaza a '+q.name+'.':pname(pid)+' queda como extra.'};rr()}
 function setWhy(id,v){const p=S.people.find(x=>x.id===id);if(v)p.why=v;else delete p.why;save();rr()}
@@ -1345,14 +1345,14 @@ function asisAuto(){
 const ext=S.people.filter(p=>p.extra&&!absentOn(p,date)),abs=S.people.filter(p=>!p.extra&&absentOn(p,date));
 const used=new Set(),L=[];
 const pres=S.people.filter(p=>!absentOn(p,date));
-abs.forEach(p=>{const s=p.sub&&pres.find(x=>x.id===p.sub);if(s){used.add(s.id);L.push(s.name+(isUtil(s)?' (Material Handler)':'')+' reemplaza a '+p.name+(isUtil(p)?' (Material Handler)':'')+', que '+whyTxt(p)+'.')}});
+abs.forEach(p=>{const s=p.sub&&pres.find(x=>x.id===p.sub);if(s){used.add(s.id);L.push(s.name+(isUtil(s)?' (Utility)':'')+' reemplaza a '+p.name+(isUtil(p)?' (Utility)':'')+', que '+whyTxt(p)+'.')}});
 abs.forEach(p=>{if(!(p.sub&&pres.some(x=>x.id===p.sub)))L.push(p.name+' '+whyTxt(p)+' (sin reemplazo).')});
 S.people.forEach(p=>{const l=lateOn(p.id,date);if(l&&!absentOn(p,date))L.push(lateTxt(p,l))});
 S.people.forEach(p=>{const l=leftOn(p.id,date);if(l&&!absentOn(p,date))L.push(leftTxt(p,l))});
 const rest=ext.filter(x=>!used.has(x.id));
 const rO=rest.filter(x=>!isUtil(x)),rU=rest.filter(isUtil);
 if(rO.length)L.push('Operarios extras necesitados: '+rO.map(x=>x.name).join(', ')+'.');
-if(rU.length)L.push('Material Handler extra de apoyo: '+rU.map(x=>x.name).join(', ')+'.');
+if(rU.length)L.push('Utility extra de apoyo: '+rU.map(x=>x.name).join(', ')+'.');
 return L.join('\n');
 }
 const joinN=(a,b)=>[a,b].map(x=>String(x||'').trim()).filter(Boolean).join('\n');
@@ -1503,7 +1503,7 @@ if(kind==='posts')postsChanged();else markDirty();save();rr();
 /* ===== Grupos: cada grupo guarda sus datos aparte en este dispositivo ===== */
 let newShift='dia',startGuide=false,focusNew=false;
 function savedGroups(){const out=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf(GKEY+'g:')===0){const g=lsGet(k);if(g&&g.g!=null&&g.g!=='')out.push(g)}}}catch(e){}return out.sort((a,b)=>String(a.g).localeCompare(String(b.g),'es',{numeric:true}))}
-function grpInfo(g){const P=g.people||[];if(!g.machines)return P.length+' personas · formato anterior, se actualiza al abrir';const ops=P.filter(p=>p.role==='op'&&!p.extra).length,ut=P.filter(p=>isUtil(p)&&!p.extra).length,ex=P.filter(p=>p.extra).length;return ops+' operarios · '+ut+' Material Handler'+(ex?' · '+ex+' extra':'')}
+function grpInfo(g){const P=g.people||[];if(!g.machines)return P.length+' personas · formato anterior, se actualiza al abrir';const ops=P.filter(p=>p.role==='op'&&!p.extra).length,ut=P.filter(p=>isUtil(p)&&!p.extra).length,ex=P.filter(p=>p.extra).length;return ops+' operarios · '+ut+' Utility'+(ex?' · '+ex+' extra':'')}
 function calDef(){return {mode:'ciclo',on:1,off:0,start:todayStr(),wd:[1,2,3,4,5],ov:{},pid:''}}
 function startHTML(){
 let h=`<h1>Rotación de grupos PCI Miami</h1><p class="sub">Cada grupo arma su propia rotación: máquinas, personal, desayuno y almuerzo, vacaciones, mes y reporte. Lo que guardes aquí queda en este dispositivo (y en tu cuenta, si entras con tu correo) y no cambia nada de otros grupos.</p>`;
@@ -1522,7 +1522,7 @@ if(startGuide)h+=`<div style="margin-top:14px">${guideHTML()}</div>`;
 return h;
 }
 function pickShift(v){newShift=v;const g=$('#ng')?$('#ng').value:'';render();const i=$('#ng');if(i)i.value=g}
-function prepS(){evLock();SHIFT=S.shift==='noche'?'noche':'dia';if(!S.cal)S.cal=calDef();fixS();ensureBreaks();if(!Array.isArray(S.machines))S.machines=[];if(!Array.isArray(S.posts))S.posts=[]}
+function prepS(){(S.people||[]).forEach(p=>{if(p.role==='util')p.role='utl'});evLock();SHIFT=S.shift==='noche'?'noche':'dia';if(!S.cal)S.cal=calDef();fixS();ensureBreaks();if(!Array.isArray(S.machines))S.machines=[];if(!Array.isArray(S.posts))S.posts=[]}
 function enterGroup(o,msg,t){S=o;prepS();if(plantOn())plantMerge(cloud.plant);printing=false;repShow=null;armed=null;fromSel=null;lvOpen=false;ltOpen=false;tab=t||'hoy';calM=todayStr().slice(0,7);date=nextShift();notice=msg?{t:msg}:null;if(!S.example){saveNow()}render();window.scrollTo(0,0)}
 function openGroup(g){let o=lsGet(GKEY+'g:'+g);if(!o){notice={t:'No se encontró ese grupo.',bad:true};return render()}let msg=null;if(!o.machines){o=convertSimple(o);msg='El grupo '+o.g+' se pasó a la versión completa. Revisa Máquinas, Personal y Desayuno y almuerzo.'}enterGroup(o,msg)}
 function createGroup(){
@@ -1616,14 +1616,14 @@ const ACEPTAR=`<button class="btn" style="margin-top:22px" onclick="setTab('hoy'
 function guideBody(){return `<div id="gbody">
 <p>Esta aplicación arma la rotación del personal de tu grupo en bloques de horas, dice quién cubre a quién en el desayuno y el almuerzo, lleva las vacaciones, el calendario del mes y prepara el reporte del turno. Cada grupo tiene sus propios datos y no afecta a los demás.</p>
 <div class="step"><h3><b>1</b>Crea tu grupo</h3><p>En la primera pantalla escribe el <b>número de tu grupo</b> y elige el horario: <b>Día (6:00 a 18:00)</b> o <b>Noche (18:00 a 6:00)</b>. Toca «Crear grupo».</p></div>
-<div class="step"><h3><b>2</b>Pon tus máquinas</h3><p>En <b>Máquinas</b>, al final, escribe los números de máquina de la línea 1 y de la línea 2 y toca «Guardar máquinas». Arriba marca cada una:</p><dl><dt>Encendida</dt><dd>Trabaja normal.</dd><dt>Detenida</dt><dd>Parada por un motivo, pero su operario sigue en la rotación: cubre descansos, va a retrabajo o cubre máquinas sin puesto.</dd><dt>Cero operario</dt><dd>Encendida pero sin operario fijo: la atiende el Material Handler.</dd><dt>Parada</dt><dd>Fuera todo el turno. Sale de la rotación. Elige el motivo.</dd></dl><p>En <b>Puestos de rotación</b> cada puesto es una máquina o varias que cubre una sola persona (ej. «3, 4, 5»). El orden de esa lista es el orden en que se rota.</p></div>
+<div class="step"><h3><b>2</b>Pon tus máquinas</h3><p>En <b>Máquinas</b>, al final, escribe los números de máquina de la línea 1 y de la línea 2 y toca «Guardar máquinas». Arriba marca cada una:</p><dl><dt>Encendida</dt><dd>Trabaja normal.</dd><dt>Detenida</dt><dd>Parada por un motivo, pero su operario sigue en la rotación: cubre descansos, va a retrabajo o cubre máquinas sin puesto.</dd><dt>Cero operario</dt><dd>Encendida pero sin operario fijo: la atiende el utility.</dd><dt>Parada</dt><dd>Fuera todo el turno. Sale de la rotación. Elige el motivo.</dd></dl><p>En <b>Puestos de rotación</b> cada puesto es una máquina o varias que cubre una sola persona (ej. «3, 4, 5»). El orden de esa lista es el orden en que se rota.</p></div>
 <div class="step"><h3><b>2b</b>Planta compartida entre los 4 grupos</h3><p>Cuando el equipo está activado, <b>las máquinas y los puestos son los mismos para los 4 grupos</b>: encendida, detenida, cero operario, parada, el motivo, la descripción, la prioridad y los puestos de rotación. El supervisor que está trabajando los mantiene al día, y los demás lo ven al instante en su teléfono para preparar su turno. En Hoy y en Máquinas sale quién hizo el último cambio y a qué hora, y si con tu personal te alcanza para los puestos o necesitas extras.</p><p><b>Importante:</b> cualquier cambio que haga un supervisor, <b>bien o mal hecho, se refleja en todos los demás</b>. Por eso, antes de entregar el turno, revisa que las máquinas estén como de verdad quedan en la planta. Las máquinas que marques <b>detenidas o paradas salen así en el reporte</b> aunque estén funcionando, y las que dejes <b>encendidas salen produciendo</b> aunque estén paradas. Ese error le llega al reporte y a la organización del <b>supervisor que entra</b>.</p><p>Lo que sigue siendo de cada grupo: su personal, su rotación, qué hace el operario de una máquina detenida (cubre descansos, retrabajo o utility), vacaciones, plan y reporte.</p></div>
-<div class="step"><h3><b>3</b>Agrega al personal</h3><p>En <b>Personal</b> escribe los nombres, uno por línea, elige la función (Operario, Material Handler, Utility senior o Supervisor) y toca «Agregar».</p><p><b>El orden de la lista es el orden de la rotación</b>: cada persona va detrás de la de arriba. Súbelos o bájalos con las flechas <b>↑ ↓</b> hasta que quede igual que en la planta.</p></div>
-<div class="step"><h3><b>4</b>Faltas, extras y reemplazos</h3><ol><li>Quien no vino: toca <b>«Hoy sí»</b> para que diga «Hoy no» y elige el motivo y quién lo reemplaza.</li><li>Marca como <b>Extra</b> a los operarios y Material Handler que vienen de fuera del grupo. Elige por quién viene cada uno: toma su lugar en la rotación y su turno de comida.</li><li>Un <b>Material Handler de otro equipo</b> que viene a cubrir al Material Handler que falta: márcalo Extra y elige por cuál Material Handler viene.</li><li>Los extras que no vienen por nadie cubren los puestos que quedan vacíos y salen en el reporte como extras necesitados.</li></ol><p><b>No borres a los extras.</b> Los días que no vienen déjalos en «Hoy no» y quedan guardados para cuando vuelvan.</p></div>
+<div class="step"><h3><b>3</b>Agrega al personal</h3><p>En <b>Personal</b> escribe los nombres, uno por línea, elige la función (Operario, Utility, Utility senior o Supervisor) y toca «Agregar».</p><p><b>El orden de la lista es el orden de la rotación</b>: cada persona va detrás de la de arriba. Súbelos o bájalos con las flechas <b>↑ ↓</b> hasta que quede igual que en la planta.</p></div>
+<div class="step"><h3><b>4</b>Faltas, extras y reemplazos</h3><ol><li>Quien no vino: toca <b>«Hoy sí»</b> para que diga «Hoy no» y elige el motivo y quién lo reemplaza.</li><li>Marca como <b>Extra</b> a los operarios y Utility que vienen de fuera del grupo. Elige por quién viene cada uno: toma su lugar en la rotación y su turno de comida.</li><li>Un <b>Utility de otro equipo</b> que viene a cubrir al Utility que falta: márcalo Extra y elige por cuál Utility viene.</li><li>Los extras que no vienen por nadie cubren los puestos que quedan vacíos y salen en el reporte como extras necesitados.</li></ol><p><b>No borres a los extras.</b> Los días que no vienen déjalos en «Hoy no» y quedan guardados para cuando vuelvan.</p></div>
 <div class="step"><h3><b>5</b>Evaluaciones confidenciales</h3><p>En <b>Personal</b>, debajo de «Tu personal», crea una <b>contraseña</b> que solo sepas tú. Las evaluaciones quedan cifradas con ella: nadie más las puede ver, ni en este teléfono ni en el código de respaldo. Para verlas, escribe la contraseña y toca «Ver»; se ocultan solas al salir de Personal. <b>Si la olvidas, no se pueden recuperar</b>: solo se pueden borrar y empezar de nuevo.</p><p>Cada persona de tu grupo tiene su nivel (los extras y el supervisor no se evalúan):</p><dl><dt>1</dt><dd>Requiere mejoras significativas</dd><dt>2</dt><dd>Por debajo de las expectativas</dd><dt>3</dt><dd>Cumple con los estándares (todos empiezan aquí)</dd><dt>4</dt><dd>Supera las expectativas</dd><dt>5</dt><dd>Desempeño sobresaliente</dd></dl><ol><li>Toca <b>− Incidencia</b> cada vez que haya una llamada de atención. Se llena un puntito rojo; <b>cada 3 incidencias baja un nivel</b>.</li><li>Toca <b>+ Buena acción</b> cuando ayude, tenga buena actitud o haga bien su trabajo. <b>Cada 3 buenas acciones sube un nivel</b>.</li><li>Abajo ves cuántas lleva esta semana y este mes, con la fecha de la última. Si tocaste por error, toca «Deshacer».</li></ol></div>
-<div class="step"><h3><b>6</b>Desayuno y almuerzo</h3><p>Al final de <b>Personal</b> pon la hora y los minutos de cada comida y elige quién sale en cada turno, o toca «Repartir». Los operarios de máquinas detenidas cubren primero, luego los Material Handler y por último el supervisor.</p></div>
+<div class="step"><h3><b>6</b>Desayuno y almuerzo</h3><p>Al final de <b>Personal</b> pon la hora y los minutos de cada comida y elige quién sale en cada turno, o toca «Repartir». Los operarios de máquinas detenidas cubren primero, luego los utility y por último el supervisor.</p></div>
 <div class="step"><h3><b>7</b>Pon tus días de trabajo en Mes</h3><p>En <b>Mes</b> elige tu patrón: 2-2-3, Rotación (ej. 4 y 4) o Días fijos. Toca un día para cambiarlo solo ese día. Los días libres la rotación no avanza y sigue en tu próximo día de trabajo.</p></div>
-<div class="step"><h3><b>8</b>La rotación del día en Hoy</h3><ol><li>Toca <b>«Generar rotación»</b>. Arriba ves quién está en cada máquina ahora y cuánto falta para el cambio.</li><li>Para decir dónde empieza alguien, en un bloque elige a la persona en su máquina (ej. <b>Ana en la máquina 13</b>). A partir de ahí toda la rotación sigue sola, bloque tras bloque y día tras día.</li><li>Si cambia el personal o las máquinas, toca «Recalcular rotación» desde el bloque actual.</li><li><b>⏰ Alguien llegó tarde</b> y <b>🚪 Alguien se va antes de hora</b> lo anotan con la hora y salen en el reporte.</li><li>Los Material Handler cambian de línea cada cierto tiempo: toca <b>«⇄ Cambio de líneas»</b>, junto a sus nombres en Hoy, y el de la línea 1 pasa a la 2 y el de la 2 a la 1. Los de «Ambas líneas» no se mueven.</li><li>En <b>Retrabajo y Material Handler</b> eliges quién va a retrabajo y a qué operario sacas a cubrir como Material Handler.</li><li><b>Imprimir desayuno y almuerzo</b>: hoja carta, etiqueta Zebra por turno o notas por persona.</li></ol></div>
+<div class="step"><h3><b>8</b>La rotación del día en Hoy</h3><ol><li>Toca <b>«Generar rotación»</b>. Arriba ves quién está en cada máquina ahora y cuánto falta para el cambio.</li><li>Para decir dónde empieza alguien, en un bloque elige a la persona en su máquina (ej. <b>Ana en la máquina 13</b>). A partir de ahí toda la rotación sigue sola, bloque tras bloque y día tras día.</li><li>Si cambia el personal o las máquinas, toca «Recalcular rotación» desde el bloque actual.</li><li><b>⏰ Alguien llegó tarde</b> y <b>🚪 Alguien se va antes de hora</b> lo anotan con la hora y salen en el reporte.</li><li>Los Utility cambian de línea cada cierto tiempo: toca <b>«⇄ Cambio de líneas»</b>, junto a sus nombres en Hoy, y el de la línea 1 pasa a la 2 y el de la 2 a la 1. Los de «Ambas líneas» no se mueven.</li><li>En <b>Retrabajo y Utility</b> eliges quién va a retrabajo y a qué operario sacas a cubrir como Utility.</li><li><b>Imprimir desayuno y almuerzo</b>: hoja carta, etiqueta Zebra por turno o notas por persona.</li></ol></div>
 <div class="step"><h3><b>9</b>Recordatorios (Avisos)</h3><p>En <b>Avisos</b> escribe lo que no se te puede olvidar y elige cuándo: <b>Cada…</b> (ej. chequear los secadores cada 1 hora), <b>Dentro de…</b> (ej. en 40 minutos encender temperatura) o <b>A una hora</b> (todos los días o una sola vez). A la hora suena una alarma, vibra y sale el aviso en pantalla: toca «Hecho» o «En 5 min». En Hoy, arriba, ves el próximo recordatorio.</p><p><b>Solo suenan con la app abierta en pantalla.</b> Si apagas la pantalla o cambias de app, el teléfono la pausa; al volver te salen los que se pasaron. Usa «Probar la alarma» para comprobar el volumen.</p></div>
 <div class="step"><h3><b>10</b>Vacaciones</h3><p>En <b>Vacaciones</b> registra las aprobadas. Esos días la persona sale de la rotación y la app avisa el día antes.</p></div>
 <div class="step"><h3><b>11</b>El reporte sale solo</h3><p>En <b>Reporte</b> las máquinas y la asistencia se llenan con lo que marcaste. Si marcas bien las máquinas detenidas y paradas con su motivo, quién faltó y por quién viene cada extra, el reporte sale completo. Agrega lo demás y toca «Generar reporte» para copiarlo o mandarlo por WhatsApp. También sale el reporte para Recursos Humanos.</p></div>

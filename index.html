@@ -924,11 +924,11 @@ if(printing){$('#app').innerHTML=printHTML(d);nightDom($('#app'));if(onZebra())f
 if(tab==='hoy'&&!d.blocks.some(Boolean)&&canGen()&&isWork(date)){autoGen=true;try{gen(0)}finally{autoGen=false}}
 else if(tab==='hoy'&&date>todayStr()&&stale(d)&&canGen()){autoGen=true;try{gen(0)}finally{autoGen=false}notice=notice||{t:'La rotación de '+fmtD(date)+' se rehízo con los puestos actuales.'}}
 else if(stale(d))d.dirty=true;
-let h=`<div class="gtop"><div><h1>Grupo ${esc(S.g)}</h1><span class="shiftchip ${S.shift==='noche'?'n':''}">${S.shift==='noche'?'Noche · 18:00 a 6:00':'Día · 6:00 a 18:00'}</span><div style="margin-top:10px;font-size:20px;font-weight:800">📅 ${esc((t=>t.charAt(0).toUpperCase()+t.slice(1))(new Date(todayStr()+'T12:00:00').toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'})))} <span class="tag">hoy</span></div></div><div class="hbtns">${window.cloud&&!S.example&&cloud.syncs(S.g)?'<button class="pill" onclick="syncBoth()">🔄 Sincronizar</button>':''}${window.cloud&&cloud.isSup&&cloud.isSup()&&!S.example?'<button class="pill" onclick="avOpenF()">📢 Aviso</button>':''}${isRO()?'':'<button class="pill new" onclick="leave(true)">+ Nuevo grupo</button>'}<button class="link" onclick="leave()">Cambiar de grupo</button></div></div>`;
+let h=`<div class="gtop"><div><h1>Grupo ${esc(S.g)}</h1><span class="shiftchip ${S.shift==='noche'?'n':''}">${S.shift==='noche'?'Noche · 18:00 a 6:00':'Día · 6:00 a 18:00'}</span><div style="margin-top:10px;font-size:20px;font-weight:800">📅 ${esc((t=>t.charAt(0).toUpperCase()+t.slice(1))(new Date(todayStr()+'T12:00:00').toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'})))} <span class="tag">hoy</span></div></div><div class="hbtns">${devLock()&&!S.example?(devLocked()?'<button class="pill" onclick="unlockOpenF()">🔒 Desbloquear</button>':'<button class="pill" onclick="lockNow()">🔓 Bloquear</button>'):''}${window.cloud&&!S.example&&cloud.syncs(S.g)?'<button class="pill" onclick="syncBoth()">🔄 Sincronizar</button>':''}${window.cloud&&cloud.isSup&&cloud.isSup()&&!S.example&&!devLocked()?'<button class="pill" onclick="avOpenF()">📢 Aviso</button>':''}${isRO()?'':'<button class="pill new" onclick="leave(true)">+ Nuevo grupo</button>'}<button class="link" onclick="leave()">Cambiar de grupo</button></div></div>`;
 if(S.example)h+=`<div class="ex">Estás viendo un ejemplo con nombres inventados. No se guarda. Para tu grupo, toca «+ Nuevo grupo».</div>`;
 const TABS=myTabs();if(!TABS.some(t=>t[0]===tab))tab='hoy';
-h+=avisosHTML();
-if(isRO())h+=`<div class="ex">👁 Solo ver: tu acceso al grupo ${esc(S.g)} es de consulta. Los cambios los hace el supervisor.</div>`;
+h+=unlockBox()+(devLocked()?'':avisosHTML());
+if(isRO())h+=devLocked()?`<div class="ex">🔒 Aparato bloqueado: solo para consultar. El supervisor toca 🔒 Desbloquear y pone su contraseña.</div>`:`<div class="ex">👁 Solo ver: tu acceso al grupo ${esc(S.g)} es de consulta. Los cambios los hace el supervisor.</div>`;
 else if(window.cloud&&cloud.user&&cloud.mode==='compartido'&&!S.example&&!cloud.syncs(S.g))h+=`<div class="ex">Este grupo está solo en este aparato: no está asignado a tu cuenta, así que no se sincroniza.</div>`;
 {const CFG=new Set(['vacaciones','calendario','grupo','equipo','ayuda']),T1=TABS.filter(t=>!CFG.has(t[0])),T2=TABS.filter(t=>CFG.has(t[0])),inCfg=CFG.has(tab),open=cfgOpen||inCfg;
 const tb=t=>`<button class="tab ${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`;
@@ -1523,11 +1523,11 @@ function calDef(){return {mode:'ciclo',on:1,off:0,start:todayStr(),wd:[1,2,3,4,5
 function startHTML(){
 let h=`<h1>Leadership PCI Miami</h1><p style="margin:-6px 0 6px;font-weight:700;color:var(--accent)">Gestión de grupos</p><p class="sub">Cada grupo arma su propia rotación: máquinas, personal, desayuno y almuerzo, vacaciones, mes y reporte. Lo que guardes aquí queda en este dispositivo (y en tu cuenta, si entras con tu correo) y no cambia nada de otros grupos.</p>`;
 if(notice){h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;notice=null}
-h+=avisosHTML()+cloudHTML(false);
-if(window.cloud&&cloud.isAdmin&&cloud.isAdmin())h+=`<button class="btn soft" onclick="openTeam()">👥 Administrar equipo</button>`;
+if(devLocked()){h+=`<div class="ex">🔒 Aparato bloqueado. Abre el grupo para consultarlo.</div>`}else{h+=avisosHTML()+cloudHTML(false)}
+if(!devLocked()&&window.cloud&&cloud.isAdmin&&cloud.isAdmin())h+=`<button class="btn soft" onclick="openTeam()">👥 Administrar equipo</button>`;
 const G=savedGroups();
 if(G.length)h+=`<h2 class="lh">Tus grupos en este dispositivo</h2><div class="glist">`+G.map(g=>`<button class="gbtn" onclick="openGroup('${esc(String(g.g)).replace(/'/g,'&#39;')}')"><span>Grupo ${esc(g.g)}<small style="display:block">${g.shift==='noche'?'Noche · 18:00 a 6:00':'Día · 6:00 a 18:00'} · ${esc(grpInfo(g))}</small></span><span aria-hidden="true">›</span></button>`).join('')+`</div>`;
-if(window.cloud&&cloud.readOnly&&cloud.readOnly()){return h}
+if((window.cloud&&cloud.readOnly&&cloud.readOnly())||devLocked()){return h}
 h+=`<h2 class="lh">${G.length?'Crear otro grupo':'Crear tu grupo'}</h2><label for="ng">Número de grupo</label><input id="ng" inputmode="numeric" placeholder="Ej. 5" autocomplete="off">
 <label>Horario del grupo</label><div class="seg">${[['dia','Día','6:00 a 18:00'],['noche','Noche','18:00 a 6:00']].map(([k,l,s])=>`<button class="${newShift===k?'on':''}" aria-pressed="${newShift===k}" onclick="pickShift('${k}')">${l}<small>${s}</small></button>`).join('')}</div>
 <button class="btn" onclick="createGroup()">Crear grupo</button>`;
@@ -1605,6 +1605,7 @@ h+=`<label for="inf">Quién informa en el reporte</label><input id="inf" value="
 if(S.example)h+=`<div class="ex">Esto es un ejemplo: no se guarda ni tiene respaldo.</div>`;
 else{
 h+=cloudHTML(true);
+h+=lockHTML();
 h+=`<h2 class="lh">Código de respaldo</h2><p class="sub">Todo tu grupo queda guardado solo en este teléfono o computadora. Copia este código para pasarlo a otro teléfono o para tenerlo guardado: en el otro, pégalo en la primera pantalla, en «Cargar un respaldo».</p><button class="btn" onclick="copyBackup()">Copiar código de respaldo</button><p class="sub" id="bko" role="status"></p><textarea id="bk" class="code" hidden readonly></textarea>`;
 if(window.cloud&&cloud.mode==='compartido'&&cloud.syncs(S.g)&&!cloud.isAdmin())h+=`<p class="sub" style="margin-top:18px">El número del grupo y borrarlo los maneja el administrador.</p>`;else{
 h+=`<h2 class="lh">Número del grupo</h2><div class="pbar"><input id="rg" inputmode="numeric" value="${esc(S.g)}" aria-label="Número del grupo"><button class="btn soft" style="margin-top:0;width:auto;padding:10px 18px" onclick="renGroup()">Cambiar</button></div>`;
@@ -1826,14 +1827,32 @@ plMine.add(t.id);S.plan=(S.plan||[]).concat([t]);save();notice={t:'Tarea agregad
 function rmPlan(id){if(armed!=='pl'+id){armed='pl'+id;return rr()}armed=null;S.plan=(S.plan||[]).filter(t=>t.id!==id);save();rr()}
 /* ---------- Equipo y roles ---------- */
 let teamOpen=false,teamEdit=null;
-const isRO=()=>!!(window.cloud&&cloud.readOnly&&cloud.readOnly()&&S&&S.g&&!S.example);
+/* Bloqueo de este aparato (computadora compartida): sin la contraseña se ve como un utility (solo ver). */
+const LOCKK='rotgrupos:lock';let devUnlocked=false,devLastAct=Date.now(),unlockOpen=false,unlockVal='';
+const devLock=()=>{try{return JSON.parse(localStorage.getItem(LOCKK)||'null')}catch(e){return null}};
+const devLocked=()=>!!devLock()&&!devUnlocked;
+async function pinHash(pin,salt){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(salt+'|'+pin));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')}
+function unlockType(v){unlockVal=v}
+function unlockOpenF(){unlockOpen=true;unlockVal='';rr();setTimeout(()=>{const i=document.getElementById('unl_p');if(i)i.focus()},50)}
+async function doUnlock(){const L=devLock();if(!L){devUnlocked=true;return rr()}const v=(document.getElementById('unl_p')||{}).value||unlockVal;if(await pinHash(v,L.salt)===L.hash){devUnlocked=true;devLastAct=Date.now();unlockOpen=false;unlockVal='';notice={t:'Desbloqueado. Se bloquea solo tras '+(L.min||10)+' minutos sin usarla.'}}else{notice={t:'Contraseña incorrecta.',bad:true}}rr()}
+function lockNow(){devUnlocked=false;unlockOpen=false;notice={t:'🔒 Bloqueado: se ve solo para consultar.'};rr()}
+async function setDevLock(){const a=(document.getElementById('lk1')||{}).value||'',b=(document.getElementById('lk2')||{}).value||'',min=Number((document.getElementById('lkm')||{}).value)||10;
+if(a.length<4){notice={t:'La contraseña debe tener al menos 4 caracteres.',bad:true};return rr()}if(a!==b){notice={t:'Las dos contraseñas no coinciden.',bad:true};return rr()}
+const salt=Math.random().toString(36).slice(2,10);localStorage.setItem(LOCKK,JSON.stringify({salt,hash:await pinHash(a,salt),min}));devUnlocked=true;devLastAct=Date.now();notice={t:'Bloqueo activado en este aparato. Se bloquea solo tras '+min+' minutos sin usarlo, o con 🔒 Bloquear.'};rr()}
+function clearDevLock(){if(armed!=='unlk'){armed='unlk';return rr()}armed=null;localStorage.removeItem(LOCKK);devUnlocked=false;notice={t:'Se quitó el bloqueo de este aparato.'};rr()}
+['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{devLastAct=Date.now()},true));
+setInterval(()=>{const L=devLock();if(L&&devUnlocked&&Date.now()-devLastAct>(L.min||10)*60000){devUnlocked=false;unlockOpen=false;if(typeof rr==='function')rr()}},20000);
+function lockHTML(){const L=devLock();if(!L)return `<h2 class="lh">Bloqueo de este aparato</h2><p class="sub">Para la computadora del trabajo: sin la contraseña, la app se ve como un utility (solo consultar). Con la contraseña, entras como supervisor. Es solo para este aparato.</p><label for="lk1">Contraseña</label><input id="lk1" type="password" autocomplete="new-password"><label for="lk2">Repite la contraseña</label><input id="lk2" type="password" autocomplete="new-password"><label for="lkm">Bloquear solo después de (minutos sin usarla)</label><input id="lkm" type="number" min="1" max="120" value="10"><button class="btn" onclick="setDevLock()">Activar bloqueo</button>`;
+return `<h2 class="lh">Bloqueo de este aparato</h2><p class="sub">Activo: se bloquea solo tras ${L.min||10} minutos sin usarla. Arriba tienes 🔒 Bloquear para dejarla bloqueada al irte.</p><button class="btn soft" onclick="clearDevLock()">${armed==='unlk'?'Toca otra vez para quitar el bloqueo':'Quitar el bloqueo'}</button>`}
+function unlockBox(){return unlockOpen?`<div class="cbox" style="border-color:var(--accent)"><b>🔓 Desbloquear</b><label for="unl_p">Contraseña</label><input id="unl_p" type="password" autocomplete="current-password" oninput="unlockType(this.value)" onkeydown="if(event.key==='Enter')doUnlock()"><div class="pbar" style="margin-top:10px"><button class="btn" style="margin-top:0" onclick="doUnlock()">Entrar</button><button class="btn soft" style="margin-top:0" onclick="unlockOpen=false;rr()">Cancelar</button></div></div>`:''}
+const isRO=()=>!!(S&&S.g&&!S.example&&((window.cloud&&cloud.readOnly&&cloud.readOnly())||devLocked()));
 function myTabs(){
 if(isRO())return [['hoy','Hoy'],['plan','Plan'],['vacaciones','Vacaciones'],['calendario','Mes'],['ayuda','Cómo usar']];
 const T=[['hoy','Hoy'],['maquinas','Máquinas'],['puestos','Puestos'],['personal','Personal'],['vacaciones','Vacaciones'],['calendario','Mes'],['reporte','Reporte'],['avisos','Avisos'],['plan','Plan'],['grupo','Grupo'],['ayuda','Cómo usar']];
 if(window.cloud&&cloud.isAdmin&&cloud.isAdmin()&&!S.example)T.splice(T.length-1,0,['equipo','Equipo']);
 return T}
 /* Solo ver: se desactiva todo lo que cambia datos; quedan pestañas, fechas, imprimir y copiar. */
-const RO_OK=new Set(['toggleCfg','planChk','setTab','setDate','calNav','leave','openGroup','syncBoth','openPrint','doPrint','setPfmt','setNout','setZmg','setZor','setPkind','printing','window.scrollTo','var','document.getElementById','copyDay','copyGuide','startGuide','cloud.signIn','cloudOut','sendSug','copySug','teamOpen']);
+const RO_OK=new Set(['unlockOpenF','doUnlock','unlockType','unlockOpen','lockNow','toggleCfg','planChk','setTab','setDate','calNav','leave','openGroup','syncBoth','openPrint','doPrint','setPfmt','setNout','setZmg','setZor','setPkind','printing','window.scrollTo','var','document.getElementById','copyDay','copyGuide','startGuide','cloud.signIn','cloudOut','sendSug','copySug','teamOpen']);
 const roName=a=>{const m=String(a||'').trim().match(/^[A-Za-z_$][\w$.]*/);return m?m[0]:''};
 function roAllowed(el){for(const at of ['onclick','onchange','oninput']){const v=el.getAttribute(at);if(v&&!RO_OK.has(roName(v)))return false}return true}
 function roLock(){const app=$('#app');if(!app)return;const ro=isRO();app.classList.toggle('ro',ro);if(!ro)return;

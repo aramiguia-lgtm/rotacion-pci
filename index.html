@@ -643,11 +643,11 @@ save();notice={t:msg+' Solo para hoy.'};rr();
 function covSel(d,s,r){
 const i=blockOf(d,s.start),b=i>=0?d.blocks[i]:null;if(!b)return '';
 const n=b.posts.length,busy=new Set();
-b.arr.slice(0,n).forEach((id,j)=>{const p=S.posts.find(x=>x.id===b.posts[j]);if(id&&p&&(!postHeld(p)||postZC(p).length))busy.add(id)});
+const UP=new Set();b.arr.slice(0,n).forEach((id,j)=>{const p=S.posts.find(x=>x.id===b.posts[j]);if(id&&p&&postUT(p))UP.add(id);if(id&&p&&!p.util&&(!postHeld(p)||postZC(p).length))busy.add(id)});
 const key=r.orig||r.id,cur=((d.cov&&d.cov[s.kind+s.turn])||{})[key]||'';
 const C=S.people.filter(p=>here(p)&&s.ids.indexOf(p.id)<0&&p.id!==r.id&&(isUtil(p)?!busy.has(p.id):!busy.has(p.id)));
-const UT=utIds(d,i),ops=C.filter(p=>!isUtil(p)&&!isSup(p)&&!UT.has(p.id)),uts=C.filter(p=>isUtil(p)||UT.has(p.id)),sps=C.filter(isSup);
-const lab=p=>{const j=b.arr.slice(0,n).indexOf(p.id);const q=j>=0?S.posts.find(x=>x.id===b.posts[j]):null;return esc(p.name)+(isUtil(p)?' (U)':UT.has(p.id)?' (cubriendo como Utility)':q?' · máq. '+esc(postLabel(q))+(postRT(q)?' (retrabajo)':postUT(q)?' (utility)':' (detenida)'):' · libre')};
+const UT=utIds(d,i),ops=C.filter(p=>!isUtil(p)&&!isSup(p)&&!UT.has(p.id)&&!UP.has(p.id)),uts=C.filter(p=>isUtil(p)||UT.has(p.id)||UP.has(p.id)),sps=C.filter(isSup);
+const lab=p=>{const j=b.arr.slice(0,n).indexOf(p.id);const q=j>=0?S.posts.find(x=>x.id===b.posts[j]):null;return esc(p.name)+(isUtil(p)?' (U)':UT.has(p.id)||UP.has(p.id)?' (cubriendo como Utility)':q?' · máq. '+esc(postLabel(q))+(postRT(q)?' (retrabajo)':postUT(q)?' (utility)':' (detenida)'):' · libre')};
 return `<select class="mv" aria-label="Quién cubre a ${esc(pname(key))}" onchange="setCov('${s.kind}',${s.turn},'${key}',this.value)"><option value="">${cur?'Volver a automático':'Quién cubre: automático'}</option>`+(ops.length?`<optgroup label="Operarios">`+ops.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${lab(p)}</option>`).join('')+`</optgroup>`:'')+(uts.length?`<optgroup label="Utility">`+uts.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${lab(p)}</option>`).join('')+`</optgroup>`:'')+(sps.length?`<optgroup label="Supervisor">`+sps.map(p=>`<option value="${p.id}" ${cur===p.id?'selected':''}>${esc(p.name)} (supervisor)</option>`).join('')+`</optgroup>`:'')+`</select>`;
 }
 function setCov(kind,turn,key,v){const d=day();d.cov=d.cov||{};const k=kind+turn,o=d.cov[k]=d.cov[k]||{};if(v){Object.keys(o).forEach(x=>{if(o[x]===v)delete o[x]});o[key]=v}else delete o[key];save();notice={t:v?kind+' turno '+turn+': '+pname(v)+' cubre a '+pname(key)+'. Solo para hoy.':'Quién cubre a '+pname(key)+' vuelve a automático.'};rr()}

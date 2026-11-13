@@ -1121,7 +1121,7 @@ function doGen(){
 if(!canGen()){notice={t:'Necesitas al menos un puesto con máquina encendida y una persona presente.',bad:true};return rr()}
 const d=day(),cur=curBlock(d);
 const from=fromSel!=null&&fromSel<d.n?fromSel:(cur>=0?cur:0);
-gen(from,true);
+gen(from,false);
 notice={t:'Rotación calculada desde el bloque '+(from+1)+'.'};
 rr();
 }
@@ -1256,7 +1256,7 @@ const badNums=v=>String(v).split(/[^0-9]+/).filter(Boolean).map(Number).filter(n
 /* Una máquina solo puede estar en un puesto con la misma letra: si ya estaba en otro, se mueve aquí. 21 y 21A son puestos distintos. */
 function claim(ms,id,sfx){let moved=[];S.posts.forEach(p=>{if(p.id===id||(p.sfx||'')!==(sfx||''))return;const k=p.ms.filter(n=>ms.indexOf(n)<0);if(k.length!==p.ms.length){moved=moved.concat(p.ms.filter(n=>ms.indexOf(n)>=0));p.ms=k}});S.posts=S.posts.filter(p=>p.id===id||p.ms.length||p.util);return moved}
 /* Al cambiar los puestos, la rotación de hoy se recalcula desde el bloque actual. */
-function regenDay(k,from){const keep=date;date=k;try{gen(from,true)}finally{date=keep}}
+function regenDay(k,from){const keep=date;date=k;try{gen(from,false)}finally{date=keep}} /* sin reordenar: sigue desde el bloque anterior */
 function postsChanged(){
 markDirty();
 return regenMsg.length?' Rotación actualizada: '+regenMsg.join(', ')+'.':'';

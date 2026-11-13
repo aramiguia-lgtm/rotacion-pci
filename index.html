@@ -334,19 +334,19 @@ const diff=(mins-toMin(d.start)+1440)%1440,i=Math.floor(diff/(d.hours*60));
 return i<d.n?i:-1;
 }
 const machOn=n=>{const m=S.machines.find(x=>x.n===n);return !!(m&&m.on&&!m.zero)};
-const postActive=p=>p.ms.some(machOn)||postZCX(p).length>0;
+const postActive=p=>!!p.util||p.ms.some(machOn)||postZCX(p).length>0;
 /* Detenida por un motivo pero sigue en la rotación: el operario queda asignado y libre para cubrir descansos. */
 const held=n=>{const m=S.machines.find(x=>x.n===n);return !!(m&&m.on&&m.hold)};
 const postHeld=p=>{const a=p.ms.filter(machOn);return a.length>0&&a.every(held)};
 /* Retrabajo: quien pasa por esa máquina detenida va a retrabajo y no cubre descansos. */
 const postRT=p=>postHeld(p)&&p.ms.some(n=>{const m=S.machines.find(x=>x.n===n);return m&&m.on&&m.hold&&m.task==='rt'});
 /* Cubre como utility: quien pasa por esa máquina detenida cubre descansos como un utility (Utility), en cualquier línea. */
-const postUT=p=>postHeld(p)&&heldOf(p).some(m=>m.task==='ut');
+const postUT=p=>!!(p&&p.util)||(postHeld(p)&&heldOf(p).some(m=>m.task==='ut'));
 function setRT(pid,on){const p=S.posts.find(x=>x.id===pid);if(!p)return;S.machines.forEach(m=>{if(p.ms.indexOf(m.n)>=0&&m.on&&m.hold)m.task=on?'rt':''});save();notice={t:on?'Máq. '+postLabel(p)+': quien pasa por ahí va a retrabajo.':'Máq. '+postLabel(p)+': el operario vuelve a cubrir descansos.'};rr()}
 const pname=id=>{const p=S.people.find(x=>x.id===id);return p?p.name:'?'};
 const mk=p=>p&&p.role==='util'?' (U)':p&&p.role==='senior'?' (US)':p&&p.role==='utl'?' (U)':p&&p.role==='sup'?' (Sup.)':'';
 const pmark=id=>mk(S.people.find(x=>x.id===id));
-const postLabel=p=>p.ms.join(', ')+(p.sfx||''); const mql=r=>(r.ms||[]).join(', ')+(r.sx||'');
+const postLabel=p=>p.util?'Utility':p.ms.join(', ')+(p.sfx||''); const mql=r=>(r.ms||[]).join(', ')+(r.sx||'');
 const addDays=(s,n)=>{const p=s.split('-').map(Number),t=new Date(p[0],p[1]-1,p[2]+n);return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())};
 const fmtD=s=>{const p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short'})};
 const onVac=(id,d)=>(S.vac||[]).some(v=>v.pid===id&&v.from<=d&&d<=v.to);
@@ -552,7 +552,7 @@ const R=rtIds(d,i,b),UT=utIds(d,i),Z=zeroAssign(d,i,b),zOf={},RTH=new Set();
 const UTH=new Set();b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(p&&postRT(p)&&b.arr[j])RTH.add(b.arr[j]);if(p&&postUT(p)&&b.arr[j])UTH.add(b.arr[j])});Z.forEach(z=>{if(z.src==='det')(zOf[z.pid]=zOf[z.pid]||[]).push(z.n)});
 const where=id=>brk.has(id)?'en '+slot.kind.toLowerCase():cov[id]?'cubriendo '+mql(cov[id]):R.has(id)||RTH.has(id)?'en retrabajo':UTH.has(id)?'cubriendo como utility':UT.has(id)?'cubriendo como Utility':zOf[id]?'cubriendo '+zOf[id].join(', ')+' (sin puesto)':'libre';
 const A=[];
-b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(!p)return;const id=b.arr[j],ms=p.ms.filter(machOn),n0=ms[0]||p.ms[0];
+b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(!p||p.util)return;const id=b.arr[j],ms=p.ms.filter(machOn),n0=ms[0]||p.ms[0];
 if(postHeld(p)){A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:'h',pp:'Detenida',sm:esc(heldReason(p))+(id?' · '+esc(pname(id))+' está '+where(id):'')});return}
 if(!id){A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:'x',pp:'Sin cubrir',sm:''});return}
 if(brk.has(id)){const r=rows.find(x=>x.id===id);A.push({n:n0,line:lineN(n0),mq:ms.join(', ')+(p.sfx||''),cls:r&&r.u?'':'x',pp:r&&r.u?esc(pname(r.u)):'SIN CUBRIR',sm:'cubre a '+esc(pname(id))+' ('+slot.kind.toLowerCase()+')'});return}
@@ -688,6 +688,7 @@ if(j<0)return {id,orig,st:R.has(id)?'rtp':UT.has(id)?'utp':'libre'};
 const post=S.posts.find(x=>x.id===b.posts[j]);
 const ms=post?post.ms.filter(machOn):[];
 const m=S.machines.find(x=>x.n===(ms[0]||(post&&post.ms[0])));
+if(post&&post.util)return {id,orig,st:'det',rt:false,utk:true,ms:[],sx:''};
 if(post&&postHeld(post)){const zc=postZC(post);if(zc.length)return {id,orig,st:'ok',zc:true,ms:zc,line:lineN(zc[0]),u:null,off:false};return {id,orig,st:'det',rt:postRT(post),utk:postUT(post),ms:post.ms.filter(machOn),sx:post.sfx||''}}
 {const zx=postZCX(post),all=(ms.length?ms:(post&&!zx.length?post.ms:[])).concat(zx),m0=S.machines.find(x=>x.n===all[0]);return {id,orig,st:'ok',ms:all,sx:post?post.sfx||'':'',line:m0?m0.line:(m?m.line:0),u:null,off:false}}
 });
@@ -734,7 +735,7 @@ let h=`<div class="brk ${on?'on':''}"><div class="bh"><b class="tn tn${(s.turn-1
 if(!s.ids.length)return h+`<p class="free">No hay operarios en este turno. Ajústalo en Personal.</p>`+xtAdd(s)+`</div>`;
 if(!rows)return h+`<p class="free">Genera la rotación de este bloque para ver la cobertura.</p></div>`;
 h+=rows.map(r=>{
-const info=[r.orig?'por '+esc(pname(r.orig)):'',r.st==='ok'?'Máq. '+esc(mql(r))+' · línea '+r.line+(r.zc?' · sin puesto':''):r.st==='det'?'Máq. '+esc(mql(r))+(r.rt?' · retrabajo':r.utk?' · cubre como utility':' · detenida'):''].filter(Boolean).join(' · ')||'&nbsp;';
+const info=[r.orig?'por '+esc(pname(r.orig)):'',r.st==='ok'?'Máq. '+esc(mql(r))+' · línea '+r.line+(r.zc?' · sin puesto':''):r.st==='det'?(r.ms&&r.ms.length?'Máq. '+esc(mql(r))+(r.rt?' · retrabajo':r.utk?' · cubre como utility':' · detenida'):'Puesto Utility'):''].filter(Boolean).join(' · ')||'&nbsp;';
 const o=r.orig||(r.st==='fuera'?r.id:null),key=r.orig||r.id,bt=baseTurn(key),mv=bt>=0&&bt!==s.turn-1?'<b class="mvd">cambiado del turno '+(bt+1)+'</b>':'';
 return `<div class="brow"><span class="op">${esc(pname(r.id))}${mv}<small>${info}</small></span>${chip(r)}${r.man?'<b class="mvd" style="flex-basis:100%">elegido a mano</b>':''}${o?subSel(d,o,r.orig?r.id:''):''}${r.st==='ok'?covSel(d,s,r):''}${moveSel(s,key)}</div>`;
 }).join('');
@@ -1084,7 +1085,7 @@ function blockRows(b,i){
 return b.posts.map((pid,j)=>{
 const p=S.posts.find(x=>x.id===pid);if(!p)return '';
 const sel=b.arr[j]||'';
-const hd=postHeld(p),rt=hd&&postRT(p),utk=hd&&postUT(p),zc=hd?postZC(p):[],cls=hd?'mrow held':'mrow',zx=postZCX(p),lab=(!hd&&zx.length&&!p.ms.some(machOn)?'':esc(postLabel(p)))+(hd?'<small>Detenida · '+esc(heldReason(p))+'</small>':zx.length?zx.map(n=>' <span class="pill zero" title="Cero operario" style="display:inline-block;padding:1px 9px;margin:0 0 0 4px;font-size:inherit;line-height:1.3;vertical-align:middle">'+n+'</span>').join(''):'');
+const hd=postHeld(p),rt=hd&&postRT(p),utk=hd&&postUT(p),zc=hd?postZC(p):[],cls=hd?'mrow held':'mrow',zx=postZCX(p),lab=(p.util?'<b style="color:var(--accent)">Utility</b>':!hd&&zx.length&&!p.ms.some(machOn)?'':esc(postLabel(p)))+(hd?'<small>Detenida · '+esc(heldReason(p))+'</small>':zx.length?zx.map(n=>' <span class="pill zero" title="Cero operario" style="display:inline-block;padding:1px 9px;margin:0 0 0 4px;font-size:inherit;line-height:1.3;vertical-align:middle">'+n+'</span>').join(''):'');
 const task=rt?'Retrabajo':utk?'Cubre como utility':zc.length?'Cubre '+zc.join(', ')+' (sin puesto)':hd?'Cubre descansos':'';
 if(i<0)return `<div class="${cls}"><span>${lab}</span><span class="who">${sel?esc(pname(sel))+pmark(sel):'Sin cubrir'}${hd?'<b>'+task+'</b>':''}</span></div>`;
 if(hd)return `<div class="${cls}"><span>${lab}</span><span class="rtname">${sel?esc(pname(sel))+pmark(sel):'Sin cubrir'}<small>${task}</small></span><div class="hctl">${heldCtl(p)}</div></div>`;
@@ -1227,8 +1228,9 @@ S.posts.forEach(q=>{if(Array.isArray(q.zcx))q.zcx=q.zcx.filter(x=>x!==n)});S.mac
 if(on)p.zcx=(p.zcx||[]).concat([n]);markDirty();save();notice={t:on?'El operario de la '+postLabel(p)+' también atiende la '+n+'.':'La '+n+' vuelve a quedar con el utility.'};rr()}
 function puestosHTML(){let h=plantInfoHTML(false);
 h+=`<h2 style="margin-top:4px">Puestos de rotación</h2><p class="sub">Cada puesto es una máquina, o varias, que cubre una sola persona. Separa los números con coma, punto o espacio (ej. 1, 2 ó 1.2). Para poner dos operarios en la misma máquina, agrega otro puesto con una letra al final: <b>21</b> y <b>21A</b> (adelante y atrás) son dos puestos distintos; puedes usar A, B, C… El orden de la lista es el orden de la rotación, y la rotación de hoy se actualiza sola al cambiar un puesto.</p>`;
+h+=`<div class="cbox" style="margin:10px 0"><b>Puesto de Utility</b><p class="sub" style="margin:4px 0 8px">Para cuando falta un utility: los operarios rotan por este puesto y, el bloque que les toca, trabajan como utility (cubren descansos en las dos líneas). Su propio descanso no necesita relevo. Este puesto es solo de tu grupo: no pasa a la planta compartida.</p><button class="btn soft" style="margin-top:0" onclick="addUtilPost()">＋ Agregar puesto de Utility</button></div>`;
 h+=`<label for="np">Agregar puesto (números de máquina)</label><input id="np" inputmode="text" autocapitalize="characters" placeholder="Ej. 6, 8  ó  21A"><button class="btn soft" onclick="addPost()">Agregar puesto</button>`;
-h+=S.posts.map(p=>{const a=postActive(p);return `<div class="prow"><input class="nm" inputmode="text" autocapitalize="characters" value="${esc(postLabel(p))}" aria-label="Máquinas del puesto" onchange="setPost('${p.id}',this.value)"><span class="tag">${!p.ms.some(machOn)&&postZCX(p).length?'Parado · en rotación':a?(postHeld(p)?'Detenido, en rotación':'Activo'):'Parado'}</span>${!postHeld(p)?`<button class="x" aria-pressed="${zcxOpen===p.id}" onclick="zcxOpen=zcxOpen==='${p.id}'?null:'${p.id}';rr()">${postZCX(p).length?'+ '+postZCX(p).join(', '):'＋ sin puesto'}</button>`:''}<button class="x" aria-label="Subir" onclick="movePost('${p.id}',-1)">↑</button><button class="x" aria-label="Bajar" onclick="movePost('${p.id}',1)">↓</button><button class="x del" onclick="rm('posts','${p.id}')">${armed==='posts'+p.id?'¿Borrar?':'Quitar'}</button>${zcxOpen===p.id?zcxCtl(p):''}</div>`}).join('');
+h+=S.posts.map(p=>{const a=postActive(p);if(p.util)return `<div class="prow"><b class="nm" style="padding:11px;color:var(--accent)">Utility</b><span class="tag">Puesto de utility · en rotación</span><button class="x" aria-label="Subir" onclick="movePost('${p.id}',-1)">↑</button><button class="x" aria-label="Bajar" onclick="movePost('${p.id}',1)">↓</button><button class="x del" onclick="rm('posts','${p.id}')">${armed==='posts'+p.id?'¿Borrar?':'Quitar'}</button></div>`;return `<div class="prow"><input class="nm" inputmode="text" autocapitalize="characters" value="${esc(postLabel(p))}" aria-label="Máquinas del puesto" onchange="setPost('${p.id}',this.value)"><span class="tag">${!p.ms.some(machOn)&&postZCX(p).length?'Parado · en rotación':a?(postHeld(p)?'Detenido, en rotación':'Activo'):'Parado'}</span>${!postHeld(p)?`<button class="x" aria-pressed="${zcxOpen===p.id}" onclick="zcxOpen=zcxOpen==='${p.id}'?null:'${p.id}';rr()">${postZCX(p).length?'+ '+postZCX(p).join(', '):'＋ sin puesto'}</button>`:''}<button class="x" aria-label="Subir" onclick="movePost('${p.id}',-1)">↑</button><button class="x" aria-label="Bajar" onclick="movePost('${p.id}',1)">↓</button><button class="x del" onclick="rm('posts','${p.id}')">${armed==='posts'+p.id?'¿Borrar?':'Quitar'}</button>${zcxOpen===p.id?zcxCtl(p):''}</div>`}).join('');
 return h}
 function maquinasHTML(){
 let h=plantInfoHTML(true)+`<p class="sub"><b>Encendida</b>: trabaja normal. <b>Detenida</b>: parada por un motivo pero sigue en la rotación con su operario; en desayuno y almuerzo ese operario cubre primero a los que salen, o lo mandas a retrabajo. <b>Cero operario</b>: encendida pero no es puesto; la atiende el utility. Las encendidas que no están en ningún puesto ya cuentan como cero operario. Si una detenida tiene «Cubre máq. sin puesto», su operario cubre las que elijas. <b>Parada</b>: fuera todo el turno y sale de la rotación.</p>`;
@@ -1251,7 +1253,7 @@ const parseNums=v=>{const a=[];String(v).split(/[^0-9]+/).filter(Boolean).map(Nu
 const parseSfx=v=>{const m=String(v).match(/\d\s*([A-Za-z])\s*$/);return m?m[1].toUpperCase():''};
 const badNums=v=>String(v).split(/[^0-9]+/).filter(Boolean).map(Number).filter(n=>!S.machines.some(m=>m.n===n));
 /* Una máquina solo puede estar en un puesto con la misma letra: si ya estaba en otro, se mueve aquí. 21 y 21A son puestos distintos. */
-function claim(ms,id,sfx){let moved=[];S.posts.forEach(p=>{if(p.id===id||(p.sfx||'')!==(sfx||''))return;const k=p.ms.filter(n=>ms.indexOf(n)<0);if(k.length!==p.ms.length){moved=moved.concat(p.ms.filter(n=>ms.indexOf(n)>=0));p.ms=k}});S.posts=S.posts.filter(p=>p.id===id||p.ms.length);return moved}
+function claim(ms,id,sfx){let moved=[];S.posts.forEach(p=>{if(p.id===id||(p.sfx||'')!==(sfx||''))return;const k=p.ms.filter(n=>ms.indexOf(n)<0);if(k.length!==p.ms.length){moved=moved.concat(p.ms.filter(n=>ms.indexOf(n)>=0));p.ms=k}});S.posts=S.posts.filter(p=>p.id===id||p.ms.length||p.util);return moved}
 /* Al cambiar los puestos, la rotación de hoy se recalcula desde el bloque actual. */
 function regenDay(k,from){const keep=date;date=k;try{gen(from,true)}finally{date=keep}}
 function postsChanged(){
@@ -1260,6 +1262,7 @@ return regenMsg.length?' Rotación actualizada: '+regenMsg.join(', ')+'.':'';
 }
 function postMsg(ms,moved,bad,head,sfx){return head+ms.join(', ')+(sfx||'')+'.'+(moved.length?' Se quitó '+moved.join(', ')+' del puesto donde estaba.':'')+(bad.length?' No existe'+(bad.length>1?'n':'')+' la'+(bad.length>1?'s':'')+' máquina'+(bad.length>1?'s':'')+' '+bad.join(', ')+'.':'')}
 function setPost(id,v){const ms=parseNums(v),bad=badNums(v);if(!ms.length){notice={t:'Escribe números de máquina que existan, por ejemplo 3, 4, 5.',bad:true};return rr()}const sfx=parseSfx(v),moved=claim(ms,id,sfx);const pp=S.posts.find(p=>p.id===id);pp.ms=ms;if(sfx)pp.sfx=sfx;else delete pp.sfx;const ap=postsChanged();save();notice={t:postMsg(ms,moved,bad,'Puesto guardado: ',sfx)+ap,bad:bad.length>0};rr()}
+function addUtilPost(){S.posts.push({id:uid(),ms:[],util:true});const ap=postsChanged();save();notice={t:'Puesto de Utility agregado. Cada bloque, el operario que rote ahí trabaja como utility.'+ap};rr()}
 function addPost(){const v=$('#np').value,ms=parseNums(v),bad=badNums(v);if(!ms.length){notice={t:'Escribe números de máquina que existan, por ejemplo 6, 8.',bad:true};return rr()}const id=uid(),sfx=parseSfx(v),np={id,ms};if(sfx)np.sfx=sfx;S.posts.push(np);const moved=claim(ms,id,sfx);const ap=postsChanged();save();notice={t:postMsg(ms,moved,bad,'Puesto agregado: ',sfx)+ap,bad:bad.length>0};rr()}
 function movePost(id,dir){const i=S.posts.findIndex(p=>p.id===id),j=i+dir;if(j<0||j>=S.posts.length)return;const t=S.posts[i];S.posts[i]=S.posts[j];S.posts[j]=t;postsChanged();save();rr()}
 
@@ -1685,12 +1688,12 @@ try{if(navigator.clipboard&&navigator.clipboard.writeText){const _wt=navigator.c
 /* ---------- Planta compartida (cloud.js): máquinas y puestos son los mismos para los 4 grupos ---------- */
 /* Lo compartido: número, línea, estado, motivo, nota, prioridad y los puestos. Lo de cada grupo: qué hace el operario de una detenida. */
 let plantSig='',plantApplying=false,plantT=null;
-const plantData=()=>({machines:(S.machines||[]).map(m=>({n:m.n,line:m.line,on:!!m.on,hold:!!m.hold,zero:!!m.zero,reason:m.reason||'',note:m.note||'',prio:m.prio||0})),posts:(S.posts||[]).map(p=>JSON.parse(JSON.stringify(p)))});
+const plantData=()=>({machines:(S.machines||[]).map(m=>({n:m.n,line:m.line,on:!!m.on,hold:!!m.hold,zero:!!m.zero,reason:m.reason||'',note:m.note||'',prio:m.prio||0})),posts:(S.posts||[]).filter(p=>!p.util).map(p=>JSON.parse(JSON.stringify(p)))});
 const plantSigOf=d=>JSON.stringify(d);
 const plantRot=()=>JSON.stringify([(S.machines||[]).map(m=>[m.n,!!m.on,!!m.hold,!!m.zero]),(S.posts||[]).map(p=>[p.id,p.ms,p.sfx||'',p.zcx||[]])]);
 function plantMerge(x){const old=new Map((S.machines||[]).map(m=>[m.n,m]));
 S.machines=(x.machines||[]).map(m=>{const o=old.get(m.n)||{};const r=Object.assign({},o,{n:m.n,line:m.line,on:!!m.on,hold:!!m.hold,zero:!!m.zero,reason:m.reason||'',note:m.note||''});if(m.prio)r.prio=m.prio;else delete r.prio;if(!r.hold){r.task='';delete r.zc}return r});
-S.posts=(x.posts||[]).map(p=>JSON.parse(JSON.stringify(p)));plantSig=plantSigOf(plantData())}
+{const mine=(S.posts||[]).filter(p=>p.util);S.posts=(x.posts||[]).map(p=>JSON.parse(JSON.stringify(p))).concat(mine)}plantSig=plantSigOf(plantData())}
 function plantOn(){return !!(window.cloud&&cloud.mode==='compartido'&&cloud.plant&&S&&S.g&&!S.example)}
 function plantApply(x){if(!S||!S.g||S.example||!x||!Array.isArray(x.machines))return;
 if(x.rev&&x.rev===cloud.plantRev){plantSig=plantSigOf({machines:x.machines,posts:x.posts});return}

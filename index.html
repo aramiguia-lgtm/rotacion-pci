@@ -1046,7 +1046,8 @@ const P=S.people.filter(here);
 const cnt=r=>P.filter(p=>p.role===r).length,ops=P.length-cnt('util')-cnt('senior')-cnt('utl')-cnt('sup');
 const nx=nextShift(),wk=isWork(date);
 let h=plantInfoHTML(false)+`<div class="${wk?'alert soft':'alert'}"><b>Próximo turno: ${fmtD(nx)}</b>${date!==nx?` <button class="rt" onclick="setDate('${nx}')">Ir a ese día</button>`:' · es el que estás viendo'}${wk?'':`<br>El ${fmtD(date)} libras: la rotación no avanza ese día y sigue en tu próximo día de trabajo.`}</div>`;
-if(!wk&&!d.blocks.some(Boolean))return h+`<label for="dt">Fecha</label><input type="date" id="dt" value="${date}" onchange="setDate(this.value)"><p class="sub" style="margin-top:8px">Si este día sí trabajas, márcalo en el calendario y aquí aparecerá la rotación.</p>`;
+h+=`<div style="display:flex;gap:6px;align-items:center;margin:8px 0"><button class="x" aria-label="Día anterior" onclick="setDate(addDays(date,-1))" style="font-size:22px;padding:6px 14px">‹</button><input type="date" id="dt" value="${date}" onchange="setDate(this.value)" aria-label="Ver la rotación de otro día" style="flex:1"><button class="x" aria-label="Día siguiente" onclick="setDate(addDays(date,1))" style="font-size:22px;padding:6px 14px">›</button></div>`;
+if(!wk&&!d.blocks.some(Boolean))return h+`<p class="sub" style="margin-top:8px">Si este día sí trabajas, márcalo en el calendario y aquí aparecerá la rotación.</p>`;
 h+=rotNowHTML(d,cur)+breakBanner(d)+`<p class="sub">${ops} operarios · ${cnt('util')+cnt('utl')} Utility · ${cnt('senior')} Utility senior${cnt('sup')?' · '+cnt('sup')+' supervisor':''} · ${c.posts.length} puestos activos</p>`;
 const off=S.machines.filter(m=>!m.on);
 if(off.length){

@@ -37,9 +37,9 @@ const ui = () => { try { window.cloudUI && window.cloudUI() } catch (e) { } };
 
 let A, F, auth, db, timers = {};
 let subs = [];            // escuchas activas de grupos
-let subMe = null, subTeam = null, subAll = null, subPlant = null, subAv = null, subEq = null;
+let subMe = null, subTeam = null, subAll = null, subPlant = null, subAv = null, subEq = null, subPx = null;
 const stopGroups = () => { subs.forEach(u => { try { u() } catch (e) { } }); subs = [] };
-const stopAll = () => { stopGroups(); [subAv, subEq].forEach(u => { try { u && u() } catch (e) { } }); subAv = subEq = null; C.avisos = []; if (subPlant) { try { subPlant() } catch (e) { } subPlant = null; C.plantReady = false } if (chkSub) { try { chkSub() } catch (e) { } chkSub = null; chkKey = '' }[subMe, subTeam, subAll].forEach(u => { try { u && u() } catch (e) { } }); subMe = subTeam = subAll = null };
+const stopAll = () => { stopGroups(); [subAv, subEq].forEach(u => { try { u && u() } catch (e) { } }); subAv = subEq = null; C.avisos = []; if (subPlant) { try { subPlant() } catch (e) { } subPlant = null; C.plantReady = false } if (subPx) { try { subPx() } catch (e) { } subPx = null; C.pxReady = false } if (chkSub) { try { chkSub() } catch (e) { } chkSub = null; chkKey = '' }[subMe, subTeam, subAll].forEach(u => { try { u && u() } catch (e) { } }); subMe = subTeam = subAll = null };
 
 const shared = () => C.mode === 'compartido';
 const gref = g => shared() ? F.doc(db, 'grupos', docId(g)) : F.doc(db, 'usuarios', C.user.uid, 'grupos', docId(g));
@@ -182,13 +182,14 @@ async function decide(u) {
       const was = C.mode === 'compartido' || getMeta().mode === 'compartido';
       C.role = null; C.groups = []; C.name = '';
       if (subPlant) { try { subPlant() } catch (e) { } subPlant = null; C.plantReady = false }
+      if (subPx) { try { subPx() } catch (e) { } subPx = null; C.pxReady = false }
       if (was) dropLocal(null);
       setMode('sinacceso'); ui(); return;
     }
     const x = d.data();
     setMode('compartido');
     C.role = x.rol; C.name = x.nombre || '';
-    listenPlant(); listenAvisos();
+    listenPlant(); listenPx(); listenAvisos();
     C.groups = (x.grupos || []).map(normG).filter(Boolean);
     if (C.role === 'admin') {
       listenCol(F.collection(db, 'grupos'));
@@ -274,6 +275,23 @@ C.pushPlant = async data => {
   const x = Object.assign({}, data, { rev, por: C.user.email || '', nombre: C.name || '', ms: Date.now(), at: F.serverTimestamp() });
   try { await F.setDoc(F.doc(db, 'planta', 'main'), x); C.plant = Object.assign({}, x, { at: null }); lsSet(LS + 'planta', C.plant); ui(); return 'ok' }
   catch (e) { C.plantErr = msg(e); ui(); return C.plantErr }
+};
+
+/* ---------- Calibración Plastrac: una tabla para los 4 grupos ---------- */
+C.px = lsGet(LS + 'plastrac'); C.pxReady = false; C.pxErr = '';
+function listenPx() {
+  if (subPx) return;
+  subPx = F.onSnapshot(F.doc(db, 'planta', 'plastrac'), d => {
+    C.pxErr = ''; C.pxReady = true;
+    if (!d.exists()) { window.pxSeed && window.pxSeed(); ui(); return }
+    C.px = d.data(); lsSet(LS + 'plastrac', C.px); window.pxApply && window.pxApply(C.px); ui();
+  }, e => { C.pxErr = msg(e); C.pxReady = false; ui() });
+}
+C.pushPx = async rows => {
+  if (!C.canEditPlant() || !C.pxReady) return 'no';
+  const x = { rows, por: C.user.email || '', nombre: C.name || '', ms: Date.now() };
+  try { await F.setDoc(F.doc(db, 'planta', 'plastrac'), x); C.px = x; lsSet(LS + 'plastrac', x); ui(); return 'ok' }
+  catch (e) { C.pxErr = msg(e); ui(); return C.pxErr }
 };
 
 /* ---------- Avisos a supervisores: quedan hasta que todos los marquen como vistos ---------- */

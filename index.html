@@ -366,6 +366,46 @@ if(back.length)h+=`<div class="alert soft"><b>Mañana regresa${back.length>1?'n'
 if(now.length)h+=`<p class="stops">Ausentes hoy: ${now.map(v=>'<b>'+nm(v.pid)+'</b> ('+vWord(v)+') hasta el '+fmtD(v.to)).join(' · ')}</p>`;
 return h;
 }
+/* Calibración Plastrac: tabla por botella y color, la misma para los 4 grupos (se guarda en la planta compartida). */
+const PX_SEED=[{"id": "x0", "b": "16 oz Cylinder (AOKI)", "c": "Amber Primex (Opaco)", "s": 231, "p": 4, "f": 10.2, "n": ""}, {"id": "x1", "b": "128 oz Round", "c": "Cobalt Blue (Mosaic)", "s": 295, "p": null, "f": 9.34, "n": ""}, {"id": "x2", "b": "64 oz Round Heavy", "c": "White (Mosaic)", "s": 295, "p": null, "f": 16.3, "n": ""}, {"id": "x3", "b": "64 oz Round", "c": "White (Mosaic)", "s": 269, "p": 1.5, "f": 16.5, "n": ""}, {"id": "x4", "b": "16 oz Cylinder (AOKI)", "c": "Amber (Mosaic)", "s": 231, "p": null, "f": 10.34, "n": ""}, {"id": "x5", "b": "128 oz Round", "c": "White (Mosaic)", "s": 295, "p": 1.6, "f": 15, "n": ""}, {"id": "x6", "b": "128 oz Round", "c": "White (Primex)", "s": 295, "p": 1.3, "f": 10.96, "n": ""}, {"id": "x7", "b": "4 oz Round (Nissei)", "c": "Amber Translucent 1 (Mosaic)", "s": 266, "p": 1.9, "f": 11.06, "n": "Verificar % (escrito encima en la hoja)"}, {"id": "x8", "b": "4 oz Round (Nissei)", "c": "Amber Translucent #2 (Mosaic)", "s": 266, "p": 2.5, "f": 9.96, "n": ""}, {"id": "x9", "b": "4 oz Round (Nissei)", "c": "Amber (Primex)", "s": 260, "p": null, "f": 10.5, "n": ""}, {"id": "x10", "b": "16 oz Cylinder (AOKI)", "c": "Amber Non-Translucent 3 (Mosaic)", "s": 231, "p": 2.5, "f": 10.1, "n": ""}, {"id": "x11", "b": "128 oz Round (molde 128 oz Square)", "c": "White (Mosaic)", "s": 295, "p": 1.8, "f": 15, "n": ""}, {"id": "x12", "b": "6 oz Round (Nissei)", "c": "Amber (Primex)", "s": 189, "p": null, "f": null, "n": "% y factor tachados/ilegibles en la hoja (factor parece 9.10)"}, {"id": "x13", "b": "6 oz Round (Nissei)", "c": "Amber (Mosaic)", "s": 189, "p": 2.2, "f": 10.5, "n": ""}, {"id": "x14", "b": "8 oz Round (250 cc)", "c": "Amber Penn Color", "s": 168.5, "p": 0.5, "f": 13.7, "n": ""}, {"id": "x15", "b": "8 oz Round (250 cc)", "c": "Cobalt Blue (Primex)", "s": 168.5, "p": 0.75, "f": 10.2, "n": ""}, {"id": "x16", "b": "32 oz Badia (DPW)", "c": "Trans Orange (Mosaic)", "s": 448, "p": 1.5, "f": 10.78, "n": "Verificar factor (borroso en la hoja)"}, {"id": "x17", "b": "32 oz Badia (DPW)", "c": "Trans Green (Mosaic)", "s": 448, "p": null, "f": 10.52, "n": "No aprobado"}, {"id": "x18", "b": "32 oz Badia (DPW)", "c": "Lime Green (Primex)", "s": 448, "p": 0.3, "f": 9.7, "n": ""}, {"id": "x19", "b": "8 oz Cylinder (DPW)", "c": "Lime Green (Primex)", "s": 251, "p": 0.3, "f": 10.44, "n": "Verificar shot size (borroso en la hoja)"}, {"id": "x20", "b": "8 oz Cylinder (DPW)", "c": "Trans Yellow (Primex)", "s": 251, "p": 1.3, "f": 9.8, "n": ""}, {"id": "x21", "b": "8 oz Cylinder (DPW)", "c": "Light Orange (Primex)", "s": 251, "p": 1, "f": 9, "n": ""}];
+const PXK='rotgrupos:plastrac:local';
+let pxEdit=null,pxQ='';
+function pxRows(){const c=window.cloud;if(c&&c.px&&Array.isArray(c.px.rows))return c.px.rows;try{const x=JSON.parse(localStorage.getItem(PXK)||'null');if(Array.isArray(x))return x}catch(e){}return PX_SEED}
+function pxCanEdit(){if(isRO())return false;const c=window.cloud;if(c&&c.mode==='compartido')return !!(c.canEditPlant&&c.canEditPlant()&&c.pxReady);return true}
+function pxSave(rows){try{localStorage.setItem(PXK,JSON.stringify(rows))}catch(e){}const c=window.cloud;if(c&&c.mode==='compartido'&&c.pushPx){c.px=Object.assign({},c.px||{},{rows});c.pushPx(rows).then(r=>{if(r!=='ok'&&r!=='no'){notice={t:'No se pudo guardar Plastrac en la nube: '+r,bad:true};rr()}})}}
+window.pxSeed=function(){const c=window.cloud;if(c&&c.canEditPlant&&c.canEditPlant())c.pushPx(pxRows())};
+window.pxApply=function(){if(typeof ready!=='undefined'&&ready&&tab==='plastrac'&&!pxEdit&&!printing)rr()};
+const pxNum=v=>v==null||v===''?'':String(v);
+function pxOpen(id){pxEdit=id;rr();setTimeout(()=>{const e=$('#pxb');if(e)e.focus();window.scrollTo({top:0,behavior:'smooth'})},50)}
+function pxDo(){const g=k=>($('#px'+k)||{}).value||'';const n=k=>{const v=g(k).replace(',','.').replace('%','').trim();return v===''||isNaN(+v)?null:+v};
+const r={id:pxEdit==='new'?'x'+Date.now().toString(36):pxEdit,b:g('b').trim(),c:g('c').trim(),s:n('s'),p:n('p'),f:n('f'),n:g('n').trim()};
+if(!r.b||!r.c){notice={t:'Escribe la botella y el color.',bad:true};return rr()}
+const rows=pxRows().slice(),i=rows.findIndex(x=>x.id===r.id);if(i>=0)rows[i]=r;else rows.push(r);
+pxSave(rows);pxEdit=null;notice={t:'Calibración guardada: '+r.b+' · '+r.c+'.'};rr()}
+function pxDel(id){const r=pxRows().find(x=>x.id===id);if(!r||!confirm('¿Borrar la calibración de '+r.b+' · '+r.c+'?'))return;pxSave(pxRows().filter(x=>x.id!==id));pxEdit=null;rr()}
+function pxFilter(v){pxQ=v;const L=$('#pxlist');if(L)L.innerHTML=pxListHTML()}
+function pxListHTML(){const q=norm(pxQ),ed=pxCanEdit();
+const rows=pxRows().filter(r=>!q||norm(r.b+' '+r.c+' '+(r.n||'')).indexOf(q)>=0).slice().sort((a,b)=>a.b.localeCompare(b.b,'es',{numeric:true})||a.c.localeCompare(b.c,'es'));
+if(!rows.length)return `<p class="sub">No hay calibraciones${q?' con «'+esc(pxQ)+'»':''}.</p>`;
+let last='',h='';
+const cell=(l,v,u)=>`<div style="flex:1 1 0;min-width:70px"><div class="sub" style="margin:0;font-size:13px">${l}</div><b style="font-size:20px">${v===''?'—':esc(v)+(u||'')}</b></div>`;
+rows.forEach(r=>{if(r.b!==last){h+=`<h2 class="lh" style="margin-bottom:6px">${esc(r.b)}</h2>`;last=r.b}
+h+=`<div class="cbox" style="margin:8px 0;padding:10px 12px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:18px">${esc(r.c)}</b>${ed?`<button class="x" onclick="pxOpen('${r.id}')">Editar</button>`:''}</div>
+<div style="display:flex;gap:10px;margin-top:6px">${cell('Shot size',pxNum(r.s),' g')}${cell('% color',pxNum(r.p),'%')}${cell('Factor',pxNum(r.f),' g/rev')}</div>${r.n?`<div class="sub" style="margin:6px 0 0">📝 ${esc(r.n)}</div>`:''}</div>`});
+return h}
+function pxHTML(){let h=`<h2 style="margin-bottom:4px">Calibración Plastrac</h2><p class="sub" style="margin-top:0">Shot size, % de color y factor de calibración (g/rev) por botella y color. Es la misma tabla para los cuatro grupos${pxCanEdit()?'; cualquier supervisor puede agregar o corregir con + o Editar.':'.'}</p>`;
+const c=window.cloud;if(c&&c.pxErr)h+=`<div class="warn">Plastrac: ${esc(c.pxErr)}</div>`;
+if(pxEdit&&pxCanEdit()){const r=pxEdit==='new'?{b:'',c:'',s:null,p:null,f:null,n:''}:(pxRows().find(x=>x.id===pxEdit)||{});
+const bot=[...new Set(pxRows().map(x=>x.b))].sort();
+h+=`<div class="cbox"><h2 style="margin-top:0">${pxEdit==='new'?'Nueva calibración':'Editar calibración'}</h2>
+<label for="pxb">Botella</label><input id="pxb" list="pxbl" value="${esc(r.b)}" placeholder="Ej. 16 oz Cylinder (AOKI)"><datalist id="pxbl">${bot.map(b=>`<option value="${esc(b)}">`).join('')}</datalist>
+<label for="pxc">Color</label><input id="pxc" value="${esc(r.c)}" placeholder="Ej. Amber (Mosaic)">
+<div class="row2"><div><label for="pxs">Shot size (g)</label><input id="pxs" inputmode="decimal" value="${pxNum(r.s)}"></div><div><label for="pxp">% color</label><input id="pxp" inputmode="decimal" value="${pxNum(r.p)}" placeholder="Ej. 1.5"></div></div>
+<label for="pxf">Factor de calibración (g/rev)</label><input id="pxf" inputmode="decimal" value="${pxNum(r.f)}">
+<label for="pxn">Notas (opcional)</label><input id="pxn" value="${esc(r.n||'')}">
+<div class="pbar" style="margin-top:12px"><button class="btn" style="margin-top:0" onclick="pxDo()">Guardar</button><button class="btn soft" style="margin-top:0" onclick="pxEdit=null;rr()">Cancelar</button>${pxEdit!=='new'?`<button class="btn soft" style="margin-top:0" onclick="pxDel('${pxEdit}')">Borrar</button>`:''}</div></div>`}
+h+=`<label for="pxq">Buscar botella o color</label><input id="pxq" value="${esc(pxQ)}" placeholder="Ej. amber, 128 oz, primex" oninput="pxFilter(this.value)">`;
+h+=`<div id="pxlist">${pxListHTML()}</div>`;return h}
 function vacHTML(){
 const T=todayStr();
 let h='';
@@ -925,9 +965,9 @@ function remNextHTML(){if(!S||!Array.isArray(S.rem))return '';const A=S.rem.filt
 setInterval(remTick,5000);setInterval(()=>{try{planTick()}catch(e){}},15000);
 
 let cfgOpen=false;
-function toggleCfg(){const CFG=['vacaciones','calendario','grupo','equipo','ayuda'];if(CFG.includes(tab)){cfgOpen=false;tab='hoy'}else cfgOpen=!cfgOpen;rr()}
+function toggleCfg(){const CFG=['vacaciones','calendario','grupo','equipo','plastrac','ayuda'];if(CFG.includes(tab)){cfgOpen=false;tab='hoy'}else cfgOpen=!cfgOpen;rr()}
 let vacOpen=false;
-function setTab(t){vacOpen=false;plEdit=null;if(!['vacaciones','calendario','grupo','equipo','ayuda'].includes(t))cfgOpen=false;if(t!=='personal')evLock();printing=false;tab=t;armed=null;render();window.scrollTo(0,0)}
+function setTab(t){vacOpen=false;plEdit=null;pxEdit=null;if(!['vacaciones','calendario','grupo','equipo','plastrac','ayuda'].includes(t))cfgOpen=false;if(t!=='personal')evLock();printing=false;tab=t;armed=null;render();window.scrollTo(0,0)}
 function rr(){const y=window.scrollY;render();window.scrollTo(0,y)}
 function render(){
 if(teamOpen&&window.cloud&&cloud.isAdmin()){$('#app').innerHTML=`<button class="link" onclick="teamOpen=false;render();window.scrollTo(0,0)">‹ Volver</button><h1>Equipo</h1>`+(notice?`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`:'')+equipoHTML();notice=null;return}
@@ -944,13 +984,13 @@ const TABS=myTabs();if(!TABS.some(t=>t[0]===tab))tab='hoy';
 h+=unlockBox()+(devLocked()?'':avisosHTML());
 if(isRO())h+=devLocked()?`<div class="ex">🔒 Aparato bloqueado: solo para consultar. El supervisor toca 🔒 Desbloquear y pone su contraseña.</div>`:`<div class="ex">👁 Solo ver: tu acceso al grupo ${esc(S.g)} es de consulta. Los cambios los hace el supervisor.</div>`;
 else if(window.cloud&&cloud.user&&cloud.mode==='compartido'&&!S.example&&!cloud.syncs(S.g))h+=`<div class="ex">Este grupo está solo en este aparato: no está asignado a tu cuenta, así que no se sincroniza.</div>`;
-{const CFG=new Set(['vacaciones','calendario','grupo','equipo','ayuda']),T1=TABS.filter(t=>!CFG.has(t[0])),T2=TABS.filter(t=>CFG.has(t[0])),inCfg=CFG.has(tab),open=cfgOpen||inCfg;
+{const CFG=new Set(['vacaciones','calendario','grupo','equipo','plastrac','ayuda']),T1=TABS.filter(t=>!CFG.has(t[0])),T2=TABS.filter(t=>CFG.has(t[0])),inCfg=CFG.has(tab),open=cfgOpen||inCfg;
 const tb=t=>`<button class="tab ${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`;
 h+=`<div class="tabs mt">`+T1.map(tb).join('')+(T2.length?`<button class="tab ${inCfg?'on':''}" aria-label="Configuración" aria-expanded="${open}" onclick="toggleCfg()" style="font-size:22px">⚙️</button>`:'')+`</div>`;
 if(open&&T2.length)h+=`<div class="tabs cfgrow" style="margin-top:-6px;padding:8px;border:2px dashed var(--line);border-radius:14px">`+T2.map(tb).join('')+`</div>`;}
 h+=alertsHTML();if(tab==='hoy')h+=remNextHTML();
 if(notice)h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;
-h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML()+(isRO()||vacOpen||!S.people.length?'':'<button id="plfab" class="fabx" aria-label="Registrar vacaciones" onclick="vacOpen=true;rr();window.scrollTo({top:0,behavior:\'smooth\'})">+</button>'):tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='ayuda'?guideHTML():tab==='equipo'?equipoHTML():tab==='puestos'?puestosHTML():tab==='plan'?planHTML()+(isRO()?'':'<button id="plfab" aria-label="Agregar tarea" onclick="plGoAdd()">+</button>'):personalHTML();
+h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML()+(isRO()||vacOpen||!S.people.length?'':'<button id="plfab" class="fabx" aria-label="Registrar vacaciones" onclick="vacOpen=true;rr();window.scrollTo({top:0,behavior:\'smooth\'})">+</button>'):tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='plastrac'?pxHTML()+(!pxCanEdit()||pxEdit?'':'<button id="plfab" class="fabx" aria-label="Agregar calibración" onclick="pxOpen(\'new\')">+</button>'):tab==='ayuda'?guideHTML():tab==='equipo'?equipoHTML():tab==='puestos'?puestosHTML():tab==='plan'?planHTML()+(isRO()?'':'<button id="plfab" aria-label="Agregar tarea" onclick="plGoAdd()">+</button>'):personalHTML();
 notice=null;
 $('#app').innerHTML=h;nightDom($('#app'));roLock();
 if(tab==='reporte'&&repShow===date)repFill();
@@ -1861,12 +1901,12 @@ return `<h2 class="lh">Bloqueo de este aparato</h2><p class="sub">Activo: se blo
 function unlockBox(){return unlockOpen?`<div class="cbox" style="border-color:var(--accent)"><b>🔓 Desbloquear</b><label for="unl_p">Contraseña</label><input id="unl_p" type="password" autocomplete="current-password" oninput="unlockType(this.value)" onkeydown="if(event.key==='Enter')doUnlock()"><div class="pbar" style="margin-top:10px"><button class="btn" style="margin-top:0" onclick="doUnlock()">Entrar</button><button class="btn soft" style="margin-top:0" onclick="unlockOpen=false;rr()">Cancelar</button></div></div>`:''}
 const isRO=()=>!!(S&&S.g&&!S.example&&((window.cloud&&cloud.readOnly&&cloud.readOnly())||devLocked()));
 function myTabs(){
-if(isRO())return [['hoy','Hoy'],['plan','Plan'],['vacaciones','Vacaciones'],['calendario','Mes'],['ayuda','Cómo usar']];
-const T=[['hoy','Hoy'],['maquinas','Máquinas'],['puestos','Puestos'],['personal','Personal'],['vacaciones','Vacaciones'],['calendario','Mes'],['reporte','Reporte'],['avisos','Avisos'],['plan','Plan'],['grupo','Grupo'],['ayuda','Cómo usar']];
+if(isRO())return [['hoy','Hoy'],['plan','Plan'],['vacaciones','Vacaciones'],['calendario','Mes'],['plastrac','Plastrac'],['ayuda','Cómo usar']];
+const T=[['hoy','Hoy'],['maquinas','Máquinas'],['puestos','Puestos'],['personal','Personal'],['vacaciones','Vacaciones'],['calendario','Mes'],['reporte','Reporte'],['avisos','Avisos'],['plan','Plan'],['grupo','Grupo'],['plastrac','Plastrac'],['ayuda','Cómo usar']];
 if(window.cloud&&cloud.isAdmin&&cloud.isAdmin()&&!S.example)T.splice(T.length-1,0,['equipo','Equipo']);
 return T}
 /* Solo ver: se desactiva todo lo que cambia datos; quedan pestañas, fechas, imprimir y copiar. */
-const RO_OK=new Set(['unlockOpenF','doUnlock','unlockType','unlockOpen','lockNow','toggleCfg','planChk','setTab','setDate','calNav','leave','openGroup','syncBoth','openPrint','doPrint','setPfmt','setNout','setZmg','setZor','setPkind','printing','window.scrollTo','var','document.getElementById','copyDay','copyGuide','startGuide','cloud.signIn','cloudOut','sendSug','copySug','teamOpen']);
+const RO_OK=new Set(['unlockOpenF','doUnlock','unlockType','unlockOpen','lockNow','toggleCfg','planChk','setTab','setDate','calNav','leave','openGroup','syncBoth','openPrint','doPrint','setPfmt','setNout','setZmg','setZor','setPkind','printing','window.scrollTo','var','document.getElementById','copyDay','copyGuide','startGuide','cloud.signIn','cloudOut','sendSug','copySug','teamOpen','pxFilter']);
 const roName=a=>{const m=String(a||'').trim().match(/^[A-Za-z_$][\w$.]*/);return m?m[0]:''};
 function roAllowed(el){for(const at of ['onclick','onchange','oninput']){const v=el.getAttribute(at);if(v&&!RO_OK.has(roName(v)))return false}return true}
 function roLock(){const app=$('#app');if(!app)return;const ro=isRO();app.classList.toggle('ro',ro);if(!ro)return;

@@ -432,8 +432,14 @@ old.arr.slice(old.posts.length).forEach(x=>{if(x&&ok.has(x))left.push(x)});
 old.posts.forEach((pid,j)=>{const x=old.arr[j];if(x&&ok.has(x)&&!c.posts.some(p=>p.id===pid)&&left.indexOf(x)<0)left.push(x)});
 const kept=Object.keys(keep).map(k=>keep[k]);
 c.ids.forEach(id=>{if(kept.indexOf(id)<0&&left.indexOf(id)<0)left.push(id)});
-const arr=c.posts.map(p=>keep[p.id]||left.shift()||null);
-return arr.concat(left);
+/* Recuerda quién estaba en un puesto que se detuvo: si vuelve a arrancar, regresa la misma persona. */
+const was=Object.assign({},old.was||{});
+old.posts.forEach((pid,j)=>{const x=old.arr[j];if(x&&!c.posts.some(p=>p.id===pid))was[pid]=x});
+const take=pid=>{const k=left.indexOf(was[pid]);if(was[pid]&&k>=0){left.splice(k,1);return was[pid]}return null};
+const arr=c.posts.map(p=>keep[p.id]||take(p.id)||null);
+for(let j=0;j<arr.length;j++)if(!arr[j])arr[j]=left.shift()||null;
+c.posts.forEach(p=>delete was[p.id]);
+const out=arr.concat(left);out.was=was;return out;
 }
 const rotate=a=>a.length?a.slice(1).concat([a[0]]):a;
 /* La rotación sigue desde el último día que trabajaste: los días libres no la hacen avanzar. */
@@ -454,19 +460,27 @@ const L=arr.length,out=new Array(L).fill(null);
 seq.forEach((x,t)=>{out[(first+t)%L]=x});
 return out;
 }
-function gen(from,reorder){
-const d=day(),c=ctx();
+function gen(from,reorder,keepCur){
+const d=day(),c=ctx(),old=d.blocks.slice();
 while(d.blocks.length<d.n)d.blocks.push(null);
 d.blocks.length=d.n;
 let arr;
-const base=b=>b.base?{posts:b.posts,arr:b.base}:b;
+const base=b=>b.base?{posts:b.posts,arr:b.base,was:b.was}:b;
 /* Siempre sigue el orden del bloque anterior: cada uno sube un puesto. */
-if(from>0&&d.blocks[from-1])arr=rotate(adapt(base(d.blocks[from-1]),c));
+/* keepCur (cambios automáticos: máquinas, asistencia): el bloque actual se conserva tal cual y solo se ajusta lo que cambió. */
+if(keepCur&&d.blocks[from])arr=adapt(base(d.blocks[from]),c);
+else if(from>0&&d.blocks[from-1])arr=rotate(adapt(base(d.blocks[from-1]),c));
 else if(d.blocks[from])arr=adapt(base(d.blocks[from]),c);
 else{arr=seed(prevRing(),c);reorder=true}
+const was=keepCur&&arr.was&&Object.keys(arr.was).length?arr.was:null;
 if(reorder)arr=byPersonal(arr);
 const ids=c.posts.map(p=>p.id);
-for(let i=from;i<d.n;i++){d.blocks[i]={posts:ids.slice(),arr:applyRT(d,i,arr,ids.length),base:arr.slice()};arr=rotate(arr)}
+const same=(a,b)=>a&&b&&a.length===b.length&&a.every((x,i)=>(x||null)===(b[i]||null));
+for(let i=from;i<d.n;i++){const o=old[i];
+/* Si el bloque queda igual que estaba, se respetan los cambios a mano (intercambios con extras o Utility). */
+if(keepCur&&o&&o.base&&same(o.posts,ids)&&same(o.base,arr))d.blocks[i]=o;
+else d.blocks[i]={posts:ids.slice(),arr:applyRT(d,i,arr,ids.length),base:arr.slice()};
+if(i===from){if(was)d.blocks[i].was=was;else delete d.blocks[i].was}arr=rotate(arr)}
 d.nextRing=arr.filter(Boolean);
 d.dirty=false;
 save();
@@ -1256,7 +1270,7 @@ const badNums=v=>String(v).split(/[^0-9]+/).filter(Boolean).map(Number).filter(n
 /* Una máquina solo puede estar en un puesto con la misma letra: si ya estaba en otro, se mueve aquí. 21 y 21A son puestos distintos. */
 function claim(ms,id,sfx){let moved=[];S.posts.forEach(p=>{if(p.id===id||(p.sfx||'')!==(sfx||''))return;const k=p.ms.filter(n=>ms.indexOf(n)<0);if(k.length!==p.ms.length){moved=moved.concat(p.ms.filter(n=>ms.indexOf(n)>=0));p.ms=k}});S.posts=S.posts.filter(p=>p.id===id||p.ms.length||p.util);return moved}
 /* Al cambiar los puestos, la rotación de hoy se recalcula desde el bloque actual. */
-function regenDay(k,from){const keep=date;date=k;try{gen(from,false)}finally{date=keep}} /* sin reordenar: sigue desde el bloque anterior */
+function regenDay(k,from){const keep=date;date=k;try{gen(from,false,true)}finally{date=keep}} /* sin reordenar: sigue desde el bloque anterior */
 function postsChanged(){
 markDirty();
 return regenMsg.length?' Rotación actualizada: '+regenMsg.join(', ')+'.':'';
@@ -1700,7 +1714,7 @@ function plantOn(){return !!(window.cloud&&cloud.mode==='compartido'&&cloud.plan
 function plantApply(x){if(!S||!S.g||S.example||!x||!Array.isArray(x.machines))return;
 if(x.rev&&x.rev===cloud.plantRev){plantSig=plantSigOf({machines:x.machines,posts:x.posts});return}
 if(saveT||cloudBusy()){clearTimeout(plantT);plantT=setTimeout(()=>plantApply(cloud.plant),1500);return}
-const before=plantRot();plantMerge(x);plantApplying=true;try{if(before!==plantRot())markDirty();saveNow()}finally{plantApplying=false}
+const mine=()=>ctx().posts.map(p=>p.id+':'+(p.ms||[]).join('.')).join(',');const before=mine();plantMerge(x);plantApplying=true;try{if(before!==mine())markDirty();saveNow()}finally{plantApplying=false}
 if(ready&&!printing)rr()}
 function plantSeed(){if(!S||!S.g||S.example||!(S.machines||[]).length||!cloud.canEditPlant())return;cloud.pushPlant(plantData()).then(r=>{if(r==='ok')plantSig=plantSigOf(plantData())})}
 function plantCheck(){if(plantApplying||!S||!S.g||S.example||!window.cloud||!cloud.canEditPlant||!cloud.canEditPlant()||!cloud.plantReady)return;

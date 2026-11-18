@@ -287,9 +287,9 @@ function listenPx() {
     C.px = d.data(); lsSet(LS + 'plastrac', C.px); window.pxApply && window.pxApply(C.px); ui();
   }, e => { C.pxErr = msg(e); C.pxReady = false; ui() });
 }
-C.pushPx = async rows => {
+C.pushPx = async (rows, lotes) => {
   if (!C.canEditPlant() || !C.pxReady) return 'no';
-  const x = { rows, por: C.user.email || '', nombre: C.name || '', ms: Date.now() };
+  const x = { rows, lotes: lotes || (C.px && C.px.lotes) || [], por: C.user.email || '', nombre: C.name || '', ms: Date.now() };
   try { await F.setDoc(F.doc(db, 'planta', 'plastrac'), x); C.px = x; lsSet(LS + 'plastrac', x); ui(); return 'ok' }
   catch (e) { C.pxErr = msg(e); ui(); return C.pxErr }
 };

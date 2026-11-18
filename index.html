@@ -1850,7 +1850,9 @@ const plMine=new Set();
 function plShiftDate(){const T=todayStr();if(S.shift==='noche'&&new Date().getHours()<6)return addDays(T,-1);return T}
 function planTick(){if(!ready||!S||!S.g||S.example)return;if(!Array.isArray(S.plan))S.plan=[];
 const now=Date.now(),sk=GKEY+'plseen:'+S.g,seen=lsGet(sk),ids=S.plan.map(t=>t.id);
-if(!seen)lsSet(sk,ids);else{const nw=S.plan.filter(t=>seen.indexOf(t.id)<0);if(nw.length){nw.forEach(t=>{if(!plMine.has(t.id))remQ.push({id:'pn:'+t.id,text:'Nueva tarea: '+t.txt+' · '+plWhen(t)+(t.who?' · '+pname(t.who):''),at:now,late:false})});lsSet(sk,ids);if(nw.some(t=>!plMine.has(t.id))){remUnlock();remPaint();if(tab==='plan')rr()}}}
+if(!seen)lsSet(sk,ids);else{const nw=S.plan.filter(t=>seen.indexOf(t.id)<0);if(nw.length){const N=nw.filter(t=>!plMine.has(t.id));lsSet(sk,ids);
+/* Tarea nueva: solo un aviso en pantalla, sin sonido. La alarma suena a la hora de la tarea. */
+if(N.length){notice={t:'📋 '+(N.length>1?N.length+' tareas nuevas en el plan: ':'Tarea nueva en el plan: ')+N.map(t=>t.txt+' ('+plWhen(t)+(t.who?' · '+pname(t.who):'')+')').join('; ')+'. La alarma suena a esa hora.'};rr()}}}
 const ds=plShiftDate();if(!isWork(ds))return; /* Solo suena el día que el grupo trabaja (Mes). */
 if(ds!==date&&window.cloud&&cloud.checksOn)return;
 const C0=ds===date?plChecks():((S.days[ds]&&S.days[ds].chk)||{});

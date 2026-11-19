@@ -1143,7 +1143,7 @@ h+=legendHTML();
 d.blocks.forEach((b,i)=>{h+=b?blockHTML(d,b,i,i===cur):`<div class="blk"><h3>${blockLabel(d,i)}<span>sin generar</span></h3></div>`});
 if(d.nextRing&&c.posts.length){
 const nb={posts:c.posts.map(p=>p.id),arr:seed(d.nextRing,c)};
-h+=`<div class="blk next"><h3>${hm(d.start,0)}<span>próximo turno (${fmtD(nextWorkAfter(date))}), arranque</span></h3>`+blockRows(nb,-1)+blockFree(nb)+`</div>`;
+h+=`<div class="blk next"><h3>${hm(d.start,0)}<span>próximo turno (${fmtD(nextWorkAfter(date))}), arranque</span></h3>`+blockRows(nb,-1)+blockFree(nb)+`<button class="btn soft noprint" style="margin-top:10px" onclick="copyStart()">📋 Copiar arranque</button><div class="sub" id="cst" style="margin:6px 0 0">Mañana, en el bloque 1, toca «Pegar arranque» y queda igual.</div></div>`;
 }
 if(has)h+=`<button class="btn soft" onclick="copyDay()">Copiar rotación</button><div class="sub" id="cs" style="margin:8px 0 0"></div>`;
 return h;
@@ -1173,7 +1173,7 @@ if(apoyo.length)h+=`<p class="free">Apoyo: ${apoyo.map(p=>esc(p.name)+mk(p)).joi
 return h;
 }
 function blockHTML(d,b,i,now){
-return `<div class="blk ${now?'now':''}" id="blk${i}" style="scroll-margin-top:12px"><h3>${blockLabel(d,i)}<span>bloque ${i+1}${now?' · ahora':''}</span></h3>`+blockRows(b,i)+(now||(curBlock(d)<0&&i===0)?outHTML():'')+blockFree(b,rtIds(d,i,b),utIds(d,i))+(i>0&&d.blocks[i-1]?`<button class="rt noprint" onclick="followPrev(${i})">↺ Seguir la rotación del bloque ${i}</button>`:'')+(i===0?pasteHTML():'')+blockBreaks(d,i)+`</div>`;
+return `<div class="blk ${now?'now':''}" id="blk${i}" style="scroll-margin-top:12px"><h3>${blockLabel(d,i)}<span>bloque ${i+1}${now?' · ahora':''}</span></h3>`+(i===0?pasteHTML():'')+blockRows(b,i)+(now||(curBlock(d)<0&&i===0)?outHTML():'')+blockFree(b,rtIds(d,i,b),utIds(d,i))+(i>0&&d.blocks[i-1]?`<button class="rt noprint" onclick="followPrev(${i})">↺ Seguir la rotación del bloque ${i}</button>`:'')+blockBreaks(d,i)+`</div>`;
 }
 /* Puestos parados que el supervisor sacó de la rotación: se pueden volver a meter. */
 function outHTML(){const O=S.posts.filter(p=>p.out&&postHeld(p));if(!O.length)return '';
@@ -1271,19 +1271,30 @@ try{await navigator.clipboard.writeText(t);s.textContent='Copiado.'}catch(e){
 try{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();s.textContent=ok?'Copiado.':'No se pudo copiar.'}catch(x){s.textContent='No se pudo copiar.'}}
 }
 
+/* Copia solo el arranque del próximo turno, para pegarlo al día siguiente en el bloque 1. */
+async function copyStart(){
+const d=day(),c=ctx(),s=$('#cst');if(!d.nextRing||!c.posts.length)return;
+const nb={posts:c.posts.map(p=>p.id),arr:seed(d.nextRing,c)};
+let t='Arranque próximo turno ('+nextWorkAfter(date)+')\n';
+nb.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(p)t+='Máq. '+postLabel(p)+': '+(nb.arr[j]?pname(nb.arr[j]):'sin cubrir')+'\n'});
+const ok='Arranque copiado. Mañana, en el bloque 1, toca «Pegar arranque».';
+try{await navigator.clipboard.writeText(t);s.textContent=ok}catch(e){
+try{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();const k=document.execCommand('copy');a.remove();s.textContent=k?ok:'No se pudo copiar.'}catch(x){s.textContent='No se pudo copiar.'}}
+}
+
 /* Pegar rotación en el arranque: se pega el texto de «Copiar rotación» (de otro teléfono, de WhatsApp o escrito a mano,
    una línea por puesto: «Máq. 13: Daisy La Fe») y el bloque 1 queda así de una vez; los bloques siguientes siguen desde ahí. */
 let pasteOpen=false,pasteTxt='',pasteRes=null;
 function pasteHTML(){
 if(isRO())return '';
-if(!pasteOpen){const r=pasteRes;pasteRes=null;return (r?`<div class="${r.bad?'warn':'toast'}" style="margin-top:10px">${esc(r.t)}</div>`:'')+`<button class="rt noprint" onclick="pasteOpen=true;rr()">📋 Pegar rotación en el arranque</button>`}
-return `<div class="noprint" style="margin-top:10px"><p class="sub" style="margin:0 0 6px">Pega aquí el texto de «Copiar rotación» (del día de hoy o del anterior) o escribe una línea por puesto, por ejemplo <b>13: Daisy La Fe</b>. Se cambia el arranque (bloque 1) y los bloques siguientes se rehacen desde ahí.</p>`+
+if(!pasteOpen){const r=pasteRes;pasteRes=null;return (r?`<div class="${r.bad?'warn':'toast'}" style="margin-top:10px">${esc(r.t)}</div>`:'')+`<button class="btn soft noprint" style="margin:6px 0 10px" onclick="pasteOpen=true;pasteTxt='';rr();pasteClip(1)">📋 Pegar arranque</button>`}
+return `<div class="noprint" style="margin:6px 0 10px"><p class="sub" style="margin:0 0 6px">Pega aquí lo que copiaste con «Copiar arranque» o escribe una línea por puesto, por ejemplo <b>13: Daisy La Fe</b>. Se cambia el arranque (bloque 1) y los bloques siguientes se rehacen desde ahí.</p>`+
 `<textarea id="pst" rows="8" style="width:100%;box-sizing:border-box" placeholder="Máq. 3, 4, 5: Denisse Rengifo&#10;Máq. 7, 8: Imara Tamayo&#10;…" oninput="pasteTxt=this.value">${esc(pasteTxt)}</textarea>`+
 `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="btn" style="flex:1;margin:0" onclick="applyPaste()">Aplicar al arranque</button>`+
 (navigator.clipboard&&navigator.clipboard.readText?`<button class="btn soft" style="flex:1;margin:0" onclick="pasteClip()">Pegar lo copiado</button>`:'')+
 `<button class="x" onclick="pasteOpen=false;pasteTxt='';rr()">Cancelar</button></div></div>`;
 }
-async function pasteClip(){try{const t=await navigator.clipboard.readText();if(t){pasteTxt=t;rr()}else{notice={t:'No hay nada copiado. Mantén el dedo en el cuadro y toca «Pegar».',bad:true};rr()}}catch(e){const a=$('#pst');if(a)a.focus();notice={t:'El teléfono no dejó leer lo copiado. Mantén el dedo en el cuadro y toca «Pegar».',bad:true};rr()}}
+async function pasteClip(auto){try{const t=await navigator.clipboard.readText();if(t){pasteTxt=t;rr()}else if(!auto){notice={t:'No hay nada copiado. Mantén el dedo en el cuadro y toca «Pegar».',bad:true};rr()}}catch(e){const a=$('#pst');if(a)a.focus();if(!auto)notice={t:'El teléfono no dejó leer lo copiado. Mantén el dedo en el cuadro y toca «Pegar».',bad:true};rr()}}
 const normTxt=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\((sup\.?|us|u)\)/g,' ').replace(/[*_~]/g,'').replace(/\s+/g,' ').trim();
 const normLab=t=>{const n=normTxt(t).replace(/^(maq\.?|maquina|maquinas|puesto)\s*/,'');if(/^ut/.test(n))return 'utility';return n.replace(/\s*(y|,|\/|-)\s*/g,',').replace(/\s+/g,'')};
 /* Lee el texto y devuelve las líneas «puesto: persona» del arranque. Si el texto es de un día anterior y trae

@@ -1136,7 +1136,7 @@ h+=printWarn(d);
 h+=lateHTML(d)+leftHTML(d,cur);
 const has=d.blocks.some(Boolean);
 if(d.dirty)h+=`<div class="warn">Cambió el personal, los puestos o las máquinas. Aplica los cambios desde el bloque actual.</div><button class="btn" onclick="fromSel=null;doGen()">Recalcular desde el bloque actual</button>`;
-else if(!has)h+=`<button class="btn" onclick="doGen()">Generar rotación</button>`;
+else if(!has)h+=`<button class="btn" onclick="doGen()">Generar rotación</button>`+pasteHTML();
 if(has)h+=`<button class="btn soft" onclick="openPrint()">Imprimir desayuno y almuerzo</button>`;
 h+=rtCfgHTML(d);
 h+=legendHTML();
@@ -1173,7 +1173,7 @@ if(apoyo.length)h+=`<p class="free">Apoyo: ${apoyo.map(p=>esc(p.name)+mk(p)).joi
 return h;
 }
 function blockHTML(d,b,i,now){
-return `<div class="blk ${now?'now':''}" id="blk${i}" style="scroll-margin-top:12px"><h3>${blockLabel(d,i)}<span>bloque ${i+1}${now?' · ahora':''}</span></h3>`+blockRows(b,i)+(now||(curBlock(d)<0&&i===0)?outHTML():'')+blockFree(b,rtIds(d,i,b),utIds(d,i))+(i>0&&d.blocks[i-1]?`<button class="rt noprint" onclick="followPrev(${i})">↺ Seguir la rotación del bloque ${i}</button>`:'')+blockBreaks(d,i)+`</div>`;
+return `<div class="blk ${now?'now':''}" id="blk${i}" style="scroll-margin-top:12px"><h3>${blockLabel(d,i)}<span>bloque ${i+1}${now?' · ahora':''}</span></h3>`+blockRows(b,i)+(now||(curBlock(d)<0&&i===0)?outHTML():'')+blockFree(b,rtIds(d,i,b),utIds(d,i))+(i>0&&d.blocks[i-1]?`<button class="rt noprint" onclick="followPrev(${i})">↺ Seguir la rotación del bloque ${i}</button>`:'')+(i===0?pasteHTML():'')+blockBreaks(d,i)+`</div>`;
 }
 /* Puestos parados que el supervisor sacó de la rotación: se pueden volver a meter. */
 function outHTML(){const O=S.posts.filter(p=>p.out&&postHeld(p));if(!O.length)return '';
@@ -1262,12 +1262,93 @@ async function copyDay(){
 const d=day(),c=ctx(),s=$('#cs');
 let t='Rotación '+date+'\n';
 d.blocks.forEach((b,i)=>{if(!b)return;t+='\n'+blockLabel(d,i)+'\n';b.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(p)t+='Máq. '+postLabel(p)+': '+(b.arr[j]?pname(b.arr[j]):'sin cubrir')+'\n'});const R=rtIds(d,i,b),UT=utIds(d,i),l=b.arr.slice(b.posts.length).filter(x=>x&&!R.has(x)&&!UT.has(x));if(R.size)t+='Retrabajo: '+[...R].map(pname).join(', ')+'\n';if(UT.size)t+='Cubriendo como Utility: '+[...UT].map(pname).join(', ')+'\n';if(l.length)t+='Libre: '+l.map(pname).join(', ')+'\n'});
+if(d.nextRing&&c.posts.length){const nb={posts:c.posts.map(p=>p.id),arr:seed(d.nextRing,c)};t+='\nArranque próximo turno ('+nextWorkAfter(date)+')\n';nb.posts.forEach((pid,j)=>{const p=S.posts.find(x=>x.id===pid);if(p)t+='Máq. '+postLabel(p)+': '+(nb.arr[j]?pname(nb.arr[j]):'sin cubrir')+'\n'})}
 t+='\nDesayuno y almuerzo\n';
 breakSlots().forEach(s=>{const rows=cover(d,s);if(!rows||!s.ids.length)return;t+=hmAbs(s.start)+' '+s.kind+' T'+s.turn+': '+rows.map(r=>pname(r.id)+(r.orig?' por '+pname(r.orig):'')+(r.st==='ok'?' (máq. '+mql(r)+') → '+(r.u?pname(r.u):'SIN MATERIAL HANDLER'):r.st==='libre'?' (libre)':r.st==='rtp'?' (retrabajo)':r.st==='det'?' (máq. detenida)':' (no está)')).join('; ')+'\n'});
 const off=S.machines.filter(m=>!m.on);
 if(off.length)t+='\nParadas: '+off.map(m=>m.n+(m.reason?' ('+m.reason+(m.note?': '+m.note:'')+')':'')).join(', ')+'\n';
 try{await navigator.clipboard.writeText(t);s.textContent='Copiado.'}catch(e){
 try{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();s.textContent=ok?'Copiado.':'No se pudo copiar.'}catch(x){s.textContent='No se pudo copiar.'}}
+}
+
+/* Pegar rotación en el arranque: se pega el texto de «Copiar rotación» (de otro teléfono, de WhatsApp o escrito a mano,
+   una línea por puesto: «Máq. 13: Daisy La Fe») y el bloque 1 queda así de una vez; los bloques siguientes siguen desde ahí. */
+let pasteOpen=false,pasteTxt='',pasteRes=null;
+function pasteHTML(){
+if(isRO())return '';
+if(!pasteOpen){const r=pasteRes;pasteRes=null;return (r?`<div class="${r.bad?'warn':'toast'}" style="margin-top:10px">${esc(r.t)}</div>`:'')+`<button class="rt noprint" onclick="pasteOpen=true;rr()">📋 Pegar rotación en el arranque</button>`}
+return `<div class="noprint" style="margin-top:10px"><p class="sub" style="margin:0 0 6px">Pega aquí el texto de «Copiar rotación» (del día de hoy o del anterior) o escribe una línea por puesto, por ejemplo <b>13: Daisy La Fe</b>. Se cambia el arranque (bloque 1) y los bloques siguientes se rehacen desde ahí.</p>`+
+`<textarea id="pst" rows="8" style="width:100%;box-sizing:border-box" placeholder="Máq. 3, 4, 5: Denisse Rengifo&#10;Máq. 7, 8: Imara Tamayo&#10;…" oninput="pasteTxt=this.value">${esc(pasteTxt)}</textarea>`+
+`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="btn" style="flex:1;margin:0" onclick="applyPaste()">Aplicar al arranque</button>`+
+(navigator.clipboard&&navigator.clipboard.readText?`<button class="btn soft" style="flex:1;margin:0" onclick="pasteClip()">Pegar lo copiado</button>`:'')+
+`<button class="x" onclick="pasteOpen=false;pasteTxt='';rr()">Cancelar</button></div></div>`;
+}
+async function pasteClip(){try{const t=await navigator.clipboard.readText();if(t){pasteTxt=t;rr()}else{notice={t:'No hay nada copiado. Mantén el dedo en el cuadro y toca «Pegar».',bad:true};rr()}}catch(e){const a=$('#pst');if(a)a.focus();notice={t:'El teléfono no dejó leer lo copiado. Mantén el dedo en el cuadro y toca «Pegar».',bad:true};rr()}}
+const normTxt=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\((sup\.?|us|u)\)/g,' ').replace(/[*_~]/g,'').replace(/\s+/g,' ').trim();
+const normLab=t=>{const n=normTxt(t).replace(/^(maq\.?|maquina|maquinas|puesto)\s*/,'');if(/^ut/.test(n))return 'utility';return n.replace(/\s*(y|,|\/|-)\s*/g,',').replace(/\s+/g,'')};
+/* Lee el texto y devuelve las líneas «puesto: persona» del arranque. Si el texto es de un día anterior y trae
+   «Arranque próximo turno», se usa esa parte; si no, el primer bloque. */
+function parsePaste(t){
+const L=String(t||'').replace(/\r/g,'').split('\n');
+const m=/Rotaci[oó]n\s+(\d{4}-\d{2}-\d{2})/i.exec(t||''),from=m?m[1]:null;
+const secs=[];let cur=null;
+L.forEach(raw=>{const l=raw.trim();
+if(!l){cur=null;return}
+if(/^\d{1,2}:\d{2}\b/.test(l)){cur={head:l,rows:[]};secs.push(cur);return}
+const k=/^(.+?)\s*(?::|=|→|->|–| - )\s*(.+)$/.exec(l);
+if(k&&!/^(retrabajo|libre|cubriendo|rotaci|paradas|apoyo)/i.test(normTxt(k[1]))&&/^(maq|maquina|puesto|ut|\d)/.test(normTxt(k[1]))){
+if(!cur){cur={head:'',rows:[]};secs.push(cur)}cur.rows.push([k[1],k[2]]);return}
+if(cur&&cur.rows.length){cur=null}
+if(!cur){cur={head:l,rows:[]};secs.push(cur)}else cur.head=l;
+});
+const S2=secs.filter(x=>x.rows.length);if(!S2.length)return null;
+const arr=S2.find(x=>/arranque/i.test(x.head));
+if(arr&&from&&from<date)return arr.rows;
+return (S2.find(x=>!/arranque/i.test(x.head))||S2[0]).rows;
+}
+function findPerson(name){
+const n=normTxt(name);if(!n||/^(sin cubrir|nadie|-|vacio)$/.test(n))return null;
+const P=S.people;
+let f=P.filter(p=>normTxt(p.name)===n);if(f.length===1)return f[0];
+f=P.filter(p=>normTxt(p.name).startsWith(n)||n.startsWith(normTxt(p.name)));if(f.length===1)return f[0];
+const w=n.split(' ');f=P.filter(p=>{const q=normTxt(p.name).split(' ');return w.every(x=>q.some(y=>y.startsWith(x)))});if(f.length===1)return f[0];
+return undefined;
+}
+function applyPaste(){
+const a=$('#pst');if(a)pasteTxt=a.value;
+const rows=parsePaste(pasteTxt);
+if(!rows){notice={t:'No encontré líneas de puestos. Cada línea debe ser como «Máq. 13: Daisy La Fe».',bad:true};return rr()}
+if(!canGen()){notice={t:'Necesitas al menos un puesto con máquina encendida y una persona presente.',bad:true};return rr()}
+const d=day();
+if(!d.blocks[0])gen(0,false);
+const b=d.blocks[0],n=b.posts.length,set=new Array(n).fill(undefined),used=new Set(),miss=[],noPost=[];
+const labs=b.posts.map(pid=>{const p=S.posts.find(x=>x.id===pid);return p?normLab(postLabel(p)):''});
+rows.forEach(([lab,who])=>{
+const nl=normLab(lab);let j=labs.indexOf(nl);
+if(j<0){const nums=nl.split(',').filter(Boolean);j=labs.findIndex(x=>x&&x!=='utility'&&nums.length&&nums.every(v=>x.split(',').indexOf(v)>=0))}
+if(j<0){noPost.push(lab.replace(/^m[aá]q\.?\s*/i,''));return}
+if(set[j]!==undefined)return;
+const p=findPerson(who);
+if(p===null){set[j]=null;return}
+if(!p){miss.push(who);return}
+if(used.has(p.id))return;
+set[j]=p.id;used.add(p.id);
+});
+if(!set.some(x=>x!==undefined)){notice={t:'No reconocí ningún puesto de hoy en el texto.'+(noPost.length?' Puestos que no están hoy: '+noPost.join(', ')+'.':''),bad:true};return rr()}
+/* Lo que no venía en el texto se completa con quien quedó sin puesto, en el orden que tenía el bloque. */
+const old=(b.base||b.arr).slice(),rest=old.filter(x=>x&&!used.has(x));
+const arr=set.map(x=>x===undefined?null:x);
+for(let j=0;j<n;j++)if(set[j]===undefined)arr[j]=rest.shift()||null;
+const out=arr.concat(rest);
+b.base=out.slice();b.arr=applyRT(d,0,out,n);delete b.was;
+if(d.n>1)gen(1);else{d.nextRing=rotate(b.base).filter(Boolean);save()}
+pasteOpen=false;pasteTxt='';
+const ok=set.filter(x=>x!==undefined).length;
+let msg='Arranque pegado: '+ok+' de '+n+' puestos tomados del texto. Los bloques siguientes siguen desde aquí.';
+if(miss.length)msg+=' No encontré a: '+miss.join(', ')+' (sus puestos quedaron con quien seguía).';
+if(noPost.length)msg+=' Puestos que hoy no están activos: '+noPost.join(', ')+'.';
+pasteRes={t:msg,bad:!!miss.length};
+rr();
 }
 
 

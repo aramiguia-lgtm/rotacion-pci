@@ -282,7 +282,7 @@ const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}ca
 const lsDel=k=>{try{localStorage.removeItem(k)}catch(e){}};
 let saveT=null,saveFail=false,cDirty=false;
 let autoGen=false;
-function save(){if(!S||!S.g||S.example)return;if(!autoGen)cDirty=true;clearTimeout(saveT);saveT=setTimeout(saveNow,250)}
+function save(){if(!S||!S.g||S.example)return;if(!plantApplying)bitTick();if(!autoGen)cDirty=true;clearTimeout(saveT);saveT=setTimeout(saveNow,250)}
 function saveNow(){clearTimeout(saveT);saveT=null;if(!S||!S.g||S.example)return;S.saved=Date.now();const dirty=cDirty;if(dirty)S.edit=S.saved;const ok=lsSet(GKEY+'g:'+S.g,S);lsSet(GKEY+'last',S.g);if(ok&&dirty){cDirty=false;window.cloud&&cloud.changed(S.g)}if(ok)plantCheck();if(!ok&&!saveFail){saveFail=true;notice={t:'No se pudo guardar en este dispositivo. Revisa que el navegador permita guardar datos de sitios.',bad:true};rr()}}
 window.addEventListener('pagehide',()=>{if(saveT)saveNow()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&saveT)saveNow()});
@@ -985,6 +985,7 @@ function render(){
 if(teamOpen&&window.cloud&&cloud.isAdmin()){$('#app').innerHTML=`<button class="link" onclick="teamOpen=false;render();window.scrollTo(0,0)">‹ Volver</button><h1>Equipo</h1>`+(notice?`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`:'')+equipoHTML();notice=null;return}
 teamOpen=false;
 if(!S||!S.g){$('#app').innerHTML=startHTML();return}
+if(!bitSnap||bitSnap._g!==S.g)bitSnapNow();
 const d=day();
 if(printing){$('#app').innerHTML=printHTML(d);nightDom($('#app'));if(onZebra())fitLabels();return}
 if(tab==='hoy'&&!d.blocks.some(Boolean)&&canGen()&&isWork(date)){autoGen=true;try{gen(0)}finally{autoGen=false}}
@@ -1002,7 +1003,7 @@ h+=`<div class="tabs mt">`+T1.map(tb).join('')+(T2.length?`<button class="tab ${
 if(open&&T2.length)h+=`<div class="tabs cfgrow" style="margin-top:-6px;padding:8px;border:2px dashed var(--line);border-radius:14px">`+T2.map(tb).join('')+`</div>`;}
 h+=alertsHTML();if(tab==='hoy')h+=remNextHTML();
 if(notice)h+=`<div class="${notice.bad?'warn':'toast'}">${esc(notice.t)}</div>`;
-h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML()+(isRO()||vacOpen||!S.people.length?'':'<button id="plfab" class="fabx" aria-label="Registrar vacaciones" onclick="vacOpen=true;rr();window.scrollTo({top:0,behavior:\'smooth\'})">+</button>'):tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='plastrac'?pxHTML()+(!pxCanEdit()||pxEdit?'':'<button id="plfab" class="fabx" aria-label="Agregar calibración" onclick="pxOpen(\'new\')">+</button>'):tab==='ayuda'?guideHTML():tab==='equipo'?equipoHTML():tab==='puestos'?puestosHTML():tab==='plan'?planHTML()+(isRO()?'':'<button id="plfab" aria-label="Agregar tarea" onclick="plGoAdd()">+</button>'):personalHTML();
+h+=tab==='hoy'?hoyHTML(d):tab==='maquinas'?maquinasHTML():tab==='vacaciones'?vacHTML()+(isRO()||vacOpen||!S.people.length?'':'<button id="plfab" class="fabx" aria-label="Registrar vacaciones" onclick="vacOpen=true;rr();window.scrollTo({top:0,behavior:\'smooth\'})">+</button>'):tab==='calendario'?calHTML():tab==='reporte'?reporteHTML():tab==='bitacora'?bitacoraHTML():tab==='avisos'?remHTML():tab==='grupo'?grupoHTML():tab==='plastrac'?pxHTML()+(!pxCanEdit()||pxEdit?'':'<button id="plfab" class="fabx" aria-label="Agregar calibración" onclick="pxOpen(\'new\')">+</button>'):tab==='ayuda'?guideHTML():tab==='equipo'?equipoHTML():tab==='puestos'?puestosHTML():tab==='plan'?planHTML()+(isRO()?'':'<button id="plfab" aria-label="Agregar tarea" onclick="plGoAdd()">+</button>'):personalHTML();
 notice=null;
 $('#app').innerHTML=h;nightDom($('#app'));roLock();
 if(tab==='reporte'&&repShow===date)repFill();
@@ -1401,6 +1402,7 @@ if(mView==='prio')h+=prioHead();
 const mCard=m=>`<div class="prow">${mView==='prio'?prioCtl(m):''}<b class="num">${m.n}</b>${mView==='prio'?`<span class="tag">L${m.line}</span>`:''}${mState(m)}${mView!=='prio'&&m.prio?`<span style="margin-left:auto;align-self:center">${prioBadge(m)}</span>`:''}${m.on&&m.hold?`<select class="nm" aria-label="Operario de la máquina ${m.n}" onchange="setTask(${m.n},this.value)"><option value="" ${!m.task?'selected':''}>Operario cubre descansos</option><option value="rt" ${m.task==='rt'?'selected':''}>Operario va a retrabajo</option><option value="zc" ${m.task==='zc'?'selected':''}>Operario cubre máq. sin puesto (se eligen en Hoy)</option><option value="ut" ${m.task==='ut'?'selected':''}>Operario cubre como utility</option></select>`:''}${m.on&&!m.hold?'':`<select class="nm ${m.reason?'':'miss'}" aria-label="Motivo máquina ${m.n}" onchange="setReason(${m.n},this.value)"><option value="">Elige el motivo</option>${reasonOpts(m.reason)}</select><input class="nm" style="flex-basis:100%" maxlength="140" value="${esc(m.note||'')}" placeholder="Describe el problema" aria-label="Descripción del problema de la máquina ${m.n}" onchange="setNote(${m.n},this.value)">`}</div>`;
 if(mView==='prio'){const P=prioList();h+=P.map(mCard).join('');const R=S.machines.filter(m=>!m.prio);if(R.length)h+=`<h2 class="lh">Sin prioridad</h2>`+R.map(mCard).join('')}
 else [1,2].forEach(l=>{h+=`<h2 class="lh">Línea ${l}</h2>`+S.machines.filter(m=>m.line===l).map(mCard).join('')});
+h+=`<button class="btn soft" style="margin-top:12px" onclick="setTab('bitacora')">📒 Ver la bitácora de máquinas detenidas</button>`;
 h+=lineCfgHTML()+ACEPTAR;
 return h;
 }
@@ -1817,6 +1819,7 @@ function guideBody(){return `<div id="gbody">
 <div class="step"><h3><b>8</b>La rotación del día en Hoy</h3><ol><li>Toca <b>«Generar rotación»</b>. Arriba ves quién está en cada máquina ahora y cuánto falta para el cambio.</li><li>Para decir dónde empieza alguien, en un bloque elige a la persona en su máquina (ej. <b>Ana en la máquina 13</b>). A partir de ahí toda la rotación sigue sola, bloque tras bloque y día tras día.</li><li>Si cambia el personal o las máquinas, toca «Recalcular rotación» desde el bloque actual.</li><li><b>⏰ Alguien llegó tarde</b> y <b>🚪 Alguien se va antes de hora</b> lo anotan con la hora y salen en el reporte.</li><li>Los Utility cambian de línea cada cierto tiempo: toca <b>«⇄ Cambio de líneas»</b>, junto a sus nombres en Hoy, y el de la línea 1 pasa a la 2 y el de la 2 a la 1. Los de «Ambas líneas» no se mueven.</li><li>En <b>Retrabajo y Utility</b> eliges quién va a retrabajo y a qué operario sacas a cubrir como Utility.</li><li><b>Imprimir desayuno y almuerzo</b>: hoja carta, etiqueta Zebra por turno o notas por persona.</li></ol></div>
 <div class="step"><h3><b>9</b>Recordatorios (Avisos)</h3><p>En <b>Avisos</b> escribe lo que no se te puede olvidar y elige cuándo: <b>Cada…</b> (ej. chequear los secadores cada 1 hora), <b>Dentro de…</b> (ej. en 40 minutos encender temperatura) o <b>A una hora</b> (todos los días o una sola vez). A la hora suena una alarma, vibra y sale el aviso en pantalla: toca «Hecho» o «En 5 min». En Hoy, arriba, ves el próximo recordatorio.</p><p><b>Solo suenan con la app abierta en pantalla.</b> Si apagas la pantalla o cambias de app, el teléfono la pausa; al volver te salen los que se pasaron. Usa «Probar la alarma» para comprobar el volumen.</p></div>
 <div class="step"><h3><b>10</b>Vacaciones</h3><p>En <b>Vacaciones</b> registra las aprobadas. Esos días la persona sale de la rotación y la app avisa el día antes.</p></div>
+<div class="step"><h3><b>10b</b>Bitácora de máquinas detenidas</h3><p>En <b>Bitácora</b> queda anotada cada máquina que marcas <b>Detenida</b> o <b>Parada</b>: el motivo, la descripción, a qué hora, quién la marcó y cuánto tiempo estuvo así (se cierra cuando la vuelves a poner Encendida). Filtra por periodo, máquina o motivo, mira el total de horas por motivo, y cópiala, mándala por WhatsApp o descárgala para Excel. Si una hora quedó mal (por ejemplo, olvidaste encenderla), toca «Corregir».</p></div>
 <div class="step"><h3><b>11</b>El reporte sale solo</h3><p>En <b>Reporte</b> las máquinas y la asistencia se llenan con lo que marcaste. Si marcas bien las máquinas detenidas y paradas con su motivo, quién faltó y por quién viene cada extra, el reporte sale completo. Agrega lo demás y toca «Generar reporte» para copiarlo o mandarlo por WhatsApp. También sale el reporte para Recursos Humanos.</p></div>
 <div class="step"><h3><b>12</b>Guarda un respaldo</h3><p>Todo queda guardado <b>solo en este teléfono o computadora</b>. En <b>Grupo</b> toca «Copiar código de respaldo», mándatelo y pégalo en la primera pantalla del otro teléfono, en «Cargar un respaldo».</p></div>
 <div class="step"><h3><b>13</b>Manda tus sugerencias</h3><p>Al final de <b>Cómo usar</b> hay un formulario de <b>Sugerencias</b>. Escribe qué te gustaría cambiar y mándalo por WhatsApp.</p></div>
@@ -1867,7 +1870,7 @@ function plantOn(){return !!(window.cloud&&cloud.mode==='compartido'&&cloud.plan
 function plantApply(x){if(!S||!S.g||S.example||!x||!Array.isArray(x.machines))return;
 if(x.rev&&x.rev===cloud.plantRev){plantSig=plantSigOf({machines:x.machines,posts:x.posts});return}
 if(saveT||cloudBusy()){clearTimeout(plantT);plantT=setTimeout(()=>plantApply(cloud.plant),1500);return}
-const mine=()=>ctx().posts.map(p=>p.id+':'+(p.ms||[]).join('.')).join(',');const before=mine();plantMerge(x);outFix();plantApplying=true;try{if(before!==mine())markDirty();saveNow()}finally{plantApplying=false}
+const mine=()=>ctx().posts.map(p=>p.id+':'+(p.ms||[]).join('.')).join(',');const before=mine();plantMerge(x);outFix();bitSnapNow();plantApplying=true;try{if(before!==mine())markDirty();saveNow()}finally{plantApplying=false}
 if(ready&&!printing)rr()}
 function plantSeed(){if(!S||!S.g||S.example||!(S.machines||[]).length||!cloud.canEditPlant())return;cloud.pushPlant(plantData()).then(r=>{if(r==='ok')plantSig=plantSigOf(plantData())})}
 function plantCheck(){if(plantApplying||!S||!S.g||S.example||!window.cloud||!cloud.canEditPlant||!cloud.canEditPlant()||!cloud.plantReady)return;
@@ -1882,6 +1885,80 @@ const c=ctx(),P=S.people.filter(here),ops=P.filter(p=>p.role==='op').length,ut=P
 if(need){if(ops>=need)h+=`<br>La planta necesita <b>${need} puestos</b> · tienes <b>${ops} operarios</b>: <b>completo</b>.`;
 else{const f=need-ops;h+=`<br>La planta necesita <b>${need} puestos</b> · tienes <b>${ops} operarios</b>: <b style="color:var(--bad)">faltan ${f}</b>`+(ut>=f?` (los pueden cubrir ${f} de tus ${ut} utility, pero te quedan menos para los descansos).`:` · <b>necesitas ${f-ut} extra${f-ut>1?'s':''}</b>.`)}}
 return h+`</div>`}
+
+/* ---------- Bitácora de máquinas detenidas y paradas ----------
+   Se anota sola: cada vez que en este aparato una máquina pasa a Detenida o Parada se abre un registro
+   (máquina, motivo, descripción, hora, quién y grupo) y se cierra cuando vuelve a Encendida o Cero operario.
+   Con el equipo activado la bitácora es una sola para los 4 grupos (planta/bitacora); si no, se guarda en el grupo. */
+let bitSnap=null,bitF={p:'7',m:'',r:'',k:''},bitEdit=null,bitArm=null;
+const bitKind=m=>!m.on?'off':m.hold?'hold':'';
+const bitShared=()=>!!(window.cloud&&cloud.mode==='compartido'&&S&&S.g&&!S.example);
+function bitSnapNow(){bitSnap={_g:S&&S.g};((S&&S.machines)||[]).forEach(m=>bitSnap[m.n]={k:bitKind(m),r:m.reason||'',nt:m.note||''})}
+function bitWho(){const c=window.cloud;return c&&c.user?(c.name||c.user.displayName||c.user.email||''):''}
+function bitAll(){const M={};(Array.isArray(S.stopLog)?S.stopLog:[]).forEach(r=>{if(r&&r.id)M[r.id]=r});
+if(bitShared())Object.values(cloud.bit||{}).forEach(r=>{if(r&&r.id)M[r.id]=r});
+return Object.values(M).filter(r=>!r.del&&r.a).sort((x,y)=>y.a-x.a)}
+const bitOpen=n=>bitAll().find(r=>r.n===n&&!r.b);
+function bitPut(list){if(!list.length)return;
+if(bitShared()&&cloud.canEditPlant&&cloud.canEditPlant()&&cloud.pushBit){cloud.pushBit(list.map(r=>Object.assign({},r)));if(tab==='bitacora'&&ready&&!printing)setTimeout(rr,0);return}
+if(!Array.isArray(S.stopLog))S.stopLog=[];list.forEach(r=>{const i=S.stopLog.findIndex(x=>x.id===r.id);if(i>=0)S.stopLog[i]=r;else S.stopLog.push(r)});
+if(S.stopLog.length>2000)S.stopLog=S.stopLog.sort((x,y)=>x.a-y.a).slice(-2000)}
+/* Compara las máquinas con lo último visto y anota lo que cambió aquí mismo (no lo que llega de otro aparato). */
+function bitTick(){if(!S||!S.g||S.example||!Array.isArray(S.machines))return;
+if(!bitSnap||bitSnap._g!==S.g){bitSnapNow();return}
+const now=Date.now(),who=bitWho(),out=[];
+S.machines.forEach(m=>{const o=bitSnap[m.n]||{k:'',r:'',nt:''},k=bitKind(m),r=m.reason||'',nt=m.note||'';
+if(o.k===k&&o.r===r&&o.nt===nt)return;
+const op=bitOpen(m.n);
+if(o.k!==k){if(op&&op.k!==k){out.push(Object.assign({},op,{b:now,porFin:who}))}
+if(k&&!(op&&op.k===k))out.push({id:'b'+now.toString(36)+uid(),n:m.n,line:m.line||0,k,r,nt,a:now,b:0,por:who,g:String(S.g)})}
+else if(k&&op)out.push(Object.assign({},op,{r,nt}))});
+bitSnapNow();bitPut(out)}
+window.bitApply=function(){if(ready&&tab==='bitacora'&&!printing&&!bitEdit){const a=document.activeElement;if(!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)))rr()}};
+const bitDur=ms=>{const t=Math.max(0,Math.round(ms/60000)),h=Math.floor(t/60),mi=t%60;return h?(h+' h'+(mi?' '+mi+' min':'')):mi+' min'};
+const bitYMD=ms=>{const t=new Date(ms);return t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate())};
+const bitHM=ms=>{const t=new Date(ms);return pad(t.getHours())+':'+pad(t.getMinutes())};
+const bitDT=ms=>fmtD(bitYMD(ms))+' '+bitHM(ms);
+const bitKL=k=>k==='off'?'⛔ Parada':'Detenida';
+function bitRange(){const now=Date.now(),d=new Date(todayStr()+'T00:00:00');
+if(SHIFT==='noche')d.setHours(18);else d.setHours(6);const s0=d.getTime();
+if(bitF.p==='hoy')return [s0,now];if(bitF.p==='7')return [s0-6*864e5,now];if(bitF.p==='30')return [s0-29*864e5,now];
+if(bitF.p==='mes'){const t=new Date();return [new Date(t.getFullYear(),t.getMonth(),1).getTime(),now]}return [0,now]}
+function bitList(){const [s,e]=bitRange();return bitAll().filter(r=>r.a<e&&(r.b||Date.now())>s&&(!bitF.m||String(r.n)===bitF.m)&&(!bitF.r||(r.r||'Sin motivo')===bitF.r)&&(!bitF.k||r.k===bitF.k))}
+function bitSet(k,v){bitF[k]=v;bitEdit=null;rr()}
+function bitText(){const L=bitList(),[s]=bitRange(),P={hoy:'hoy','7':'últimos 7 días','30':'últimos 30 días',mes:'este mes',todo:'todo'}[bitF.p];
+let t='BITÁCORA DE MÁQUINAS DETENIDAS – '+P+(bitF.m?' – máquina '+bitF.m:'')+(bitF.r?' – '+bitF.r:'')+'\n';
+const sm=bitSum(L,s);if(sm.length)t+='\nPor motivo:\n'+sm.map(x=>'• '+x.r+': '+x.c+' vez'+(x.c>1?'es':'')+', '+bitDur(x.ms)).join('\n')+'\n';
+t+='\n'+(L.length?L.map(r=>'Máq. '+r.n+' · '+(r.k==='off'?'Parada':'Detenida')+' · '+(r.r||'Sin motivo')+(r.nt?' ('+r.nt+')':'')+' · '+bitDT(r.a)+' → '+(r.b?bitDT(r.b):'sigue')+' · '+bitDur((r.b||Date.now())-r.a)+(r.por?' · '+r.por:'')+(r.g?' (grupo '+r.g+')':'')).join('\n'):'Sin registros.');
+return t}
+function bitSum(L,s){const g={};L.forEach(r=>{const k=r.r||'Sin motivo',ms=(r.b||Date.now())-Math.max(r.a,s);(g[k]=g[k]||{r:k,c:0,ms:0});g[k].c++;g[k].ms+=Math.max(0,ms)});return Object.values(g).sort((x,y)=>y.ms-x.ms)}
+async function bitCopy(){const t=bitText();try{await navigator.clipboard.writeText(t);notice={t:'Bitácora copiada.'}}catch(e){notice={t:'No se pudo copiar solo. Usa «Descargar Excel».',bad:true}}rr()}
+function bitCSV(){const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+const rows=[['Máquina','Línea','Estado','Motivo','Descripción','Inicio','Fin','Duración (min)','Anotó','Grupo','Cerró']].concat(bitList().map(r=>[r.n,r.line||'',r.k==='off'?'Parada':'Detenida',r.r||'Sin motivo',r.nt||'',bitYMD(r.a)+' '+bitHM(r.a),r.b?bitYMD(r.b)+' '+bitHM(r.b):'sigue',Math.round(((r.b||Date.now())-r.a)/60000),r.por||'',r.g||'',r.porFin||'']));
+const blob=new Blob(['﻿'+rows.map(x=>x.map(q).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='bitacora-maquinas-'+todayStr()+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+const bitCanEdit=()=>!isRO()&&(!bitShared()||(cloud.canEditPlant&&cloud.canEditPlant()));
+const bitDL=ms=>bitYMD(ms)+'T'+bitHM(ms);
+function bitSave(id){const r=bitAll().find(x=>x.id===id);if(!r)return;const a=new Date($('#bt_a').value).getTime(),bv=$('#bt_b')?$('#bt_b').value:'',b=bv?new Date(bv).getTime():0;
+if(!a||isNaN(a)){notice={t:'Pon la hora de inicio.',bad:true};rr();return}if(b&&b<=a){notice={t:'El fin tiene que ser después del inicio.',bad:true};rr();return}
+bitPut([Object.assign({},r,{a,b:r.b?b||r.b:0,r:$('#bt_r').value,nt:$('#bt_n').value.trim()})]);bitEdit=null;save();notice={t:'Registro corregido.'};rr()}
+function bitDel(id){if(bitArm!==id){bitArm=id;rr();return}const r=bitAll().find(x=>x.id===id);bitArm=null;if(r){bitPut([Object.assign({},r,{del:true})]);save();notice={t:'Registro quitado de la bitácora.'}}rr()}
+function bitacoraHTML(){if(!bitSnap||bitSnap._g!==S.g)bitSnapNow();
+const ed=bitCanEdit(),now=Date.now(),[s]=bitRange();
+let h=`<h2 style="margin-bottom:4px">📒 Bitácora de máquinas detenidas</h2><p class="sub" style="margin-top:0">Se anota sola: cuando en <b>Máquinas</b> marcas una como <b>Detenida</b> o <b>Parada</b>, queda la hora, el motivo, la descripción y quién la marcó. Cuando la vuelves a poner <b>Encendida</b>, se cierra y queda cuánto tiempo estuvo detenida.${bitShared()?' Es una sola para los 4 grupos.':''}</p>`;
+if(bitShared()&&cloud.bitErr)h+=`<div class="warn">${esc(cloud.bitErr)}</div>`;
+const cur=S.machines.filter(m=>bitKind(m));
+h+=`<h2 class="lh">Ahora</h2>`+(cur.length?cur.map(m=>{const o=bitOpen(m.n);return `<div class="prow" style="border-color:var(--bad)"><b class="num">${m.n}</b><span><b>${bitKL(bitKind(m))}</b> · ${esc(m.reason||'sin motivo')}${m.note?' · '+esc(m.note):''}<br><span class="tag">${o?'desde '+esc(bitDT(o.a))+' · '+bitDur(now-o.a)+(o.por?' · '+esc(o.por):''):'inicio sin anotar (se marcó antes de la bitácora)'}</span></span></div>`}).join(''):`<p class="sub">Todas las máquinas están trabajando.</p>`);
+const all=bitAll(),ms=[...new Set(S.machines.map(m=>m.n).concat(all.map(r=>r.n)))].sort((a,b)=>a-b),rs=[...new Set(REASONS.concat(all.map(r=>r.r||'Sin motivo')))];
+h+=`<h2 class="lh">Historial</h2><div class="row2"><div><label for="bf_p">Periodo</label><select id="bf_p" onchange="bitSet('p',this.value)">${[['hoy','Hoy'],['7','Últimos 7 días'],['30','Últimos 30 días'],['mes','Este mes'],['todo','Todo']].map(([k,l])=>`<option value="${k}" ${bitF.p===k?'selected':''}>${l}</option>`).join('')}</select></div><div><label for="bf_m">Máquina</label><select id="bf_m" onchange="bitSet('m',this.value)"><option value="">Todas</option>${ms.map(n=>`<option value="${n}" ${bitF.m===String(n)?'selected':''}>${n}</option>`).join('')}</select></div></div>
+<div class="row2"><div><label for="bf_r">Motivo</label><select id="bf_r" onchange="bitSet('r',this.value)"><option value="">Todos</option>${rs.map(r=>`<option value="${esc(r)}" ${bitF.r===r?'selected':''}>${esc(r)}</option>`).join('')}</select></div><div><label for="bf_k">Estado</label><select id="bf_k" onchange="bitSet('k',this.value)"><option value="">Todas</option><option value="hold" ${bitF.k==='hold'?'selected':''}>Solo detenidas</option><option value="off" ${bitF.k==='off'?'selected':''}>Solo paradas</option></select></div></div>`;
+const L=bitList(),sm=bitSum(L,s);
+if(sm.length)h+=`<div class="alert soft"><b>Por motivo</b>`+sm.map(x=>`<div style="display:flex;justify-content:space-between;gap:8px;margin-top:4px"><span>${esc(x.r)}</span><span><b>${bitDur(x.ms)}</b> <span class="tag">· ${x.c} vez${x.c>1?'es':''}</span></span></div>`).join('')+`</div>`;
+h+=L.length?L.map(r=>{if(bitEdit===r.id&&ed)return `<div class="prow" style="display:block"><b>Corregir máquina ${r.n}</b><div class="row2"><div><label for="bt_a">Inicio</label><input type="datetime-local" id="bt_a" value="${bitDL(r.a)}"></div>${r.b?`<div><label for="bt_b">Fin</label><input type="datetime-local" id="bt_b" value="${bitDL(r.b)}"></div>`:''}</div><label for="bt_r">Motivo</label><select id="bt_r"><option value="">Sin motivo</option>${reasonOpts(r.r)}</select><label for="bt_n">Descripción</label><input id="bt_n" maxlength="140" value="${esc(r.nt||'')}"><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" onclick="bitSave('${r.id}')">Guardar</button><button class="btn soft" onclick="bitEdit=null;rr()">Cancelar</button></div></div>`;
+return `<div class="prow"><b class="num">${r.n}</b><span style="flex:1;min-width:180px"><b>${bitKL(r.k)}</b> · ${esc(r.r||'Sin motivo')}${r.nt?' · '+esc(r.nt):''}<br><span class="tag">${esc(bitDT(r.a))} → ${r.b?esc(bitDT(r.b)):'<b>sigue</b>'} · <b>${bitDur((r.b||now)-r.a)}</b>${r.por?' · '+esc(r.por):''}${r.g?' · grupo '+esc(r.g):''}</span></span>${ed?`<button class="x" onclick="bitEdit='${r.id}';rr()">Corregir</button><button class="x del" onclick="bitDel('${r.id}')">${bitArm===r.id?'¿Quitar?':'Quitar'}</button>`:''}</div>`}).join(''):`<p class="sub">No hay máquinas detenidas en este periodo.</p>`;
+const t=bitText();
+h+=`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"><button class="btn soft" style="flex:1" onclick="bitCopy()">Copiar</button><a class="btn soft" style="flex:1;text-decoration:none" href="https://wa.me/?text=${encodeURIComponent(t)}" target="_blank" rel="noopener">WhatsApp</a><button class="btn soft" style="flex:1" onclick="bitCSV()">Descargar Excel</button></div>`;
+return h}
 
 /* ---------- Avisos a supervisores (cloud.js): se quedan hasta que todos los marcan como vistos ---------- */
 let avOpen=false;const avAlerted=new Set();
@@ -2016,12 +2093,12 @@ return `<h2 class="lh">Bloqueo de este aparato</h2><p class="sub">Activo: se blo
 function unlockBox(){return unlockOpen?`<div class="cbox" style="border-color:var(--accent)"><b>🔓 Desbloquear</b><label for="unl_p">Contraseña</label><input id="unl_p" type="password" autocomplete="current-password" oninput="unlockType(this.value)" onkeydown="if(event.key==='Enter')doUnlock()"><div class="pbar" style="margin-top:10px"><button class="btn" style="margin-top:0" onclick="doUnlock()">Entrar</button><button class="btn soft" style="margin-top:0" onclick="unlockOpen=false;rr()">Cancelar</button></div></div>`:''}
 const isRO=()=>!!(S&&S.g&&!S.example&&((window.cloud&&cloud.readOnly&&cloud.readOnly())||devLocked()));
 function myTabs(){
-if(isRO())return [['hoy','Hoy'],['plan','Plan'],['vacaciones','Vacaciones'],['calendario','Mes'],['plastrac','Plastrac'],['ayuda','Cómo usar']];
-const T=[['hoy','Hoy'],['maquinas','Máquinas'],['puestos','Puestos'],['personal','Personal'],['vacaciones','Vacaciones'],['calendario','Mes'],['reporte','Reporte'],['avisos','Avisos'],['plan','Plan'],['grupo','Grupo'],['plastrac','Plastrac'],['ayuda','Cómo usar']];
+if(isRO())return [['hoy','Hoy'],['bitacora','Bitácora'],['plan','Plan'],['vacaciones','Vacaciones'],['calendario','Mes'],['plastrac','Plastrac'],['ayuda','Cómo usar']];
+const T=[['hoy','Hoy'],['maquinas','Máquinas'],['puestos','Puestos'],['personal','Personal'],['vacaciones','Vacaciones'],['calendario','Mes'],['reporte','Reporte'],['bitacora','Bitácora'],['avisos','Avisos'],['plan','Plan'],['grupo','Grupo'],['plastrac','Plastrac'],['ayuda','Cómo usar']];
 if(window.cloud&&cloud.isAdmin&&cloud.isAdmin()&&!S.example)T.splice(T.length-1,0,['equipo','Equipo']);
 return T}
 /* Solo ver: se desactiva todo lo que cambia datos; quedan pestañas, fechas, imprimir y copiar. */
-const RO_OK=new Set(['unlockOpenF','doUnlock','unlockType','unlockOpen','lockNow','toggleCfg','planChk','setTab','setDate','calNav','leave','openGroup','syncBoth','openPrint','doPrint','setPfmt','setNout','setZmg','setZor','setPkind','printing','window.scrollTo','var','document.getElementById','copyDay','copyGuide','startGuide','cloud.signIn','cloudOut','sendSug','copySug','teamOpen','pxFilter']);
+const RO_OK=new Set(['unlockOpenF','doUnlock','unlockType','unlockOpen','lockNow','toggleCfg','planChk','setTab','setDate','calNav','leave','openGroup','syncBoth','openPrint','doPrint','setPfmt','setNout','setZmg','setZor','setPkind','printing','window.scrollTo','var','document.getElementById','copyDay','copyGuide','startGuide','cloud.signIn','cloudOut','sendSug','copySug','teamOpen','pxFilter','bitSet','bitCopy','bitCSV']);
 const roName=a=>{const m=String(a||'').trim().match(/^[A-Za-z_$][\w$.]*/);return m?m[0]:''};
 function roAllowed(el){for(const at of ['onclick','onchange','oninput']){const v=el.getAttribute(at);if(v&&!RO_OK.has(roName(v)))return false}return true}
 function roLock(){const app=$('#app');if(!app)return;const ro=isRO();app.classList.toggle('ro',ro);if(!ro)return;

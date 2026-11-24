@@ -37,9 +37,9 @@ const ui = () => { try { window.cloudUI && window.cloudUI() } catch (e) { } };
 
 let A, F, auth, db, timers = {};
 let subs = [];            // escuchas activas de grupos
-let subMe = null, subTeam = null, subAll = null, subPlant = null, subAv = null, subEq = null, subPx = null;
+let subMe = null, subTeam = null, subAll = null, subPlant = null, subAv = null, subEq = null, subPx = null, subBit = null;
 const stopGroups = () => { subs.forEach(u => { try { u() } catch (e) { } }); subs = [] };
-const stopAll = () => { stopGroups(); [subAv, subEq].forEach(u => { try { u && u() } catch (e) { } }); subAv = subEq = null; C.avisos = []; if (subPlant) { try { subPlant() } catch (e) { } subPlant = null; C.plantReady = false } if (subPx) { try { subPx() } catch (e) { } subPx = null; C.pxReady = false } if (chkSub) { try { chkSub() } catch (e) { } chkSub = null; chkKey = '' }[subMe, subTeam, subAll].forEach(u => { try { u && u() } catch (e) { } }); subMe = subTeam = subAll = null };
+const stopAll = () => { stopGroups(); [subAv, subEq].forEach(u => { try { u && u() } catch (e) { } }); subAv = subEq = null; C.avisos = []; if (subPlant) { try { subPlant() } catch (e) { } subPlant = null; C.plantReady = false } if (subPx) { try { subPx() } catch (e) { } subPx = null; C.pxReady = false } if (subBit) { try { subBit() } catch (e) { } subBit = null; C.bitReady = false } if (chkSub) { try { chkSub() } catch (e) { } chkSub = null; chkKey = '' }[subMe, subTeam, subAll].forEach(u => { try { u && u() } catch (e) { } }); subMe = subTeam = subAll = null };
 
 const shared = () => C.mode === 'compartido';
 const gref = g => shared() ? F.doc(db, 'grupos', docId(g)) : F.doc(db, 'usuarios', C.user.uid, 'grupos', docId(g));
@@ -183,13 +183,14 @@ async function decide(u) {
       C.role = null; C.groups = []; C.name = '';
       if (subPlant) { try { subPlant() } catch (e) { } subPlant = null; C.plantReady = false }
       if (subPx) { try { subPx() } catch (e) { } subPx = null; C.pxReady = false }
+      if (subBit) { try { subBit() } catch (e) { } subBit = null; C.bitReady = false }
       if (was) dropLocal(null);
       setMode('sinacceso'); ui(); return;
     }
     const x = d.data();
     setMode('compartido');
     C.role = x.rol; C.name = x.nombre || '';
-    listenPlant(); listenPx(); listenAvisos();
+    listenPlant(); listenPx(); listenBit(); listenAvisos();
     C.groups = (x.grupos || []).map(normG).filter(Boolean);
     if (C.role === 'admin') {
       listenCol(F.collection(db, 'grupos'));
@@ -292,6 +293,26 @@ C.pushPx = async (rows, lotes) => {
   const x = { rows, lotes: lotes || (C.px && C.px.lotes) || [], por: C.user.email || '', nombre: C.name || '', ms: Date.now() };
   try { await F.setDoc(F.doc(db, 'planta', 'plastrac'), x); C.px = x; lsSet(LS + 'plastrac', x); ui(); return 'ok' }
   catch (e) { C.pxErr = msg(e); ui(); return C.pxErr }
+};
+
+
+/* ---------- Bitácora de máquinas detenidas y paradas: una para los 4 grupos ----------
+   planta/bitacora guarda ev: { id: registro }. Cada registro se escribe por su cuenta (merge),
+   así dos supervisores pueden anotar al mismo tiempo sin borrarse. */
+C.bit = lsGet(LS + 'bitacora') || {}; C.bitReady = false; C.bitErr = '';
+function listenBit() {
+  if (subBit) return;
+  subBit = F.onSnapshot(F.doc(db, 'planta', 'bitacora'), d => {
+    C.bitErr = ''; C.bitReady = true;
+    C.bit = d.exists() ? (d.data().ev || {}) : {}; lsSet(LS + 'bitacora', C.bit);
+    window.bitApply && window.bitApply(); ui();
+  }, e => { C.bitErr = /permission/.test(e && e.code || '') ? 'Falta activar la bitácora compartida en Firebase (reglas).' : msg(e); C.bitReady = false; ui() });
+}
+C.pushBit = async list => {
+  if (!C.canEditPlant() || !list || !list.length) return 'no';
+  const ev = {}; list.forEach(r => { ev[r.id] = r; C.bit[r.id] = r }); lsSet(LS + 'bitacora', C.bit);
+  try { await F.setDoc(F.doc(db, 'planta', 'bitacora'), { ev }, { merge: true }); return 'ok' }
+  catch (e) { C.bitErr = msg(e); ui(); return C.bitErr }
 };
 
 /* ---------- Avisos a supervisores: quedan hasta que todos los marquen como vistos ---------- */
